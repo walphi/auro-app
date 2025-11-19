@@ -16,7 +16,7 @@ const handler: Handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ results: [] }) };
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const results = await Promise.all(toolCalls.map(async (call: any) => {
       // Extract transcript from the tool call arguments or context if available
