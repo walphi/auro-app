@@ -50,7 +50,8 @@ const handler: Handler = async (event) => {
             lowerCaseMessage === 'call';
 
         if (callMeTrigger) {
-            const success = await initiateVapiCall(body.From as string);
+            const userNumber = (body.From as string).replace('whatsapp:', '');
+            const success = await initiateVapiCall(userNumber);
             if (success) {
                 responseText = "📞 Thanks! An **AURO** voice agent is calling you now at this number. Please answer your phone to connect!";
             } else {
