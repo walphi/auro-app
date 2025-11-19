@@ -51,8 +51,7 @@ const handler: Handler = async (event) => {
             responseText = result.response.text();
             isVoiceResponse = true;
 
-            responseText = result.response.text();
-            isVoiceResponse = true;
+
 
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             responseText = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
