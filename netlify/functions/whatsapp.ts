@@ -81,6 +81,8 @@ const handler: Handler = async (event) => {
       </Response>
     `;
 
+        console.log("Generated TwiML:", twiml);
+
         return {
             statusCode: 200,
             body: twiml,
