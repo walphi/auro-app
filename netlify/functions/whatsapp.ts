@@ -18,7 +18,7 @@ const handler: Handler = async (event) => {
         if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             responseText = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
         } else {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `You are AURO, a Dubai real estate assistant. The user asked: "${userMessage}". 
       Provide a short answer (under 20 words) and end with a qualifying question.`;
 
