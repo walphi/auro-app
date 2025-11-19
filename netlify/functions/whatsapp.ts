@@ -1,6 +1,7 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
+import axios from "axios";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -12,13 +13,38 @@ const handler: Handler = async (event) => {
 
         const body = querystring.parse(event.body || "");
         const userMessage = (body.Body as string) || "";
+        const numMedia = parseInt((body.NumMedia as string) || "0");
+        const host = event.headers.host || "auro-app.netlify.app";
 
         let responseText = "";
-
-        const numMedia = parseInt((body.NumMedia as string) || "0");
+        let isVoiceResponse = false;
 
         if (numMedia > 0) {
-            responseText = "I received your voice note, but I can only process text messages at the moment. Please type your query.";
+            // Handle Voice Note
+            const mediaUrl = body.MediaUrl0 as string;
+            const mediaType = body.MediaContentType0 as string; // e.g. audio/ogg
+
+            console.log(`Processing voice note: ${mediaUrl} (${mediaType})`);
+
+            // Download audio
+            const audioResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+            const audioBase64 = Buffer.from(audioResponse.data).toString('base64');
+
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+            const result = await model.generateContent([
+                {
+                    inlineData: {
+                        mimeType: mediaType,
+                        data: audioBase64
+                    }
+                },
+                { text: "You are AURO, a Dubai real estate assistant. Listen to the user's voice note and reply with a short, professional answer (under 20 words) ending with a qualifying question." }
+            ]);
+
+            responseText = result.response.text();
+            isVoiceResponse = true;
+
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             responseText = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
         } else {
@@ -30,9 +56,20 @@ const handler: Handler = async (event) => {
             responseText = result.response.text();
         }
 
-        const twiml = `
+        let twiml = `
       <Response>
-        <Message>${responseText}</Message>
+        <Message>
+          <Body>${responseText}</Body>
+    `;
+
+        if (isVoiceResponse) {
+            // Add Media tag for TTS
+            const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+            twiml += `<Media>${ttsUrl}</Media>`;
+        }
+
+        twiml += `
+        </Message>
       </Response>
     `;
 
