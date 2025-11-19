@@ -5,6 +5,30 @@ import axios from "axios";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
+    try {
+        const response = await axios.post(
+            'https://api.vapi.ai/call',
+            {
+                phoneNumberId: process.env.VAPI_PHONE_NUMBER,
+                assistantId: process.env.VAPI_ASSISTANT_ID,
+                customer: {
+                    number: phoneNumber,
+                },
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+                },
+            }
+        );
+        return response.status === 201;
+    } catch (error) {
+        console.error("Error initiating VAPI call:", error);
+        return false;
+    }
+}
+
 const handler: Handler = async (event) => {
     try {
         if (event.httpMethod !== "POST") {
@@ -19,7 +43,20 @@ const handler: Handler = async (event) => {
         let responseText = "";
         let isVoiceResponse = false;
 
-        if (numMedia > 0) {
+        const lowerCaseMessage = userMessage.toLowerCase();
+        const callMeTrigger = lowerCaseMessage.includes('call me') ||
+            lowerCaseMessage.includes('speak to agent') ||
+            lowerCaseMessage.includes('voice call') ||
+            lowerCaseMessage === 'call';
+
+        if (callMeTrigger) {
+            const success = await initiateVapiCall(body.From as string);
+            if (success) {
+                responseText = "📞 Thanks! An **AURO** voice agent is calling you now at this number. Please answer your phone to connect!";
+            } else {
+                responseText = "I'm sorry, I couldn't initiate the voice call right now. Please try again later or type 'help'.";
+            }
+        } else if (numMedia > 0) {
             // Handle Voice Note
             const mediaUrl = body.MediaUrl0 as string;
             const mediaType = body.MediaContentType0 as string; // e.g. audio/ogg
@@ -50,7 +87,6 @@ const handler: Handler = async (event) => {
 
             responseText = result.response.text();
             isVoiceResponse = true;
-
 
 
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
