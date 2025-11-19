@@ -1,7 +1,7 @@
 import { Handler } from "@netlify/functions";
 import * as googleTTS from "google-tts-api";
 import axios from "axios";
-import axios from 'axios';
+
 
 const handler: Handler = async (event) => {
     try {
