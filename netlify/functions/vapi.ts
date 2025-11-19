@@ -23,16 +23,16 @@ const handler: Handler = async (event) => {
       // Note: VAPI payload structure varies, assuming 'input' or similar contains the user text
       // For this MVP we'll assume the prompt comes in the arguments or we treat it as a general generation request
       // Adjusting logic to match VAPI's typical "say" or "generate" tool pattern
-      
+
       // Simplified VAPI logic: We are acting as the brain.
       // VAPI sends the conversation history or the last user message.
       // For this MVP, let's assume we get a 'transcript' or 'messages' in the payload.
       // If strictly following "tool-calls" webhook, we respond to a specific function call.
       // However, the prompt implies we are generating the RESPONSE to what the user said.
-      
+
       // Let's construct the prompt based on the user request:
       // "Receive the transcript from VAPI."
-      
+
       // In a real VAPI tool call, the arguments would contain the parameters for the function.
       // If VAPI is configured to call this endpoint to get a response, it might pass the user's query.
       // Let's assume the argument contains a 'query' or 'transcript'.
