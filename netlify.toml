@@ -4,3 +4,13 @@
 
 [functions]
   directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/agent/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/v1/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

@@ -30,12 +30,14 @@ import {
     ListTodo,
     Video,
     MoreHorizontal,
-    Paperclip
+    Paperclip,
+    Folder
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser } from '@clerk/clerk-react';
+import AgentFolders from './components/AgentFolders';
 
 // Utils
 function cn(...inputs) {
@@ -77,7 +79,8 @@ const Sidebar = ({ activeView, setActiveView }) => {
         { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
         { icon: Users, label: 'Leads', view: 'leads' },
         { icon: MessageSquare, label: 'Messages', view: 'messages' },
-        { icon: CalendarIcon, label: 'Calendar', view: 'calendar' }
+        { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
+        { icon: Folder, label: 'Agent Folders', view: 'agent-folders' }
     ];
 
     return (
@@ -1004,6 +1007,8 @@ function CRMApp() {
                 return <Dashboard leads={leads} />;
             case 'calendar':
                 return <CalendarView />;
+            case 'agent-folders':
+                return <AgentFolders />;
             case 'messages':
                 return (
                     <MessagesView
