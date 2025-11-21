@@ -207,57 +207,63 @@ Keep your final response under 50 words for WhatsApp.`;
             const mediaUrl = body.MediaUrl0 as string;
             const mediaType = body.MediaContentType0 as string;
 
-            const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
-            const audioResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer', headers: { Authorization: `Basic ${auth}` } });
-            const audioBase64 = Buffer.from(audioResponse.data).toString('base64');
+            try {
+                const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+                const audioResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer', headers: { Authorization: `Basic ${auth}` } });
+                const audioBase64 = Buffer.from(audioResponse.data).toString('base64');
 
-            // Send audio to chat
-            const result = await chat.sendMessage([
-                { inlineData: { mimeType: mediaType, data: audioBase64 } },
-                { text: "Listen to this voice note and reply." }
-            ]);
+                // Send audio to chat
+                const result = await chat.sendMessage([
+                    { inlineData: { mimeType: mediaType, data: audioBase64 } },
+                    { text: "Listen to this voice note and reply." }
+                ]);
 
-            // Handle potential function calls from audio input
-            let response = result.response;
-            let functionCalls = response.functionCalls();
+                // Handle potential function calls from audio input
+                let response = result.response;
+                let functionCalls = response.functionCalls();
 
-            // Loop for tool calls (Max 3 turns)
-            let turns = 0;
-            while (functionCalls && functionCalls.length > 0 && turns < 3) {
-                turns++;
-                const parts = [];
-                for (const call of functionCalls) {
-                    const name = call.name;
-                    const args = call.args;
-                    let toolResult = "";
+                // Loop for tool calls (Max 3 turns)
+                let turns = 0;
+                while (functionCalls && functionCalls.length > 0 && turns < 3) {
+                    turns++;
+                    const parts = [];
+                    for (const call of functionCalls) {
+                        const name = call.name;
+                        const args = call.args;
+                        let toolResult = "";
 
-                    if (name === 'RAG_QUERY_TOOL') {
-                        // ... RAG Logic ...
-                        try {
-                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                            const embResult = await embedModel.embedContent((args as any).query);
-                            const { data } = await supabase.rpc('match_knowledge', {
-                                query_embedding: embResult.embedding.values,
-                                match_threshold: 0.5, match_count: 3, filter_project_id: null
-                            });
-                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                        } catch (e) { toolResult = "Error searching."; }
-                    } else if (name === 'UPDATE_LEAD') {
-                        if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
-                        toolResult = "Lead updated.";
-                    } else if (name === 'LOG_ACTIVITY') {
-                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                        toolResult = "Logged.";
+                        if (name === 'RAG_QUERY_TOOL') {
+                            // ... RAG Logic ...
+                            try {
+                                const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+                                const embResult = await embedModel.embedContent((args as any).query);
+                                const { data } = await supabase.rpc('match_knowledge', {
+                                    query_embedding: embResult.embedding.values,
+                                    match_threshold: 0.5, match_count: 3, filter_project_id: null
+                                });
+                                toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
+                            } catch (e) { toolResult = "Error searching."; }
+                        } else if (name === 'UPDATE_LEAD') {
+                            if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
+                            toolResult = "Lead updated.";
+                        } else if (name === 'LOG_ACTIVITY') {
+                            if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
+                            toolResult = "Logged.";
+                        }
+
+                        parts.push({ functionResponse: { name, response: { result: toolResult } } });
                     }
-
-                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
+                    const nextResult = await chat.sendMessage(parts);
+                    response = nextResult.response;
+                    functionCalls = response.functionCalls();
                 }
-                const nextResult = await chat.sendMessage(parts);
-                response = nextResult.response;
-                functionCalls = response.functionCalls();
+                finalResponse = response.text();
+                isVoiceResponse = true;
+            } catch (mediaError) {
+                console.error("Error processing voice note:", mediaError);
+                finalResponse = "I received your voice note, but I encountered an issue accessing the audio file. Please check the system logs.";
+                isVoiceResponse = false;
             }
-            finalResponse = response.text();
-            isVoiceResponse = true;
 
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
