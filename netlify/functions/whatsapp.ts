@@ -77,13 +77,39 @@ const handler: Handler = async (event) => {
         }
 
         // --- SUPABASE: Log User Message ---
-        if (leadId && userMessage) {
-            await supabase.from('messages').insert({
-                lead_id: leadId,
-                type: 'Message',
-                sender: 'Lead',
-                content: userMessage
-            });
+        if (leadId) {
+            if (numMedia > 0) {
+                const mediaType = body.MediaContentType0?.toString();
+                const mediaUrl = body.MediaUrl0 as string;
+
+                if (mediaType?.startsWith('audio/')) {
+                    // Log Voice Note
+                    await supabase.from('messages').insert({
+                        lead_id: leadId,
+                        type: 'Voice',
+                        sender: 'Lead',
+                        content: 'Voice Note',
+                        meta: mediaUrl
+                    });
+                } else if (mediaType?.startsWith('image/')) {
+                    // Log Image
+                    await supabase.from('messages').insert({
+                        lead_id: leadId,
+                        type: 'Image',
+                        sender: 'Lead',
+                        content: userMessage || 'Image Shared',
+                        meta: mediaUrl
+                    });
+                }
+            } else if (userMessage) {
+                // Log Text Message
+                await supabase.from('messages').insert({
+                    lead_id: leadId,
+                    type: 'Message',
+                    sender: 'Lead',
+                    content: userMessage
+                });
+            }
         }
 
         let responseText = "";
@@ -209,7 +235,7 @@ Keep your final response under 50 words for WhatsApp.`;
                         // ... RAG Logic ...
                         try {
                             const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                            const embResult = await embedModel.embedContent(args.query);
+                            const embResult = await embedModel.embedContent((args as any).query);
                             const { data } = await supabase.rpc('match_knowledge', {
                                 query_embedding: embResult.embedding.values,
                                 match_threshold: 0.5, match_count: 3, filter_project_id: null
@@ -220,7 +246,7 @@ Keep your final response under 50 words for WhatsApp.`;
                         if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
                         toolResult = "Lead updated.";
                     } else if (name === 'LOG_ACTIVITY') {
-                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: args.content });
+                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
                     }
 
@@ -254,7 +280,7 @@ Keep your final response under 50 words for WhatsApp.`;
                     if (name === 'RAG_QUERY_TOOL') {
                         try {
                             const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                            const embResult = await embedModel.embedContent(args.query);
+                            const embResult = await embedModel.embedContent((args as any).query);
                             const { data } = await supabase.rpc('match_knowledge', {
                                 query_embedding: embResult.embedding.values,
                                 match_threshold: 0.5, match_count: 3, filter_project_id: null
@@ -265,7 +291,7 @@ Keep your final response under 50 words for WhatsApp.`;
                         if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
                         toolResult = "Lead updated.";
                     } else if (name === 'LOG_ACTIVITY') {
-                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: args.content });
+                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
                     }
 
@@ -282,11 +308,23 @@ Keep your final response under 50 words for WhatsApp.`;
 
         // --- SUPABASE: Log AI Response ---
         if (leadId && responseText) {
+            let messageType = 'Message';
+            let meta = null;
+
+            if (isVoiceResponse) {
+                messageType = 'Voice';
+                // For AI voice response, we don't have a URL yet (it's generated on the fly by Twilio), 
+                // but we can flag it or store the TTS URL if we want.
+                // Let's store the TTS URL in meta so the frontend can play it if needed.
+                meta = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+            }
+
             await supabase.from('messages').insert({
                 lead_id: leadId,
-                type: 'Message',
+                type: messageType,
                 sender: 'AURO_AI',
-                content: responseText
+                content: responseText,
+                meta: meta
             });
         }
 

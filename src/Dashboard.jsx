@@ -712,7 +712,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                         <div className="flex justify-between items-start mb-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-bold text-slate-200">
-                                                    {event.type === 'Message' ? `Message from ${event.sender}` : `${event.type} logged`}
+                                                    {event.type === 'Message' || event.type === 'Voice' || event.type === 'Image' ? `Message from ${event.sender}` : `${event.type} logged`}
                                                 </span>
                                                 <span className="text-[10px] text-slate-500">• {formatTime(event.timestamp)}</span>
                                             </div>
@@ -722,8 +722,27 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                         </div>
                                         <div className="glass-panel p-3 rounded-xl border border-white/5 text-sm text-slate-300 leading-relaxed">
                                             {event.content}
+
+                                            {/* Render Audio for Voice Messages */}
+                                            {event.type === 'Voice' && event.meta && (
+                                                <div className="mt-3 bg-[#0d111c] p-2 rounded-lg border border-white/10">
+                                                    <audio controls src={event.meta} className="w-full h-8" />
+                                                </div>
+                                            )}
+
+                                            {/* Render Image for Image Messages */}
+                                            {event.type === 'Image' && event.meta && (
+                                                <div className="mt-3">
+                                                    <img
+                                                        src={event.meta}
+                                                        alt="Shared Media"
+                                                        className="rounded-lg max-w-xs border border-white/10 hover:opacity-90 transition-opacity cursor-pointer"
+                                                        onClick={() => window.open(event.meta, '_blank')}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
-                                        {event.meta && (
+                                        {event.meta && event.type !== 'Voice' && event.type !== 'Image' && (
                                             <div className="mt-2 flex gap-2">
                                                 <span className="text-[10px] font-medium text-slate-500 bg-white/5 px-2 py-1 rounded border border-white/5">
                                                     {event.meta}
@@ -853,26 +872,31 @@ function CRMApp() {
 
     const selectedLead = leads.find(l => l.id === selectedLeadId);
 
+    const [error, setError] = useState(null);
+
     // Fetch data & realtime
     useEffect(() => {
         const fetchData = async () => {
+            setError(null);
             try {
+                console.log("Attempting to fetch data from Supabase...");
                 const { data: leadsData, error: leadsError } = await supabase
                     .from('leads')
                     .select('*')
                     .order('last_interaction', { ascending: false });
 
-                if (leadsError) throw leadsError;
+                if (leadsError) throw new Error(`Leads fetch error: ${leadsError.message}`);
 
                 const { data: messagesData, error: messagesError } = await supabase
                     .from('messages')
                     .select('*')
                     .order('created_at', { ascending: true });
 
-                if (messagesError) throw messagesError;
+                if (messagesError) throw new Error(`Messages fetch error: ${messagesError.message}`);
 
                 const mergedLeads = leadsData.map(lead => ({
                     ...lead,
+                    propertyType: lead.property_type, // Map DB snake_case to Frontend camelCase
                     history: messagesData
                         .filter(m => m.lead_id === lead.id)
                         .map(m => ({
@@ -880,13 +904,15 @@ function CRMApp() {
                             sender: m.sender,
                             content: m.content,
                             timestamp: m.created_at,
-                            meta: m.meta // Assuming meta field exists or is added
+                            meta: m.meta || null
                         }))
                 }));
 
+                console.log("Successfully fetched leads:", mergedLeads.length);
                 setLeads(mergedLeads);
             } catch (error) {
                 console.error("Error fetching data:", error);
+                setError(error.message);
             }
         };
 
@@ -1036,7 +1062,19 @@ function CRMApp() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-[#0d111c] text-slate-200 font-sans overflow-hidden selection:bg-indigo-500/30">
+        <div className="flex h-screen w-full bg-[#0d111c] text-slate-200 font-sans overflow-hidden selection:bg-indigo-500/30 relative">
+            {error && (
+                <div className="absolute top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/10 max-w-md animate-in slide-in-from-top-5 fade-in duration-300">
+                    <XCircle size={20} className="flex-shrink-0" />
+                    <div className="flex-1">
+                        <h4 className="font-bold text-sm">Connection Error</h4>
+                        <p className="text-xs opacity-90">{error}</p>
+                    </div>
+                    <button onClick={() => setError(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                        <XCircle size={16} />
+                    </button>
+                </div>
+            )}
             <Sidebar activeView={activeView} setActiveView={setActiveView} />
             {renderView()}
         </div>
