@@ -47,6 +47,62 @@ const handler: Handler = async (event) => {
         const fromNumber = (body.From as string).replace('whatsapp:', '');
         const host = event.headers.host || "auro-app.netlify.app";
 
+        console.log(`Received message from ${fromNumber}. Media: ${numMedia}, Text: "${userMessage.substring(0, 50)}..."`);
+
+        // --- MEDIA RESOLUTION ---
+        let resolvedMediaUrl: string | null = null;
+        let mediaBuffer: Buffer | null = null;
+        let mediaType: string | null = null;
+
+        if (numMedia > 0) {
+            const rawMediaUrl = body.MediaUrl0 as string;
+            mediaType = body.MediaContentType0 as string;
+
+            console.log(`Resolving media: ${rawMediaUrl} (${mediaType})`);
+
+            try {
+                const accountSid = process.env.TWILIO_ACCOUNT_SID;
+                const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+                if (!accountSid || !authToken) {
+                    throw new Error("Missing Twilio Credentials");
+                }
+
+                const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+                // Step 1: Request Media URL with Auth, but DO NOT follow redirects automatically
+                const initialResponse = await axios.get(rawMediaUrl, {
+                    headers: { Authorization: `Basic ${auth}` },
+                    maxRedirects: 0,
+                    validateStatus: (status) => status >= 200 && status < 400,
+                    responseType: 'arraybuffer'
+                });
+
+                if (initialResponse.status === 302 || initialResponse.status === 301 || initialResponse.status === 307) {
+                    const redirectUrl = initialResponse.headers.location;
+                    console.log("Following media redirect to:", redirectUrl.substring(0, 50) + "...");
+
+                    // Step 2: Fetch from S3 (or other location) WITHOUT Auth headers
+                    const mediaResponse = await axios.get(redirectUrl, { responseType: 'arraybuffer' });
+                    mediaBuffer = mediaResponse.data;
+                    resolvedMediaUrl = redirectUrl; // Use the accessible URL
+                } else {
+                    mediaBuffer = initialResponse.data;
+                    resolvedMediaUrl = rawMediaUrl; // Fallback to original if no redirect (unlikely for Twilio)
+                }
+            } catch (mediaError: any) {
+                console.error("Error resolving media:", mediaError.message);
+                // Fallback: Try fetching raw URL without auth
+                try {
+                    const publicResponse = await axios.get(rawMediaUrl, { responseType: 'arraybuffer' });
+                    mediaBuffer = publicResponse.data;
+                    resolvedMediaUrl = rawMediaUrl;
+                } catch (e) {
+                    console.error("Fallback media fetch failed.");
+                }
+            }
+        }
+
         // --- SUPABASE: Get or Create Lead ---
         let leadId: string | null = null;
 
@@ -60,6 +116,7 @@ const handler: Handler = async (event) => {
             if (existingLead) {
                 leadId = existingLead.id;
             } else {
+                console.log("Creating new lead for", fromNumber);
                 const { data: newLead, error: createError } = await supabase
                     .from('leads')
                     .insert({
@@ -74,42 +131,50 @@ const handler: Handler = async (event) => {
                 if (newLead) leadId = newLead.id;
                 if (createError) console.error("Error creating lead:", createError);
             }
+        } else {
+            console.error("Supabase credentials missing.");
         }
 
         // --- SUPABASE: Log User Message ---
         if (leadId) {
-            if (numMedia > 0) {
-                const mediaType = body.MediaContentType0?.toString();
-                const mediaUrl = body.MediaUrl0 as string;
-
-                if (mediaType?.startsWith('audio/')) {
-                    // Log Voice Note
-                    await supabase.from('messages').insert({
+            try {
+                if (numMedia > 0 && resolvedMediaUrl) {
+                    if (mediaType?.startsWith('audio/')) {
+                        // Log Voice Note
+                        const { error: msgError } = await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'Voice',
+                            sender: 'Lead',
+                            content: 'Voice Note',
+                            meta: resolvedMediaUrl // Use the resolved, accessible URL
+                        });
+                        if (msgError) console.error("Error logging Voice message:", msgError);
+                    } else if (mediaType?.startsWith('image/')) {
+                        // Log Image
+                        const { error: msgError } = await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'Image',
+                            sender: 'Lead',
+                            content: userMessage || 'Image Shared',
+                            meta: resolvedMediaUrl // Use the resolved, accessible URL
+                        });
+                        if (msgError) console.error("Error logging Image message:", msgError);
+                    }
+                } else if (userMessage) {
+                    // Log Text Message
+                    const { error: msgError } = await supabase.from('messages').insert({
                         lead_id: leadId,
-                        type: 'Voice',
+                        type: 'Message',
                         sender: 'Lead',
-                        content: 'Voice Note',
-                        meta: mediaUrl
+                        content: userMessage
                     });
-                } else if (mediaType?.startsWith('image/')) {
-                    // Log Image
-                    await supabase.from('messages').insert({
-                        lead_id: leadId,
-                        type: 'Image',
-                        sender: 'Lead',
-                        content: userMessage || 'Image Shared',
-                        meta: mediaUrl
-                    });
+                    if (msgError) console.error("Error logging Text message:", msgError);
                 }
-            } else if (userMessage) {
-                // Log Text Message
-                await supabase.from('messages').insert({
-                    lead_id: leadId,
-                    type: 'Message',
-                    sender: 'Lead',
-                    content: userMessage
-                });
+            } catch (logError) {
+                console.error("Exception logging message to Supabase:", logError);
             }
+        } else {
+            console.warn("Skipping message logging because leadId is null.");
         }
 
         let responseText = "";
@@ -191,114 +256,57 @@ Keep your final response under 50 words for WhatsApp.`;
         });
 
         let finalResponse = "";
-        let currentMessage = userMessage;
 
-        // If voice note, we already have the text in userMessage? 
-        // Wait, the previous code handled voice note by generating text from audio.
-        // I need to handle that.
+        if (numMedia > 0 && mediaBuffer && mediaType) {
+            // Handle Media (Voice/Image) with Gemini
+            const audioBase64 = mediaBuffer.toString('base64');
 
-        if (numMedia > 0) {
-            // ... (Existing voice note logic to get text would be here, but I am replacing the block)
-            // The previous code did: result = await model.generateContent([ { inlineData... }, { text: prompt } ])
-            // This is tricky to combine with chat. 
-            // For now, let's assume userMessage is text. If it was audio, I need to transcribe it first or pass it to chat.
-            // Gemini 2.0 Flash supports audio input.
+            // Send audio/image to chat
+            const result = await chat.sendMessage([
+                { inlineData: { mimeType: mediaType, data: audioBase64 } },
+                { text: "Analyze this media and reply to the user." }
+            ]);
 
-            const mediaUrl = body.MediaUrl0 as string;
-            const mediaType = body.MediaContentType0 as string;
+            // Handle potential function calls
+            let response = result.response;
+            let functionCalls = response.functionCalls();
 
-            try {
-                const accountSid = process.env.TWILIO_ACCOUNT_SID;
-                const authToken = process.env.TWILIO_AUTH_TOKEN;
+            // Loop for tool calls (Max 3 turns)
+            let turns = 0;
+            while (functionCalls && functionCalls.length > 0 && turns < 3) {
+                turns++;
+                const parts = [];
+                for (const call of functionCalls) {
+                    const name = call.name;
+                    const args = call.args;
+                    let toolResult = "";
 
-                if (!accountSid || !authToken) {
-                    throw new Error(`Missing Twilio Credentials: SID=${accountSid ? 'OK' : 'MISSING'}, Token=${authToken ? 'OK' : 'MISSING'}`);
-                }
-
-                const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
-
-                // Step 1: Request Media URL with Auth, but DO NOT follow redirects automatically
-                // This prevents leaking credentials to S3 and allows us to handle the redirect manually
-                let audioData: Buffer;
-
-                try {
-                    const initialResponse = await axios.get(mediaUrl, {
-                        headers: { Authorization: `Basic ${auth}` },
-                        maxRedirects: 0,
-                        validateStatus: (status) => status >= 200 && status < 400,
-                        responseType: 'arraybuffer'
-                    });
-
-                    if (initialResponse.status === 302 || initialResponse.status === 301 || initialResponse.status === 307) {
-                        const redirectUrl = initialResponse.headers.location;
-                        console.log("Following media redirect to:", redirectUrl.substring(0, 50) + "...");
-                        // Step 2: Fetch from S3 (or other location) WITHOUT Auth headers
-                        const mediaResponse = await axios.get(redirectUrl, { responseType: 'arraybuffer' });
-                        audioData = mediaResponse.data;
-                    } else {
-                        audioData = initialResponse.data;
+                    if (name === 'RAG_QUERY_TOOL') {
+                        try {
+                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+                            const embResult = await embedModel.embedContent((args as any).query);
+                            const { data } = await supabase.rpc('match_knowledge', {
+                                query_embedding: embResult.embedding.values,
+                                match_threshold: 0.5, match_count: 3, filter_project_id: null
+                            });
+                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
+                        } catch (e) { toolResult = "Error searching."; }
+                    } else if (name === 'UPDATE_LEAD') {
+                        if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
+                        toolResult = "Lead updated.";
+                    } else if (name === 'LOG_ACTIVITY') {
+                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
+                        toolResult = "Logged.";
                     }
-                } catch (authError: any) {
-                    // Fallback: Try fetching without Auth (in case 'Block Public Access' is disabled)
-                    console.warn("Auth fetch failed, trying without auth...", authError.message);
-                    const publicResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
-                    audioData = publicResponse.data;
+
+                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
                 }
-
-                const audioBase64 = Buffer.from(audioData).toString('base64');
-
-                // Send audio to chat
-                const result = await chat.sendMessage([
-                    { inlineData: { mimeType: mediaType, data: audioBase64 } },
-                    { text: "Listen to this voice note and reply." }
-                ]);
-
-                // Handle potential function calls from audio input
-                let response = result.response;
-                let functionCalls = response.functionCalls();
-
-                // Loop for tool calls (Max 3 turns)
-                let turns = 0;
-                while (functionCalls && functionCalls.length > 0 && turns < 3) {
-                    turns++;
-                    const parts = [];
-                    for (const call of functionCalls) {
-                        const name = call.name;
-                        const args = call.args;
-                        let toolResult = "";
-
-                        if (name === 'RAG_QUERY_TOOL') {
-                            // ... RAG Logic ...
-                            try {
-                                const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                                const embResult = await embedModel.embedContent((args as any).query);
-                                const { data } = await supabase.rpc('match_knowledge', {
-                                    query_embedding: embResult.embedding.values,
-                                    match_threshold: 0.5, match_count: 3, filter_project_id: null
-                                });
-                                toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                            } catch (e) { toolResult = "Error searching."; }
-                        } else if (name === 'UPDATE_LEAD') {
-                            if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
-                            toolResult = "Lead updated.";
-                        } else if (name === 'LOG_ACTIVITY') {
-                            if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                            toolResult = "Logged.";
-                        }
-
-                        parts.push({ functionResponse: { name, response: { result: toolResult } } });
-                    }
-                    const nextResult = await chat.sendMessage(parts);
-                    response = nextResult.response;
-                    functionCalls = response.functionCalls();
-                }
-                finalResponse = response.text();
-                isVoiceResponse = true;
-            } catch (mediaError) {
-                console.error("Error processing voice note:", mediaError);
-                finalResponse = "I received your voice note, but I encountered an issue accessing the audio file. Please check the system logs.";
-                isVoiceResponse = false;
+                const nextResult = await chat.sendMessage(parts);
+                response = nextResult.response;
+                functionCalls = response.functionCalls();
             }
+            finalResponse = response.text();
+            isVoiceResponse = true;
 
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
