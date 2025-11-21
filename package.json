@@ -1,22 +1,39 @@
 {
   "name": "auro-mvp",
   "version": "1.0.0",
+  "type": "module",
   "description": "AURO MVP - Dubai Real Estate AI Infrastructure",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "start": "netlify dev"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.56.0",
     "@google/generative-ai": "^0.21.0",
     "@netlify/functions": "^2.6.0",
+    "@supabase/supabase-js": "^2.83.0",
+    "@tailwindcss/postcss": "^4.1.17",
     "axios": "^1.13.2",
+    "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
     "google-tts-api": "^2.0.2",
+    "lucide-react": "^0.554.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
+    "tailwind-merge": "^3.4.0",
     "twilio": "^4.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
-    "typescript": "^5.3.3"
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.3.3",
+    "vite": "^7.2.2"
   }
 }

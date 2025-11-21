@@ -2,8 +2,14 @@ import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
     try {
@@ -38,7 +44,47 @@ const handler: Handler = async (event) => {
         const body = querystring.parse(event.body || "");
         const userMessage = (body.Body as string) || "";
         const numMedia = parseInt((body.NumMedia as string) || "0");
+        const fromNumber = (body.From as string).replace('whatsapp:', '');
         const host = event.headers.host || "auro-app.netlify.app";
+
+        // --- SUPABASE: Get or Create Lead ---
+        let leadId: string | null = null;
+
+        if (supabaseUrl && supabaseKey) {
+            const { data: existingLead, error: findError } = await supabase
+                .from('leads')
+                .select('id')
+                .eq('phone', fromNumber)
+                .single();
+
+            if (existingLead) {
+                leadId = existingLead.id;
+            } else {
+                const { data: newLead, error: createError } = await supabase
+                    .from('leads')
+                    .insert({
+                        phone: fromNumber,
+                        name: `WhatsApp User ${fromNumber.slice(-4)}`,
+                        status: 'New',
+                        custom_field_1: 'Source: WhatsApp'
+                    })
+                    .select('id')
+                    .single();
+
+                if (newLead) leadId = newLead.id;
+                if (createError) console.error("Error creating lead:", createError);
+            }
+        }
+
+        // --- SUPABASE: Log User Message ---
+        if (leadId && userMessage) {
+            await supabase.from('messages').insert({
+                lead_id: leadId,
+                type: 'Message',
+                sender: 'Lead',
+                content: userMessage
+            });
+        }
 
         let responseText = "";
         let isVoiceResponse = false;
@@ -50,8 +96,7 @@ const handler: Handler = async (event) => {
             lowerCaseMessage === 'call';
 
         if (callMeTrigger) {
-            const userNumber = (body.From as string).replace('whatsapp:', '');
-            const success = await initiateVapiCall(userNumber);
+            const success = await initiateVapiCall(fromNumber);
             if (success) {
                 responseText = "📞 Thanks! An **AURO** voice agent is calling you now at this number. Please answer your phone to connect!";
             } else {
@@ -99,6 +144,16 @@ const handler: Handler = async (event) => {
 
             const result = await model.generateContent(prompt);
             responseText = result.response.text();
+        }
+
+        // --- SUPABASE: Log AI Response ---
+        if (leadId && responseText) {
+            await supabase.from('messages').insert({
+                lead_id: leadId,
+                type: 'Message',
+                sender: 'AURO_AI',
+                content: responseText
+            });
         }
 
         let twiml = `
