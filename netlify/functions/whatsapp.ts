@@ -208,9 +208,44 @@ Keep your final response under 50 words for WhatsApp.`;
             const mediaType = body.MediaContentType0 as string;
 
             try {
-                const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
-                const audioResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer', headers: { Authorization: `Basic ${auth}` } });
-                const audioBase64 = Buffer.from(audioResponse.data).toString('base64');
+                const accountSid = process.env.TWILIO_ACCOUNT_SID;
+                const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+                if (!accountSid || !authToken) {
+                    throw new Error(`Missing Twilio Credentials: SID=${accountSid ? 'OK' : 'MISSING'}, Token=${authToken ? 'OK' : 'MISSING'}`);
+                }
+
+                const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+                // Step 1: Request Media URL with Auth, but DO NOT follow redirects automatically
+                // This prevents leaking credentials to S3 and allows us to handle the redirect manually
+                let audioData: Buffer;
+
+                try {
+                    const initialResponse = await axios.get(mediaUrl, {
+                        headers: { Authorization: `Basic ${auth}` },
+                        maxRedirects: 0,
+                        validateStatus: (status) => status >= 200 && status < 400,
+                        responseType: 'arraybuffer'
+                    });
+
+                    if (initialResponse.status === 302 || initialResponse.status === 301 || initialResponse.status === 307) {
+                        const redirectUrl = initialResponse.headers.location;
+                        console.log("Following media redirect to:", redirectUrl.substring(0, 50) + "...");
+                        // Step 2: Fetch from S3 (or other location) WITHOUT Auth headers
+                        const mediaResponse = await axios.get(redirectUrl, { responseType: 'arraybuffer' });
+                        audioData = mediaResponse.data;
+                    } else {
+                        audioData = initialResponse.data;
+                    }
+                } catch (authError: any) {
+                    // Fallback: Try fetching without Auth (in case 'Block Public Access' is disabled)
+                    console.warn("Auth fetch failed, trying without auth...", authError.message);
+                    const publicResponse = await axios.get(mediaUrl, { responseType: 'arraybuffer' });
+                    audioData = publicResponse.data;
+                }
+
+                const audioBase64 = Buffer.from(audioData).toString('base64');
 
                 // Send audio to chat
                 const result = await chat.sendMessage([
