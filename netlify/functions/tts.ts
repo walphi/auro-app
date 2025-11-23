@@ -5,7 +5,8 @@ import axios from "axios";
 
 const handler: Handler = async (event) => {
     try {
-        const text = event.queryStringParameters?.text || "Hello";
+        let text = event.queryStringParameters?.text || "Hello";
+        if (text.length > 200) text = text.substring(0, 197) + "...";
 
         // Get Google TTS URL
         const url = googleTTS.getAudioUrl(text, {

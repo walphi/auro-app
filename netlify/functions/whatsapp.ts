@@ -255,8 +255,19 @@ CRITICAL RULES:
                             toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
                         } catch (e) { toolResult = "Error searching."; }
                     } else if (name === 'UPDATE_LEAD') {
-                        if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
-                        toolResult = "Lead updated.";
+                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
+                        if (leadId) {
+                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                            if (error) {
+                                console.error("Error updating lead:", error);
+                                toolResult = "Error updating lead.";
+                            } else {
+                                console.log("Lead updated successfully.");
+                                toolResult = "Lead updated.";
+                            }
+                        } else {
+                            toolResult = "No lead ID found.";
+                        }
                     } else if (name === 'LOG_ACTIVITY') {
                         if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
@@ -300,8 +311,19 @@ CRITICAL RULES:
                             toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
                         } catch (e) { toolResult = "Error searching."; }
                     } else if (name === 'UPDATE_LEAD') {
-                        if (leadId) await supabase.from('leads').update(args).eq('id', leadId);
-                        toolResult = "Lead updated.";
+                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
+                        if (leadId) {
+                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                            if (error) {
+                                console.error("Error updating lead:", error);
+                                toolResult = "Error updating lead.";
+                            } else {
+                                console.log("Lead updated successfully.");
+                                toolResult = "Lead updated.";
+                            }
+                        } else {
+                            toolResult = "No lead ID found.";
+                        }
                     } else if (name === 'LOG_ACTIVITY') {
                         if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
