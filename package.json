@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.56.0",
+    "@google/genai": "^1.30.0",
     "@google/generative-ai": "^0.21.0",
     "@netlify/functions": "^2.6.0",
     "@supabase/supabase-js": "^2.83.0",
