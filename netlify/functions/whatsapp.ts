@@ -254,7 +254,7 @@ CRITICAL RULES:
             }
         ];
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", tools: tools as any });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", tools: tools as any });
 
         const chat = model.startChat({
             history: [
