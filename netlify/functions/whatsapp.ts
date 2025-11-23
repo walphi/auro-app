@@ -107,182 +107,335 @@ const handler: Handler = async (event) => {
         }
 
         // --- SUPABASE: Get or Create Lead ---
+        let leadId: string | null = null;
+        let leadContext = "";
+
+        if (supabaseUrl && supabaseKey) {
+            const { data: existingLead, error: findError } = await supabase
+                .from('leads')
+                .select('*')
+                .eq('phone', fromNumber)
+                .single();
+
+            if (existingLead) {
+                leadId = existingLead.id;
+                // Build Context
+                leadContext = `
+CURRENT LEAD PROFILE (DO NOT ASK FOR THESE):
+- Name: ${existingLead.name || "Unknown"}
+- Email: ${existingLead.email || "Unknown"}
+- Budget: ${existingLead.budget || "Unknown"}
+- Location: ${existingLead.location || "Unknown"}
+- Property Type: ${existingLead.property_type || "Unknown"}
+`;
+            } else {
+                console.log("Creating new lead for", fromNumber);
+                const { data: newLead, error: createError } = await supabase
+                    .from('leads')
+                    .insert({
+                        phone: fromNumber,
+                        name: `WhatsApp Lead ${fromNumber}`,
+                        status: 'New',
+                        custom_field_1: 'Source: WhatsApp'
+                    })
+                    .select('id')
+                    .single();
+
+                if (newLead) leadId = newLead.id;
+                if (createError) console.error("Error creating lead:", createError);
+            }
+        } else {
+            console.error("Supabase credentials missing.");
+        }
+
+        // --- SUPABASE: Log User Message ---
+        if (leadId) {
+            try {
+                if (numMedia > 0 && resolvedMediaUrl) {
+                    if (mediaType?.startsWith('audio/')) {
+                        // Log Voice Note
+                        const { error: msgError } = await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'Voice',
+                            sender: 'Lead',
+                            content: 'Voice Note',
+                            meta: resolvedMediaUrl
+                        });
+                        if (msgError) console.error("Error logging Voice message:", msgError);
+                    } else if (mediaType?.startsWith('image/')) {
+                        // Log Image
+                        const { error: msgError } = await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'Image',
+                            sender: 'Lead',
+                            content: userMessage || 'Image Shared',
+                            meta: resolvedMediaUrl
+                        });
+                        if (msgError) console.error("Error logging Image message:", msgError);
+                    }
+                } else if (userMessage) {
+                    // Log Text Message
+                    const { error: msgError } = await supabase.from('messages').insert({
+                        lead_id: leadId,
+                        type: 'Message',
+                        sender: 'Lead',
+                        content: userMessage
+                    });
+                    if (msgError) console.error("Error logging Text message:", msgError);
+                }
+            } catch (logError) {
+                console.error("Exception logging message to Supabase:", logError);
+            }
+        }
+
+        // --- GEMINI AGENT WITH TOOLS ---
+        const systemInstruction = `You are an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base.
+
+YOUR GOAL:
+Qualify the lead by naturally asking for missing details.
+${leadContext}
+REQUIRED DETAILS (Ask only if "Unknown" above):
+1. Name
+2. Email Address
+3. Budget
+4. Property Type
+5. Preferred Location
+
+When the user provides any of this information, IMMEDIATELY use the 'UPDATE_LEAD' tool.
+
+CRITICAL RULES:
+- ALWAYS ground your answers in the RAG data.
+- NEVER invent information.
+- Maintain a professional, high-value tone.
+- Keep responses under 50 words.`;
+
+        const tools = [
+            {
+                functionDeclarations: [
+                    {
+                        name: "RAG_QUERY_TOOL",
+                        description: "Search the knowledge base for specific factual information about projects, pricing, payment plans, etc.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                query: { type: "STRING", description: "The search query" }
+                            },
+                            required: ["query"]
+                        }
+                    },
+                    {
+                        name: "UPDATE_LEAD",
+                        description: "Update lead qualification details. Call this whenever the user provides their name, email, budget, etc.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                name: { type: "STRING" },
+                                email: { type: "STRING" },
+                                budget: { type: "STRING" },
+                                property_type: { type: "STRING" },
+                                location: { type: "STRING" },
+                                timeline: { type: "STRING" },
+                                status: { type: "STRING" }
+                            }
+                        }
+                    },
+                    {
+                        name: "LOG_ACTIVITY",
+                        description: "Log a summary of the conversation or specific activity",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                content: { type: "STRING", description: "Summary of activity" }
+                            },
+                            required: ["content"]
+                        }
+                    }
+                ]
+            }
+        ];
+
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", tools: tools as any });
+
+        const chat = model.startChat({
+            history: [
+                { role: "user", parts: [{ text: systemInstruction }] },
+                { role: "model", parts: [{ text: "Understood. I have the lead's context and am ready to assist." }] }
             ]
         });
 
-let finalResponse = "";
+        let finalResponse = "";
 
-if (numMedia > 0 && mediaBuffer && mediaType) {
-    // Handle Media (Voice/Image) with Gemini
-    const audioBase64 = mediaBuffer.toString('base64');
+        if (numMedia > 0 && mediaBuffer && mediaType) {
+            // Handle Media (Voice/Image) with Gemini
+            const audioBase64 = mediaBuffer.toString('base64');
 
-    // Send audio/image to chat
-    const result = await chat.sendMessage([
-        { inlineData: { mimeType: mediaType, data: audioBase64 } },
-        { text: "Analyze this media and reply to the user." }
-    ]);
+            // Send audio/image to chat
+            const result = await chat.sendMessage([
+                { inlineData: { mimeType: mediaType, data: audioBase64 } },
+                { text: "Analyze this media and reply to the user." }
+            ]);
 
-    // Handle potential function calls
-    let response = result.response;
-    let functionCalls = response.functionCalls();
+            // Handle potential function calls
+            let response = result.response;
+            let functionCalls = response.functionCalls();
 
-    // Loop for tool calls (Max 3 turns)
-    let turns = 0;
-    while (functionCalls && functionCalls.length > 0 && turns < 3) {
-        turns++;
-        const parts = [];
-        for (const call of functionCalls) {
-            const name = call.name;
-            const args = call.args;
-            let toolResult = "";
+            // Loop for tool calls (Max 3 turns)
+            let turns = 0;
+            while (functionCalls && functionCalls.length > 0 && turns < 3) {
+                turns++;
+                const parts = [];
+                for (const call of functionCalls) {
+                    const name = call.name;
+                    const args = call.args;
+                    let toolResult = "";
 
-            if (name === 'RAG_QUERY_TOOL') {
-                try {
-                    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                    const embResult = await embedModel.embedContent((args as any).query);
-                    const { data } = await supabase.rpc('match_knowledge', {
-                        query_embedding: embResult.embedding.values,
-                        match_threshold: 0.5, match_count: 3, filter_project_id: null
-                    });
-                    toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                } catch (e) { toolResult = "Error searching."; }
-            } else if (name === 'UPDATE_LEAD') {
-                console.log("UPDATE_LEAD called with:", JSON.stringify(args));
-                if (leadId) {
-                    const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                    if (error) {
-                        console.error("Error updating lead:", error);
-                        toolResult = "Error updating lead.";
-                    } else {
-                        console.log("Lead updated successfully.");
-                        toolResult = "Lead updated.";
+                    if (name === 'RAG_QUERY_TOOL') {
+                        try {
+                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+                            const embResult = await embedModel.embedContent((args as any).query);
+                            const { data } = await supabase.rpc('match_knowledge', {
+                                query_embedding: embResult.embedding.values,
+                                match_threshold: 0.5, match_count: 3, filter_project_id: null
+                            });
+                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
+                        } catch (e) { toolResult = "Error searching."; }
+                    } else if (name === 'UPDATE_LEAD') {
+                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
+                        if (leadId) {
+                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                            if (error) {
+                                console.error("Error updating lead:", error);
+                                toolResult = "Error updating lead.";
+                            } else {
+                                console.log("Lead updated successfully.");
+                                toolResult = "Lead updated.";
+                            }
+                        } else {
+                            toolResult = "No lead ID found.";
+                        }
+                    } else if (name === 'LOG_ACTIVITY') {
+                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
+                        toolResult = "Logged.";
                     }
-                } else {
-                    toolResult = "No lead ID found.";
+
+                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
                 }
-            } else if (name === 'LOG_ACTIVITY') {
-                if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                toolResult = "Logged.";
+                const nextResult = await chat.sendMessage(parts);
+                response = nextResult.response;
+                functionCalls = response.functionCalls();
+            }
+            finalResponse = response.text();
+            isVoiceResponse = true;
+
+        } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
+            finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
+        } else {
+            // Text Message
+            let result = await chat.sendMessage(userMessage);
+            let response = result.response;
+            let functionCalls = response.functionCalls();
+
+            // Loop for tool calls (Max 3 turns)
+            let turns = 0;
+            while (functionCalls && functionCalls.length > 0 && turns < 3) {
+                turns++;
+                const parts = [];
+                for (const call of functionCalls) {
+                    const name = call.name;
+                    const args = call.args;
+                    let toolResult = "";
+
+                    if (name === 'RAG_QUERY_TOOL') {
+                        try {
+                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+                            const embResult = await embedModel.embedContent((args as any).query);
+                            const { data } = await supabase.rpc('match_knowledge', {
+                                query_embedding: embResult.embedding.values,
+                                match_threshold: 0.5, match_count: 3, filter_project_id: null
+                            });
+                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
+                        } catch (e) { toolResult = "Error searching."; }
+                    } else if (name === 'UPDATE_LEAD') {
+                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
+                        if (leadId) {
+                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                            if (error) {
+                                console.error("Error updating lead:", error);
+                                toolResult = "Error updating lead.";
+                            } else {
+                                console.log("Lead updated successfully.");
+                                toolResult = "Lead updated.";
+                            }
+                        } else {
+                            toolResult = "No lead ID found.";
+                        }
+                    } else if (name === 'LOG_ACTIVITY') {
+                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
+                        toolResult = "Logged.";
+                    }
+
+                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
+                }
+                const nextResult = await chat.sendMessage(parts);
+                response = nextResult.response;
+                functionCalls = response.functionCalls();
+            }
+            finalResponse = response.text();
+        }
+
+        responseText = finalResponse;
+
+        // --- SUPABASE: Log AI Response ---
+        if (leadId && responseText) {
+            let messageType = 'Message';
+            let meta = null;
+
+            if (isVoiceResponse) {
+                messageType = 'Voice';
+                // For AI voice response, we don't have a URL yet (it's generated on the fly by Twilio), 
+                // but we can flag it or store the TTS URL if we want.
+                // Let's store the TTS URL in meta so the frontend can play it if needed.
+                meta = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             }
 
-            parts.push({ functionResponse: { name, response: { result: toolResult } } });
+            await supabase.from('messages').insert({
+                lead_id: leadId,
+                type: messageType,
+                sender: 'AURO_AI',
+                content: responseText,
+                meta: meta
+            });
         }
-        const nextResult = await chat.sendMessage(parts);
-        response = nextResult.response;
-        functionCalls = response.functionCalls();
-    }
-    finalResponse = response.text();
-    isVoiceResponse = true;
 
-} else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
-    finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
-} else {
-    // Text Message
-    let result = await chat.sendMessage(userMessage);
-    let response = result.response;
-    let functionCalls = response.functionCalls();
-
-    // Loop for tool calls (Max 3 turns)
-    let turns = 0;
-    while (functionCalls && functionCalls.length > 0 && turns < 3) {
-        turns++;
-        const parts = [];
-        for (const call of functionCalls) {
-            const name = call.name;
-            const args = call.args;
-            let toolResult = "";
-
-            if (name === 'RAG_QUERY_TOOL') {
-                try {
-                    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                    const embResult = await embedModel.embedContent((args as any).query);
-                    const { data } = await supabase.rpc('match_knowledge', {
-                        query_embedding: embResult.embedding.values,
-                        match_threshold: 0.5, match_count: 3, filter_project_id: null
-                    });
-                    toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                } catch (e) { toolResult = "Error searching."; }
-            } else if (name === 'UPDATE_LEAD') {
-                console.log("UPDATE_LEAD called with:", JSON.stringify(args));
-                if (leadId) {
-                    const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                    if (error) {
-                        console.error("Error updating lead:", error);
-                        toolResult = "Error updating lead.";
-                    } else {
-                        console.log("Lead updated successfully.");
-                        toolResult = "Lead updated.";
-                    }
-                } else {
-                    toolResult = "No lead ID found.";
-                }
-            } else if (name === 'LOG_ACTIVITY') {
-                if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                toolResult = "Logged.";
-            }
-
-            parts.push({ functionResponse: { name, response: { result: toolResult } } });
-        }
-        const nextResult = await chat.sendMessage(parts);
-        response = nextResult.response;
-        functionCalls = response.functionCalls();
-    }
-    finalResponse = response.text();
-}
-
-responseText = finalResponse;
-
-// --- SUPABASE: Log AI Response ---
-if (leadId && responseText) {
-    let messageType = 'Message';
-    let meta = null;
-
-    if (isVoiceResponse) {
-        messageType = 'Voice';
-        // For AI voice response, we don't have a URL yet (it's generated on the fly by Twilio), 
-        // but we can flag it or store the TTS URL if we want.
-        // Let's store the TTS URL in meta so the frontend can play it if needed.
-        meta = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
-    }
-
-    await supabase.from('messages').insert({
-        lead_id: leadId,
-        type: messageType,
-        sender: 'AURO_AI',
-        content: responseText,
-        meta: meta
-    });
-}
-
-let twiml = `
+        let twiml = `
       <Response>
         <Message>
           <Body>${responseText}</Body>
     `;
 
-if (isVoiceResponse) {
-    // Add Media tag for TTS
-    const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
-    twiml += `<Media>${ttsUrl}</Media>`;
-}
+        if (isVoiceResponse) {
+            // Add Media tag for TTS
+            const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+            twiml += `<Media>${ttsUrl}</Media>`;
+        }
 
-twiml += `
+        twiml += `
         </Message>
       </Response>
     `;
 
-console.log("Generated TwiML:", twiml);
+        console.log("Generated TwiML:", twiml);
 
-return {
-    statusCode: 200,
-    body: twiml,
-    headers: { "Content-Type": "text/xml" }
-};
+        return {
+            statusCode: 200,
+            body: twiml,
+            headers: { "Content-Type": "text/xml" }
+        };
 
     } catch (error) {
-    console.error("Error processing WhatsApp request:", error);
-    return { statusCode: 500, body: "<Response><Message>Error processing request</Message></Response>", headers: { "Content-Type": "text/xml" } };
-}
+        console.error("Error processing WhatsApp request:", error);
+        return { statusCode: 500, body: "<Response><Message>Error processing request</Message></Response>", headers: { "Content-Type": "text/xml" } };
+    }
 };
 
 export { handler };
