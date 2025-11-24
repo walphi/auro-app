@@ -471,7 +471,7 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                             {lead.budget && (
                                 <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5">
                                     <DollarSign size={10} />
-                                    {formatCurrency(lead.budget)}
+                                    {!isNaN(parseFloat(lead.budget)) && isFinite(lead.budget) ? formatCurrency(lead.budget) : lead.budget}
                                 </span>
                             )}
                             {lead.propertyType && (
@@ -605,7 +605,11 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
                             <DollarSign size={10} /> Budget
                         </p>
-                        <p className="text-sm font-bold text-white">{lead.budget ? formatCurrency(lead.budget) : 'Not set'}</p>
+                        <p className="text-sm font-bold text-white">
+                            {lead.budget ? (
+                                !isNaN(parseFloat(lead.budget)) && isFinite(lead.budget) ? formatCurrency(lead.budget) : lead.budget
+                            ) : 'Not set'}
+                        </p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
