@@ -119,13 +119,17 @@ const handler: Handler = async (event) => {
 
             if (existingLead) {
                 leadId = existingLead.id;
-                // Build Context
+                // Build Context - Ensure we check for all fields
+                // Note: email and location might not exist in old schema, so we handle that gracefully
+                const email = existingLead.email || "Unknown";
+                const location = existingLead.location || "Unknown";
+
                 leadContext = `
-CURRENT LEAD PROFILE (DO NOT ASK FOR THESE):
+CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Name: ${existingLead.name || "Unknown"}
-- Email: ${existingLead.email || "Unknown"}
+- Email: ${email}
 - Budget: ${existingLead.budget || "Unknown"}
-- Location: ${existingLead.location || "Unknown"}
+- Location: ${location}
 - Property Type: ${existingLead.property_type || "Unknown"}
 `;
             } else {
@@ -194,6 +198,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE):
 YOUR GOAL:
 Qualify the lead by naturally asking for missing details.
 ${leadContext}
+
 REQUIRED DETAILS (Ask only if "Unknown" above):
 1. Name
 2. Email Address
@@ -201,9 +206,9 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 4. Property Type
 5. Preferred Location
 
-When the user provides any of this information, IMMEDIATELY use the 'UPDATE_LEAD' tool.
-
-CRITICAL RULES:
+RULES:
+- IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
+- DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
 - ALWAYS ground your answers in the RAG data.
 - NEVER invent information.
 - Maintain a professional, high-value tone.

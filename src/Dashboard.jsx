@@ -654,44 +654,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 
             {/* Content Area: Input + Timeline */}
             <div className="flex-1 flex flex-col overflow-hidden bg-[#0d111c]">
-                {/* Input Area */}
-                <div className="p-6 border-b border-white/5 bg-[#111623]">
-                    <div className="glass-panel rounded-xl p-1 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-                        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/5">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                New {activeTab === 'Activity' ? 'Note' : activeTab.slice(0, -1)}
-                            </span>
-                        </div>
-                        <textarea
-                            value={noteContent}
-                            onChange={(e) => setNoteContent(e.target.value)}
-                            placeholder={`Start typing to leave a ${activeTab === 'Activity' ? 'note' : activeTab.slice(0, -1).toLowerCase()}...`}
-                            className="w-full bg-transparent text-white px-3 py-3 focus:outline-none placeholder-slate-600 text-sm min-h-[80px] resize-none"
-                        />
-                        <div className="flex justify-between items-center px-2 pb-2 pt-1">
-                            <div className="flex gap-1">
-                                <button className="p-1.5 text-slate-500 hover:text-white rounded hover:bg-white/5 transition-colors">
-                                    <Paperclip size={14} />
-                                </button>
-                                <button className="p-1.5 text-slate-500 hover:text-white rounded hover:bg-white/5 transition-colors">
-                                    <MoreHorizontal size={14} />
-                                </button>
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        onSendMessage(noteContent, activeTab === 'Activity' ? 'Note' : activeTab.slice(0, -1));
-                                        setNoteContent('');
-                                    }}
-                                    disabled={!noteContent.trim()}
-                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Log {activeTab === 'Activity' ? 'Note' : activeTab.slice(0, -1)}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* Input Area Removed as per user request */}
 
                 {/* Timeline */}
                 <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
