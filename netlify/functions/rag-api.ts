@@ -48,35 +48,13 @@ async function embedAndStore(content: string, sourceName: string, type: string, 
 }
 
 export const handler: Handler = async (event, context) => {
-    // Parse Path: /api/v1/client/{client_id}/rag/{action}
-    // Netlify redirects to /.netlify/functions/rag-api
-    // event.path might be /.netlify/functions/rag-api or the original path depending on config.
-    // Usually with 'redirects', the event.path is the *destination* path.
-    // But we can pass parameters via query string or try to parse the original URL if available.
-    // Let's assume we passed parameters via query string in netlify.toml? No, I didn't.
-    // Let's rely on the fact that I set "to = /.netlify/functions/rag-api"
-    // Actually, a better way for the router is to check the segments.
-    // But let's assume the client sends the action in the body or we rely on a query param I can add to the redirect?
-    // Let's update netlify.toml to pass the action as a query param if possible, or just parse the URL.
-    // Wait, I can't easily change the redirect to pass path segments as query params for *all* segments.
-
-    // Alternative: The client (AgentFolders.jsx) calls the function directly or I parse the `event.path` if it preserves the original.
-    // Netlify preserves the original path in `event.path` if using a rewrite (200).
-
     const pathSegments = event.path.split('/');
-    // Expected: /api/v1/client/{client_id}/rag/{action}
-    // indices: 0="", 1="api", 2="v1", 3="client", 4="{client_id}", 5="rag", 6="{action}"
-
     const clientId = pathSegments[4];
     const action = pathSegments[6];
 
     if (!clientId || !action) {
         return { statusCode: 400, body: JSON.stringify({ error: 'Invalid path format' }) };
     }
-
-    // Mock Project ID for now (In real app, fetch project for client)
-    // For MVP, we'll assume the client sends project_id in body or we pick the first one.
-    // Let's look for project_id in body.
 
     try {
         if (action === 'upload_file') {
@@ -97,15 +75,34 @@ export const handler: Handler = async (event, context) => {
             if (!file) return { statusCode: 400, body: JSON.stringify({ error: 'No file uploaded' }) };
 
             let textContent = '';
-            if (file.contentType === 'text/plain' || file.filename.endsWith('.txt')) {
+
+            if (file.contentType === 'application/pdf' || file.filename.endsWith('.pdf')) {
+                try {
+                    // Dynamic import for pdf-parse
+                    const pdfParseModule = await import('pdf-parse');
+                    const pdfParse = pdfParseModule.default || pdfParseModule;
+                    const pdfData = await pdfParse(file.content);
+                    textContent = pdfData.text;
+                    console.log('PDF parsed successfully, text length:', textContent.length);
+                } catch (pdfError: any) {
+                    console.error('PDF parsing error:', pdfError);
+                    return {
+                        statusCode: 500,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            error: 'Failed to parse PDF file',
+                            details: pdfError.message
+                        })
+                    };
+                }
+            } else if (file.contentType === 'text/plain' || file.filename.endsWith('.txt')) {
                 textContent = file.content.toString();
             } else {
-                // PDF/DOCX support requires different approach in serverless environment
                 return {
                     statusCode: 400,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        error: 'Currently only .txt files are supported. PDF support coming soon.',
+                        error: 'Unsupported file type. Please upload PDF or TXT files.',
                         fileType: file.contentType,
                         filename: file.filename
                     })
