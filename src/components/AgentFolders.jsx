@@ -96,6 +96,28 @@ const AgentFolders = () => {
         }
     };
 
+    const handleCreateProject = async () => {
+        const name = prompt("Enter project name:");
+        if (!name) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('projects')
+                .insert({ name, status: 'Active' })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setProjects([...projects, data]);
+            setActiveProject(data);
+            setIsProjectDropdownOpen(false);
+        } catch (err) {
+            console.error("Error creating project:", err);
+            alert("Failed to create project.");
+        }
+    };
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file || !activeProject) return;
@@ -214,7 +236,10 @@ const AgentFolders = () => {
                                 </button>
                             ))}
                             <div className="border-t border-white/5 p-2">
-                                <button className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors">
+                                <button
+                                    onClick={handleCreateProject}
+                                    className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors"
+                                >
                                     <Plus size={14} /> New Project
                                 </button>
                             </div>
