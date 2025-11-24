@@ -3,7 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as multipart from 'lambda-multipart-parser';
 import * as cheerio from 'cheerio';
-const pdf = require('pdf-parse');
+import { createRequire } from 'module';
+const cjsRequire = createRequire(import.meta.url);
+const pdf = cjsRequire('pdf-parse');
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";

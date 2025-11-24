@@ -11,6 +11,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/v1/client/*/rag/*"
+  to = "/.netlify/functions/rag-api"
+  status = 200
+
+[[redirects]]
   from = "/api/v1/*"
   to = "/.netlify/functions/:splat"
   status = 200
