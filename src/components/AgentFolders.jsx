@@ -150,7 +150,7 @@ const AgentFolders = () => {
         } catch (error) {
             console.error("Upload failed:", error);
             setUploadStatus('idle');
-            alert("Upload failed. See console.");
+            alert(`Upload failed: ${error.response?.data || error.message || 'Unknown error'}`);
         }
     };
 
@@ -175,7 +175,7 @@ const AgentFolders = () => {
         } catch (error) {
             console.error("URL indexing failed:", error);
             setUploadStatus('idle');
-            alert("URL indexing failed.");
+            alert(`URL indexing failed: ${error.response?.data || error.message || 'Unknown error'}`);
         }
     };
 

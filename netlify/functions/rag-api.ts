@@ -80,11 +80,21 @@ export const handler: Handler = async (event, context) => {
 
     try {
         if (action === 'upload_file') {
+            console.log('Processing file upload...');
             const result = await multipart.parse(event);
-            const file = result.files[0];
+            console.log('Multipart parsed:', { fileCount: result.files?.length });
+
+            const file = result.files?.[0];
             const projectId = result.project_id || (await getDefaultProjectId(clientId));
 
-            if (!file) return { statusCode: 400, body: 'No file uploaded' };
+            console.log('File info:', {
+                hasFile: !!file,
+                projectId,
+                contentType: file?.contentType,
+                filename: file?.filename
+            });
+
+            if (!file) return { statusCode: 400, body: JSON.stringify({ error: 'No file uploaded' }) };
 
             let textContent = '';
             if (file.contentType === 'text/plain' || file.filename.endsWith('.txt')) {
@@ -131,7 +141,16 @@ export const handler: Handler = async (event, context) => {
 
     } catch (error: any) {
         console.error(`Error in RAG API (${action}):`, error);
-        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+        console.error('Error stack:', error.stack);
+        return {
+            statusCode: 500,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                error: error.message,
+                action,
+                details: error.toString()
+            })
+        };
     }
 };
 
