@@ -114,7 +114,7 @@ const AgentFolders = () => {
             setIsProjectDropdownOpen(false);
         } catch (err) {
             console.error("Error creating project:", err);
-            alert("Failed to create project.");
+            alert(`Failed to create project: ${err.message || JSON.stringify(err)}`);
         }
     };
 
