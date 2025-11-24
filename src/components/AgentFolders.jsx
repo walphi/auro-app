@@ -198,6 +198,27 @@ const AgentFolders = () => {
         }
     };
 
+    const handleDeleteSource = async (sourceId) => {
+        if (!confirm('Are you sure you want to delete this source?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('knowledge_base')
+                .delete()
+                .eq('id', sourceId);
+
+            if (error) throw error;
+
+            // Refresh the knowledge base
+            if (activeProject) {
+                fetchKnowledgeBase(activeProject.id);
+            }
+        } catch (error) {
+            console.error("Failed to delete source:", error);
+            alert(`Failed to delete: ${error.message}`);
+        }
+    };
+
     return (
         <div className="flex-1 bg-[#0d111c] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
             {/* Header */}
@@ -399,7 +420,10 @@ const AgentFolders = () => {
                                             )}>{doc.status}</span>
                                         </div>
                                     </div>
-                                    <button className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all">
+                                    <button
+                                        onClick={() => handleDeleteSource(doc.id)}
+                                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all"
+                                    >
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
