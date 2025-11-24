@@ -36,6 +36,8 @@ models/gemini-2.5-flash-image
 models/gemini-2.5-flash-preview-09-2025
 models/gemini-2.5-flash-lite-preview-09-2025
 models/gemini-3-pro-preview
+models/gemini-3-pro-image-preview
+models/nano-banana-pro-preview
 models/gemini-robotics-er-1.5-preview
 models/gemini-2.5-computer-use-preview-10-2025
 models/embedding-001
@@ -46,5 +48,3 @@ models/gemini-embedding-001
 models/aqa
 models/imagen-4.0-generate-preview-06-06
 models/imagen-4.0-ultra-generate-preview-06-06
-models/imagen-4.0-generate-001
-models/imagen-4.0-ultra-generate-001
