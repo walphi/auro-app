@@ -3,9 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as multipart from 'lambda-multipart-parser';
 import * as cheerio from 'cheerio';
-import { createRequire } from 'module';
-const cjsRequire = createRequire(import.meta.url);
-const pdf = cjsRequire('pdf-parse');
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
@@ -90,14 +87,11 @@ export const handler: Handler = async (event, context) => {
             if (!file) return { statusCode: 400, body: 'No file uploaded' };
 
             let textContent = '';
-            if (file.contentType === 'application/pdf') {
-                const data = await pdf(file.content);
-                textContent = data.text;
-            } else if (file.contentType === 'text/plain') {
+            if (file.contentType === 'text/plain' || file.filename.endsWith('.txt')) {
                 textContent = file.content.toString();
             } else {
-                // For docx/xlsx, we'd need more parsers (mammoth, xlsx). Skipping for MVP/Speed.
-                return { statusCode: 400, body: 'Unsupported file type for MVP (PDF/TXT only)' };
+                // PDF/DOCX support requires different approach in serverless environment
+                return { statusCode: 400, body: 'Currently only .txt files are supported. PDF support coming soon.' };
             }
 
             await embedAndStore(textContent, file.filename, 'file', projectId);
