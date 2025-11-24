@@ -101,7 +101,15 @@ export const handler: Handler = async (event, context) => {
                 textContent = file.content.toString();
             } else {
                 // PDF/DOCX support requires different approach in serverless environment
-                return { statusCode: 400, body: 'Currently only .txt files are supported. PDF support coming soon.' };
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        error: 'Currently only .txt files are supported. PDF support coming soon.',
+                        fileType: file.contentType,
+                        filename: file.filename
+                    })
+                };
             }
 
             await embedAndStore(textContent, file.filename, 'file', projectId);

@@ -291,13 +291,13 @@ const AgentFolders = () => {
                                 type="file"
                                 className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                 onChange={handleFileUpload}
-                                accept=".pdf,.docx,.xlsx,.txt"
+                                accept=".txt"
                             />
                             <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                                 <Upload size={24} className="text-indigo-400" />
                             </div>
                             <h4 className="font-bold text-white mb-1">Upload Documents</h4>
-                            <p className="text-xs text-slate-500 mb-4">PDF, DOCX, XLSX (Max 50MB)</p>
+                            <p className="text-xs text-slate-500 mb-4">TXT files only (PDF support coming soon)</p>
                             <button className="bg-white/5 text-indigo-300 px-4 py-2 rounded-lg text-xs font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                                 Select Files
                             </button>
