@@ -539,6 +539,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             case 'note': return FileText;
             case 'email': return Mail;
             case 'call': return Phone;
+            case 'voice_transcript': return Phone;
             case 'task': return CheckCircle2;
             case 'meeting': return Video;
             case 'lifecycle': return Tag;
@@ -551,6 +552,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             case 'note': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
             case 'email': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
             case 'call': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+            case 'voice_transcript': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
             case 'task': return 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20';
             case 'meeting': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
             case 'lifecycle': return 'text-pink-400 bg-pink-400/10 border-pink-400/20';
@@ -679,7 +681,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                         <div className="flex justify-between items-start mb-1">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-bold text-slate-200">
-                                                    {event.type === 'Message' || event.type === 'Voice' || event.type === 'Image' ? `Message from ${event.sender}` : `${event.type} logged`}
+                                                    {event.type === 'Voice_Transcript' ? (event.sender === 'Lead' ? 'Voice Call from Lead' : 'Morgan (Voice Call)') : event.type === 'Message' || event.type === 'Voice' || event.type === 'Image' ? `Message from ${event.sender}` : `${event.type} logged`}
                                                 </span>
                                                 <span className="text-[10px] text-slate-500">• {formatTime(event.timestamp)}</span>
                                             </div>
