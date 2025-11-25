@@ -195,7 +195,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
         }
 
         // --- GEMINI AGENT WITH TOOLS ---
-        const systemInstruction = `You are an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base.
+        const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base.
 
 YOUR GOAL:
 Qualify the lead by naturally asking for missing details.
@@ -211,6 +211,7 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 
 RULES:
 - IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
+- IF the user asks to be called (e.g., "call me", "can you call me", "ring me") in text or voice, YOU MUST CALL the 'INITIATE_CALL' tool.
 - DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
 - ALWAYS ground your answers in the RAG data.
 - NEVER invent information.
@@ -256,6 +257,14 @@ RULES:
                                 content: { type: "STRING", description: "Summary of activity" }
                             },
                             required: ["content"]
+                        }
+                    },
+                    {
+                        name: "INITIATE_CALL",
+                        description: "Trigger a voice call to the user immediately. Use this when the user explicitly asks for a call.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {},
                         }
                     }
                 ]
@@ -324,6 +333,14 @@ RULES:
                     } else if (name === 'LOG_ACTIVITY') {
                         if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
+                    } else if (name === 'INITIATE_CALL') {
+                        console.log("INITIATE_CALL triggered by AI (Media).");
+                        const callSuccess = await initiateVapiCall(fromNumber);
+                        if (callSuccess) {
+                            toolResult = "Call initiated successfully. Tell the user Morgan is calling now.";
+                        } else {
+                            toolResult = "Failed to initiate call. Apologize to the user.";
+                        }
                     }
 
                     parts.push({ functionResponse: { name, response: { result: toolResult } } });
@@ -341,7 +358,7 @@ RULES:
             console.log("User requested a call. Initiating Vapi call...");
             const callSuccess = await initiateVapiCall(fromNumber);
             if (callSuccess) {
-                finalResponse = "Sure, I'm calling you now via Vapi...";
+                finalResponse = "Sure, I'm having Morgan call you now...";
             } else {
                 finalResponse = "I'm sorry, I couldn't initiate the call at this moment. Please try again later.";
             }
@@ -388,6 +405,14 @@ RULES:
                     } else if (name === 'LOG_ACTIVITY') {
                         if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
                         toolResult = "Logged.";
+                    } else if (name === 'INITIATE_CALL') {
+                        console.log("INITIATE_CALL triggered by AI (Text).");
+                        const callSuccess = await initiateVapiCall(fromNumber);
+                        if (callSuccess) {
+                            toolResult = "Call initiated successfully. Tell the user Morgan is calling now.";
+                        } else {
+                            toolResult = "Failed to initiate call. Apologize to the user.";
+                        }
                     }
 
                     parts.push({ functionResponse: { name, response: { result: toolResult } } });
