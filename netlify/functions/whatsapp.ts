@@ -337,6 +337,14 @@ RULES:
 
         } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
             finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
+        } else if (userMessage.toLowerCase().includes("call me") || userMessage.toLowerCase().includes("can someone call me")) {
+            console.log("User requested a call. Initiating Vapi call...");
+            const callSuccess = await initiateVapiCall(fromNumber);
+            if (callSuccess) {
+                finalResponse = "Sure, I'm calling you now via Vapi...";
+            } else {
+                finalResponse = "I'm sorry, I couldn't initiate the call at this moment. Please try again later.";
+            }
         } else {
             // Text Message
             let result = await chat.sendMessage(userMessage);
