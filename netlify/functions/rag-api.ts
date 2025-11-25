@@ -113,6 +113,24 @@ export const handler: Handler = async (event, context) => {
             return { statusCode: 200, body: JSON.stringify({ success: true, message: 'File indexed' }) };
         }
 
+        if (action === 'upload_text') {
+            const { text, filename, project_id } = JSON.parse(event.body || '{}');
+            const projectId = project_id || (await getDefaultProjectId(clientId));
+
+            if (!text || !filename) {
+                return {
+                    statusCode: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ error: 'Missing text or filename' })
+                };
+            }
+
+            console.log('Processing text upload:', { filename, textLength: text.length, projectId });
+
+            await embedAndStore(text, filename, 'file', projectId);
+            return { statusCode: 200, body: JSON.stringify({ success: true, message: 'Text indexed' }) };
+        }
+
         if (action === 'add_url') {
             const { url, project_id } = JSON.parse(event.body || '{}');
             const projectId = project_id || (await getDefaultProjectId(clientId));

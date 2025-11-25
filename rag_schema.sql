@@ -44,6 +44,7 @@ drop policy if exists "Enable update access for all users" on public.knowledge_b
 create policy "Enable read access for all users" on public.knowledge_base for select using (true);
 create policy "Enable insert access for all users" on public.knowledge_base for insert with check (true);
 create policy "Enable update access for all users" on public.knowledge_base for update using (true);
+create policy "Enable delete access for all users" on public.knowledge_base for delete using (true);
 
 -- Realtime (Drop publication if exists to avoid errors)
 drop publication if exists supabase_realtime_rag;

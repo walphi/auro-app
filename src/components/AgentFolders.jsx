@@ -125,21 +125,54 @@ const AgentFolders = () => {
         setUploadStatus('uploading');
         setIndexingProgress(10);
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('project_id', activeProject.id);
-
         try {
-            // Call Netlify Function
-            // Using 'demo' as client_id placeholder as per current backend logic
-            await axios.post('/api/v1/client/demo/rag/upload_file', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setIndexingProgress(percentCompleted < 90 ? percentCompleted : 90);
+            let textContent = '';
+            let filename = file.name;
+
+            // Extract text from PDF client-side
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                setUploadStatus('indexing');
+                setIndexingProgress(30);
+
+                try {
+                    const pdfjsLib = await import('pdfjs-dist');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+                    setIndexingProgress(50);
+
+                    // Extract text from all pages
+                    const textParts = [];
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        const pageText = content.items.map(item => item.str).join(' ');
+                        textParts.push(pageText);
+                    }
+                    textContent = textParts.join('\n\n');
+
+                    setIndexingProgress(70);
+                } catch (pdfError) {
+                    console.error('PDF extraction error:', pdfError);
+                    setUploadStatus('idle');
+                    alert(`Failed to extract text from PDF: ${pdfError.message}`);
+                    return;
                 }
+            } else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                textContent = await file.text();
+            } else {
+                setUploadStatus('idle');
+                alert('Only PDF and TXT files are supported');
+                return;
+            }
+
+            // Send extracted text to server
+            const response = await axios.post('/api/v1/client/demo/rag/upload_text', {
+                text: textContent,
+                filename: filename,
+                project_id: activeProject.id
             });
 
             setIndexingProgress(100);
@@ -150,7 +183,7 @@ const AgentFolders = () => {
         } catch (error) {
             console.error("Upload failed:", error);
             setUploadStatus('idle');
-            alert(`Upload failed: ${error.response?.data || error.message || 'Unknown error'}`);
+            alert(`Upload failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
         }
     };
 
