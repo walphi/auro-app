@@ -13,24 +13,37 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
     try {
+        const payload = {
+            phoneNumberId: process.env.VAPI_PHONE_NUMBER,
+            assistantId: process.env.VAPI_ASSISTANT_ID,
+            customer: {
+                number: phoneNumber,
+            },
+        };
+
+        console.log("[VAPI CALL] Initiating call with payload:", JSON.stringify(payload, null, 2));
+        console.log("[VAPI CALL] API Key present:", !!process.env.VAPI_API_KEY);
+
         const response = await axios.post(
             'https://api.vapi.ai/call',
-            {
-                phoneNumberId: process.env.VAPI_PHONE_NUMBER,
-                assistantId: process.env.VAPI_ASSISTANT_ID,
-                customer: {
-                    number: phoneNumber,
-                },
-            },
+            payload,
             {
                 headers: {
                     Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
                 },
             }
         );
+
+        console.log("[VAPI CALL] Response status:", response.status);
+        console.log("[VAPI CALL] Response data:", JSON.stringify(response.data, null, 2));
+
         return response.status === 201;
-    } catch (error) {
-        console.error("Error initiating VAPI call:", error);
+    } catch (error: any) {
+        console.error("[VAPI CALL] Error initiating VAPI call:", error.message);
+        if (error.response) {
+            console.error("[VAPI CALL] Error response status:", error.response.status);
+            console.error("[VAPI CALL] Error response data:", JSON.stringify(error.response.data, null, 2));
+        }
         return false;
     }
 }
