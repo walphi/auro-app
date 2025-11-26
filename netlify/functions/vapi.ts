@@ -18,11 +18,8 @@ const handler: Handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     console.log("[VAPI] Received payload:", JSON.stringify(body, null, 2));
 
+    const messageType = body.message?.type;
     const toolCalls = body.message?.toolCalls || [];
-
-    if (!toolCalls.length) {
-      return { statusCode: 200, body: JSON.stringify({ results: [] }) };
-    }
 
     // Try to extract phone number to identify lead
     // VAPI payload structure: body.message.call.customer.number or body.call.customer.number
@@ -79,6 +76,42 @@ const handler: Handler = async (event) => {
       }
     } else {
       console.log("[VAPI] Missing phone number or Supabase credentials");
+    }
+
+    // Handle conversation-update messages to log transcripts
+    if (messageType === 'conversation-update' && leadId) {
+      console.log("[VAPI] Processing conversation-update message");
+      const conversation = body.message?.conversation || [];
+
+      // Get the last message in the conversation
+      if (conversation.length > 0) {
+        const lastMessage = conversation[conversation.length - 1];
+        const role = lastMessage.role; // 'user' or 'assistant'
+        const content = lastMessage.content;
+
+        if (content && role !== 'system') {
+          const sender = role === 'user' ? 'Lead' : 'AURO_AI';
+          console.log(`[VAPI] Logging ${role} message:`, content.substring(0, 50) + '...');
+
+          const { error: logError } = await supabase.from('messages').insert({
+            lead_id: leadId,
+            type: 'Voice_Transcript',
+            sender: sender,
+            content: content
+          });
+
+          if (logError) {
+            console.error("[VAPI] Error logging conversation message:", logError);
+          } else {
+            console.log("[VAPI] Conversation message logged successfully");
+          }
+        }
+      }
+    }
+
+    // If no tool calls, return early
+    if (!toolCalls.length) {
+      return { statusCode: 200, body: JSON.stringify({ results: [] }) };
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
