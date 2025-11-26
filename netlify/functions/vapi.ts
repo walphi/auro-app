@@ -16,6 +16,8 @@ const handler: Handler = async (event) => {
     }
 
     const body = JSON.parse(event.body || "{}");
+    console.log("[VAPI] Received payload:", JSON.stringify(body, null, 2));
+
     const toolCalls = body.message?.toolCalls || [];
 
     if (!toolCalls.length) {
@@ -24,21 +26,38 @@ const handler: Handler = async (event) => {
 
     // Try to extract phone number to identify lead
     // VAPI payload structure: body.message.call.customer.number or body.call.customer.number
-    const phoneNumber = body.message?.call?.customer?.number || body.call?.customer?.number;
+    let phoneNumber = body.message?.call?.customer?.number || body.call?.customer?.number;
+
+    // Normalize phone number (remove 'whatsapp:' prefix if present, ensure + prefix)
+    if (phoneNumber) {
+      phoneNumber = phoneNumber.replace('whatsapp:', '').trim();
+      if (!phoneNumber.startsWith('+')) {
+        phoneNumber = '+' + phoneNumber;
+      }
+      console.log("[VAPI] Normalized phone number:", phoneNumber);
+    } else {
+      console.log("[VAPI] No phone number found in payload");
+    }
 
     let leadId: string | null = null;
 
     if (phoneNumber && supabaseUrl && supabaseKey) {
-      const { data: existingLead } = await supabase
+      const { data: existingLead, error: findError } = await supabase
         .from('leads')
         .select('id')
         .eq('phone', phoneNumber)
         .single();
 
+      if (findError) {
+        console.log("[VAPI] Lead lookup error:", findError.message);
+      }
+
       if (existingLead) {
         leadId = existingLead.id;
+        console.log("[VAPI] Found existing lead:", leadId);
       } else {
-        const { data: newLead } = await supabase
+        console.log("[VAPI] Creating new lead for:", phoneNumber);
+        const { data: newLead, error: createError } = await supabase
           .from('leads')
           .insert({
             phone: phoneNumber,
@@ -48,8 +67,18 @@ const handler: Handler = async (event) => {
           })
           .select('id')
           .single();
-        if (newLead) leadId = newLead.id;
+
+        if (createError) {
+          console.error("[VAPI] Error creating lead:", createError);
+        }
+
+        if (newLead) {
+          leadId = newLead.id;
+          console.log("[VAPI] Created new lead:", leadId);
+        }
       }
+    } else {
+      console.log("[VAPI] Missing phone number or Supabase credentials");
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -126,12 +155,21 @@ const handler: Handler = async (event) => {
 
       // Log User Message
       if (leadId) {
-        await supabase.from('messages').insert({
+        console.log("[VAPI] Logging user message for lead:", leadId);
+        const { error: userMsgError } = await supabase.from('messages').insert({
           lead_id: leadId,
           type: 'Voice_Transcript',
           sender: 'Lead',
           content: userMessage
         });
+
+        if (userMsgError) {
+          console.error("[VAPI] Error logging user message:", userMsgError);
+        } else {
+          console.log("[VAPI] User message logged successfully");
+        }
+      } else {
+        console.log("[VAPI] No leadId, skipping user message log");
       }
 
       const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base, which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
@@ -152,12 +190,21 @@ Maintain a professional, knowledgeable, and polite tone, recognizing the high-va
 
       // Log AI Response
       if (leadId) {
-        await supabase.from('messages').insert({
+        console.log("[VAPI] Logging AI response for lead:", leadId);
+        const { error: aiMsgError } = await supabase.from('messages').insert({
           lead_id: leadId,
           type: 'Voice_Transcript',
           sender: 'AURO_AI',
           content: responseText
         });
+
+        if (aiMsgError) {
+          console.error("[VAPI] Error logging AI message:", aiMsgError);
+        } else {
+          console.log("[VAPI] AI message logged successfully");
+        }
+      } else {
+        console.log("[VAPI] No leadId, skipping AI message log");
       }
 
       return {
