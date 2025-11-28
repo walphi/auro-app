@@ -112,14 +112,7 @@ const Navbar = () => {
                         >
                             Login
                         </Link>
-                        <button
-                            data-cal-link="miel-media/15min"
-                            data-cal-config='{"layout":"month_view"}'
-                            className="w-full text-center py-3 rounded-xl bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                            Request Demo
-                        </button>
+
                     </div>
                 </div>
             )}
