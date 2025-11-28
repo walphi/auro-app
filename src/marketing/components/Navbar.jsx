@@ -90,7 +90,7 @@ const Navbar = () => {
 
             {/* Mobile Menu */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-20 left-0 right-0 bg-[#0b101b] border-b border-white/10 shadow-xl p-6 flex flex-col gap-4 animate-in slide-in-from-top-5">
+                <div className="md:hidden absolute top-20 left-0 right-0 bg-[#030305] border-b border-white/10 shadow-xl p-6 flex flex-col gap-4 animate-in slide-in-from-top-5">
                     {navLinks.map((link) => (
                         <Link
                             key={link.path}
