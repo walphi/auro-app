@@ -75,7 +75,7 @@ const Navbar = () => {
                         data-cal-config='{"layout":"month_view"}'
                         className="bg-white/10 hover:bg-white/20 text-white border border-white/10 px-5 py-2.5 rounded-full text-sm font-bold backdrop-blur-md transition-all hover:-translate-y-0.5 cursor-pointer"
                     >
-                        Request Demo
+                        Request Early Access
                     </button>
                 </div>
 
@@ -118,7 +118,7 @@ const Navbar = () => {
                             className="w-full text-center py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 font-bold backdrop-blur-md transition-all"
                             onClick={() => setIsMobileMenuOpen(false)}
                         >
-                            Request Demo
+                            Request Early Access
                         </button>
 
                     </div>
