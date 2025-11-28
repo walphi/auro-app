@@ -11,7 +11,7 @@ const SolutionsPage = () => {
             {/* Background Gradients */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-amber-600/10 rounded-full blur-[120px] animate-blob mix-blend-screen" />
-                <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[100px] animate-blob animation-delay-2000 mix-blend-screen" />
+                <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-slate-800/10 rounded-full blur-[100px] animate-blob animation-delay-2000 mix-blend-screen" />
             </div>
 
             {/* Hero */}

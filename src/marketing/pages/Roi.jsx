@@ -109,7 +109,7 @@ const RoiPage = () => {
             </section>
 
             {/* The Cost of Waiting */}
-            <section className="py-20 px-6 relative z-10 bg-[#0b101b] border border-white/10 rounded-[3rem] mx-4 lg:mx-12 mb-12 overflow-hidden">
+            <section className="py-20 px-6 relative z-10 bg-[#1a1a1a] border border-white/10 rounded-[3rem] mx-4 lg:mx-12 mb-12 overflow-hidden">
                 {/* Background Effects */}
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-amber-600 rounded-full blur-[150px] opacity-20 pointer-events-none animate-pulse-glow" />
 

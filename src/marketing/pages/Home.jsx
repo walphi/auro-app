@@ -40,7 +40,7 @@ const HomePage = () => {
                                     <button
                                         data-cal-link="miel-media/15min"
                                         data-cal-config='{"layout":"month_view"}'
-                                        className="relative w-full sm:w-auto px-8 py-4 bg-[#0b101b] hover:bg-[#1e293b] text-white rounded-full font-bold text-lg flex items-center justify-center gap-3 transition-all border border-white/10 cursor-pointer"
+                                        className="relative w-full sm:w-auto px-8 py-4 bg-[#1a1a1a] hover:bg-[#252525] text-white rounded-full font-bold text-lg flex items-center justify-center gap-3 transition-all border border-white/10 cursor-pointer"
                                     >
                                         Request Demo
                                         <ArrowRight size={20} className="text-amber-400" />
@@ -170,7 +170,7 @@ const HomePage = () => {
                         ].map((item, i) => (
                             <div key={i} className="group relative p-1 rounded-3xl bg-gradient-to-b from-white/10 to-transparent hover:from-slate-700/50 hover:to-slate-800/50 transition-all duration-500">
                                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
-                                <div className="relative h-full bg-[#0b101b]/50 rounded-[22px] p-8 border border-white/5 group-hover:border-white/10 transition-colors">
+                                <div className="relative h-full bg-[#1a1a1a]/50 rounded-[22px] p-8 border border-white/5 group-hover:border-white/10 transition-colors">
                                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 shadow-lg`}>
                                         <item.icon size={28} className="text-white" />
                                     </div>
