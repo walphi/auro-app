@@ -7,6 +7,7 @@ import WaitlistForm from '../components/WaitlistForm';
 
 const HomePage = () => {
     const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+    const [isVideoOpen, setIsVideoOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-[#030305] text-white overflow-hidden selection:bg-indigo-500/30">
@@ -45,13 +46,13 @@ const HomePage = () => {
                                         <ArrowRight size={20} className="text-amber-400" />
                                     </button>
                                 </div>
-                                <Link
-                                    to="/solutions"
+                                <button
+                                    onClick={() => setIsVideoOpen(true)}
                                     className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 backdrop-blur-md rounded-full font-bold text-lg flex items-center justify-center gap-3 transition-all"
                                 >
                                     <Play size={20} className="fill-white" />
                                     Watch Video
-                                </Link>
+                                </button>
                             </div>
 
                             <div className="flex items-center gap-8 text-slate-500 text-sm font-medium">
@@ -223,6 +224,32 @@ const HomePage = () => {
 
             {/* Waitlist Form Modal */}
             <WaitlistForm isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
+
+            {/* Video Modal */}
+            {isVideoOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={() => setIsVideoOpen(false)}>
+                    <div className="relative w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setIsVideoOpen(false)}
+                            className="absolute -top-12 right-0 text-white hover:text-amber-400 transition-colors"
+                        >
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <div className="relative bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video">
+                            <video
+                                controls
+                                autoPlay
+                                className="w-full h-full"
+                            >
+                                <source src="/HeroVideo.mp4" type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
