@@ -4,6 +4,7 @@ import DashboardApp from './Dashboard';
 import HomePage from './marketing/pages/Home';
 import SolutionsPage from './marketing/pages/Solutions';
 import RoiPage from './marketing/pages/Roi';
+import AboutPage from './marketing/pages/About';
 import Navbar from './marketing/components/Navbar';
 import Footer from './marketing/components/Footer';
 
@@ -21,7 +22,7 @@ const ScrollToTop = () => {
 // Layout wrapper for marketing pages to include Navbar and Footer
 const MarketingLayout = ({ children }) => {
     return (
-        <div className="font-sans antialiased text-slate-900 bg-white selection:bg-indigo-100 selection:text-indigo-900">
+        <div className="font-sans antialiased text-white bg-[#030305] selection:bg-amber-500/30 selection:text-white">
             <Navbar />
             <main>{children}</main>
             <Footer />
@@ -29,7 +30,16 @@ const MarketingLayout = ({ children }) => {
     );
 };
 
+import { getCalApi } from "@calcom/embed-react";
+
 function App() {
+    useEffect(() => {
+        (async function () {
+            const cal = await getCalApi();
+            cal("ui", { "theme": "dark", "styles": { "branding": { "brandColor": "#000000" } }, "hideEventTypeDetails": false, "layout": "month_view" });
+        })();
+    }, []);
+
     return (
         <Router>
             <ScrollToTop />
@@ -38,6 +48,7 @@ function App() {
                 <Route path="/" element={<MarketingLayout><HomePage /></MarketingLayout>} />
                 <Route path="/solutions" element={<MarketingLayout><SolutionsPage /></MarketingLayout>} />
                 <Route path="/roi" element={<MarketingLayout><RoiPage /></MarketingLayout>} />
+                <Route path="/about" element={<MarketingLayout><AboutPage /></MarketingLayout>} />
 
                 {/* Dashboard Route - No Navbar/Footer, full screen app */}
                 <Route path="/dashboard" element={<DashboardApp />} />

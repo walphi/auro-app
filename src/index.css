@@ -9,8 +9,9 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #020617;
+  background-color: #030305;
   color: #fff;
+  zoom: 0.8;
 }
 
 /* Custom Animations */

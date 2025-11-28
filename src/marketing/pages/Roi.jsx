@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TrendingUp, Clock, DollarSign, ArrowRight, Quote } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import WaitlistForm from '../components/WaitlistForm';
 
 const RoiPage = () => {
+    const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+
     return (
-        <div className="min-h-screen bg-[#020617] text-white overflow-hidden">
+        <div className="min-h-screen bg-[#030305] text-white overflow-hidden">
             {/* Background Gradients */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-[120px] animate-blob mix-blend-screen" />
-                <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] animate-blob animation-delay-2000 mix-blend-screen" />
+                <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-amber-600/10 rounded-full blur-[120px] animate-blob animation-delay-2000 mix-blend-screen" />
             </div>
 
             {/* Hero */}
@@ -29,26 +32,26 @@ const RoiPage = () => {
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Metric 1 */}
                     <div className="glass-panel p-10 rounded-[2.5rem] text-center group hover:-translate-y-1 transition-transform duration-300">
-                        <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                        <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                             <Clock size={32} />
                         </div>
                         <div className="text-5xl font-bold text-white mb-2 tracking-tight">90%</div>
-                        <div className="text-lg font-medium text-indigo-400 mb-4">Reduction in Pre-Sales Time</div>
+                        <div className="text-lg font-medium text-amber-400 mb-4">Reduction in Pre-Sales Time</div>
                         <p className="text-slate-400 leading-relaxed">
                             Agents no longer waste time on "Hi, is this available?" chats. They only speak to qualified leads.
                         </p>
                     </div>
 
                     {/* Metric 2 */}
-                    <div className="bg-gradient-to-br from-indigo-600 to-indigo-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-500/30 text-center transform md:scale-110 z-10 relative overflow-hidden border border-indigo-500/50">
+                    <div className="bg-gradient-to-br from-amber-600 to-amber-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-amber-500/30 text-center transform md:scale-110 z-10 relative overflow-hidden border border-amber-500/50">
                         <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
                         <div className="relative z-10">
                             <div className="w-16 h-16 bg-white/10 backdrop-blur-md text-white rounded-2xl flex items-center justify-center mx-auto mb-6">
                                 <TrendingUp size={32} />
                             </div>
                             <div className="text-5xl font-bold mb-2 tracking-tight">3x</div>
-                            <div className="text-lg font-medium text-indigo-200 mb-4">Increase in Qualified Leads</div>
-                            <p className="text-indigo-100 leading-relaxed">
+                            <div className="text-lg font-medium text-amber-200 mb-4">Increase in Qualified Leads</div>
+                            <p className="text-amber-100 leading-relaxed">
                                 By responding instantly 24/7, AURO captures and qualifies leads that would otherwise go cold.
                             </p>
                         </div>
@@ -108,22 +111,25 @@ const RoiPage = () => {
             {/* The Cost of Waiting */}
             <section className="py-20 px-6 relative z-10 bg-[#0b101b] border border-white/10 rounded-[3rem] mx-4 lg:mx-12 mb-12 overflow-hidden">
                 {/* Background Effects */}
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600 rounded-full blur-[150px] opacity-20 pointer-events-none animate-pulse-glow" />
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-amber-600 rounded-full blur-[150px] opacity-20 pointer-events-none animate-pulse-glow" />
 
                 <div className="max-w-4xl mx-auto text-center relative z-10">
                     <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">The Cost of Waiting is High</h2>
                     <p className="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">
                         Every day you wait, you're losing leads to competitors who respond faster. Don't let your marketing budget go to waste.
                     </p>
-                    <Link
-                        to="/#demo"
-                        className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 hover:bg-indigo-50 rounded-full font-bold text-lg shadow-xl transition-all hover:-translate-y-1"
+                    <button
+                        onClick={() => setIsWaitlistOpen(true)}
+                        className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 hover:bg-amber-50 rounded-full font-bold text-lg shadow-xl transition-all hover:-translate-y-1 cursor-pointer"
                     >
                         Calculate Your ROI
                         <ArrowRight size={20} />
-                    </Link>
+                    </button>
                 </div>
             </section>
+
+            {/* Waitlist Form Modal */}
+            <WaitlistForm isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
         </div>
     );
 };
