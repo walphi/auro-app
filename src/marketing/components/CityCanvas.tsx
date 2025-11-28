@@ -47,7 +47,7 @@ const CityCanvas: React.FC = () => {
 
             // 1. Skyscrapers (Dubai Skyline)
             // Reduced number of buildings and density for cleaner look
-            const numBuildings = 50;
+            const numBuildings = 25;
 
             for (let i = 0; i < numBuildings; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -144,14 +144,14 @@ const CityCanvas: React.FC = () => {
                     let size = scale * 1.5;
 
                     if (p.type === 'city') {
-                        ctx.fillStyle = `rgba(148, 163, 184, ${alpha * 0.3})`; // Reduced opacity for city
+                        ctx.fillStyle = `rgba(148, 163, 184, ${alpha * 0.1})`; // Reduced opacity for city
                     } else if (p.type === 'light') {
                         const twinkle = 0.5 + Math.sin(time * 3 + p.phase) * 0.5;
-                        ctx.fillStyle = `rgba(250, 204, 21, ${alpha * twinkle * 0.7})`; // Reduced opacity for lights
+                        ctx.fillStyle = `rgba(250, 204, 21, ${alpha * twinkle * 0.1})`; // Reduced opacity for lights
                         size = scale * 2.2;
                     } else if (p.type === 'star') {
                         const twinkle = 0.3 + Math.sin(time + p.phase) * 0.7;
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * twinkle * 0.5})`; // Reduced opacity for stars
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * twinkle * 0.1})`; // Reduced opacity for stars
                         size = scale * 1.0;
                     } else {
                         // Ground
