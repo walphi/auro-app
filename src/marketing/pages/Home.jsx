@@ -243,7 +243,7 @@ const HomePage = () => {
                                 autoPlay
                                 className="w-full h-full"
                             >
-                                <source src="/HeroVideo V1.mp4" type="video/mp4" />
+                                <source src="/HeroVideo V2.mp4" type="video/mp4" />
                                 Your browser does not support the video tag.
                             </video>
                         </div>
