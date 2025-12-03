@@ -5,13 +5,13 @@
   --color-glass-border: rgba(255, 255, 255, 0.1);
   --color-glass-bg: rgba(255, 255, 255, 0.05);
   --color-glass-shine: rgba(255, 255, 255, 0.1);
+  font-size: 80%;
 }
 
 body {
   font-family: var(--font-sans);
   background-color: #030305;
   color: #fff;
-  zoom: 0.8;
 }
 
 /* Custom Animations */
@@ -126,7 +126,7 @@ body {
 }
 
 .glass-header {
-  @apply bg-[#0d111c]/80 backdrop-blur-md border-b border-white/5;
+  @apply bg-[#030305]/80 backdrop-blur-md border-b border-white/5;
 }
 
 .gradient-text {

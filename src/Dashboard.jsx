@@ -31,7 +31,8 @@ import {
     Video,
     MoreHorizontal,
     Paperclip,
-    Folder
+    Folder,
+    Aperture
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { clsx } from 'clsx';
@@ -84,14 +85,14 @@ const Sidebar = ({ activeView, setActiveView }) => {
     ];
 
     return (
-        <div className="w-64 flex-shrink-0 bg-[#0d111c] border-r border-white/5 flex flex-col h-screen relative z-20">
+        <div className="w-64 flex-shrink-0 bg-[#030305] border-r border-white/5 flex flex-col h-dvh relative z-20">
             {/* Logo */}
             <div className="h-20 flex items-center px-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                        <span className="text-white font-bold text-lg">A</span>
+                <div className="flex items-center gap-2 group">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg shadow-white/10 transition-all">
+                        <Aperture size={20} className="text-black" />
                     </div>
-                    <span className="text-xl font-bold gradient-text tracking-tight">AURO.ai</span>
+                    <span className="text-xl font-bold text-white tracking-tight">AURO</span>
                 </div>
             </div>
 
@@ -114,7 +115,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
                         >
                             <div className={cn(
                                 "p-2 rounded-xl transition-all duration-300",
-                                isActive ? "bg-indigo-500/20 text-indigo-300 shadow-inner shadow-indigo-500/20" : "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-slate-300"
+                                isActive ? "bg-amber-500/20 text-indigo-300 shadow-inner shadow-amber-500/20" : "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-slate-300"
                             )}>
                                 <Icon size={18} className="relative z-10" />
                             </div>
@@ -130,7 +131,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
             {/* User Profile */}
             <div className="p-4 mt-auto">
                 <div className="glass-panel p-3 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold ring-2 ring-white/10 group-hover:ring-indigo-500/50 transition-all">
+                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold ring-2 ring-white/10 group-hover:ring-amber-500/50 transition-all">
                         {user?.imageUrl ? (
                             <img src={user.imageUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
                         ) : (
@@ -141,7 +142,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
                         <p className="text-xs font-semibold text-slate-200 truncate">{user?.fullName || 'User'}</p>
                         <p className="text-[10px] text-slate-500 truncate">View Profile</p>
                     </div>
-                    <Settings size={14} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                    <Settings size={14} className="text-slate-500 group-hover:text-amber-400 transition-colors" />
                 </div>
                 <div className="mt-2 flex justify-center scale-90 origin-bottom">
                     <UserButton afterSignOutUrl="/" />
@@ -160,13 +161,13 @@ const Dashboard = ({ leads }) => {
 
     const stats = [
         { title: 'Total Leads', value: totalLeads, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-        { title: 'New Inquiries', value: newLeads, icon: MessageSquare, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
+        { title: 'New Inquiries', value: newLeads, icon: MessageSquare, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
         { title: 'Qualified', value: qualifiedLeads, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
         { title: 'Conversion Rate', value: '12%', icon: LayoutDashboard, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' }
     ];
 
     return (
-        <div className="flex-1 overflow-y-auto bg-[#0d111c] p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto bg-[#030305] p-6 lg:p-8">
             <div className="max-w-7xl mx-auto flex flex-col gap-6">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -179,7 +180,7 @@ const Dashboard = ({ leads }) => {
                             <CalendarIcon size={14} />
                             Last 7 Days
                         </button>
-                        <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                        <button className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2">
                             <Plus size={14} />
                             New Report
                         </button>
@@ -218,7 +219,7 @@ const Dashboard = ({ leads }) => {
                     <div className="lg:col-span-2 glass-panel rounded-2xl p-6 min-h-[350px] flex flex-col">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-lg font-bold text-white">Lead Acquisition</h2>
-                            <button className="text-indigo-400 text-xs font-medium hover:text-indigo-300">View Details</button>
+                            <button className="text-amber-400 text-xs font-medium hover:text-amber-300">View Details</button>
                         </div>
                         <div className="flex-1 flex items-end justify-between gap-2 px-4 pb-2 relative">
                             {/* Grid Lines */}
@@ -241,7 +242,7 @@ const Dashboard = ({ leads }) => {
                                 <div key={index} className="flex flex-col items-center gap-2 relative group w-full z-10">
                                     <div className="relative w-full max-w-[40px] h-48 flex items-end justify-center">
                                         <div
-                                            className="w-full bg-gradient-to-t from-indigo-600/80 to-indigo-400 rounded-t-lg transition-all duration-500 hover:from-indigo-500 hover:to-indigo-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] cursor-pointer group-hover:scale-y-105 origin-bottom"
+                                            className="w-full bg-gradient-to-t from-amber-500/80 to-yellow-500 rounded-t-lg transition-all duration-500 hover:from-amber-500 hover:to-indigo-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] cursor-pointer group-hover:scale-y-105 origin-bottom"
                                             style={{ height: `${(item.value / 10) * 100}%` }}
                                         >
                                             <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg transition-opacity whitespace-nowrap border border-white/10 pointer-events-none">
@@ -264,14 +265,14 @@ const Dashboard = ({ leads }) => {
                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
                             {leads.slice(0, 5).map(lead => (
                                 <div key={lead.id} className="p-3 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3 cursor-pointer group border border-transparent hover:border-white/5">
-                                    <div className="w-10 h-10 rounded-full bg-[#0d111c] flex items-center justify-center text-slate-300 font-bold border border-white/10 group-hover:border-indigo-500/50 group-hover:text-indigo-400 transition-all shadow-sm text-sm">
+                                    <div className="w-10 h-10 rounded-full bg-[#030305] flex items-center justify-center text-slate-300 font-bold border border-white/10 group-hover:border-amber-500/50 group-hover:text-amber-400 transition-all shadow-sm text-sm">
                                         {lead.name.charAt(0)}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-slate-200 text-sm font-semibold truncate group-hover:text-white transition-colors">{lead.name}</p>
                                         <p className="text-[10px] text-slate-500 truncate">{lead.status} • {formatTime(lead.last_interaction)}</p>
                                     </div>
-                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1" />
+                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-amber-400 transition-colors opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1" />
                                 </div>
                             ))}
                         </div>
@@ -297,7 +298,7 @@ const CalendarView = () => {
     ];
 
     return (
-        <div className="flex-1 bg-[#0d111c] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Calendar</h1>
@@ -310,7 +311,7 @@ const CalendarView = () => {
                     <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
                         <ChevronRightIcon size={16} />
                     </button>
-                    <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-indigo-500/20 ml-2 flex items-center gap-2">
+                    <button className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/20 ml-2 flex items-center gap-2">
                         <Plus size={14} />
                         Add Event
                     </button>
@@ -342,7 +343,7 @@ const CalendarView = () => {
                                         <>
                                             <span className={cn(
                                                 "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
-                                                isToday ? "bg-indigo-600 text-white" : "text-slate-400"
+                                                isToday ? "bg-amber-600 text-white" : "text-slate-400"
                                             )}>
                                                 {dayNum}
                                             </span>
@@ -369,7 +370,7 @@ const CalendarView = () => {
                     <h3 className="text-lg font-bold text-white mb-4">Upcoming</h3>
                     <div className="space-y-3 overflow-y-auto">
                         {events.map(event => (
-                            <div key={event.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-indigo-500/30 transition-colors group">
+                            <div key={event.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-amber-500/30 transition-colors group">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className={cn(
                                         "w-8 h-8 rounded-lg flex items-center justify-center",
@@ -398,7 +399,7 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
     const filteredLeads = filter === 'All' ? leads : leads.filter(l => l.status === filter);
 
     return (
-        <div className="w-80 flex-shrink-0 bg-[#0d111c] border-r border-white/5 flex flex-col h-full relative z-10">
+        <div className="w-80 flex-shrink-0 bg-[#030305] border-r border-white/5 flex flex-col h-full relative z-10">
             {/* Header */}
             <div className="h-20 flex items-center justify-between px-5 border-b border-white/5">
                 <div>
@@ -409,7 +410,7 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                     <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
                         <Filter size={16} />
                     </button>
-                    <button className="bg-indigo-600 hover:bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-105">
+                    <button className="bg-amber-600 hover:bg-amber-500 p-2 rounded-lg text-white shadow-lg shadow-amber-500/20 transition-all hover:scale-105">
                         <Plus size={16} />
                     </button>
                 </div>
@@ -418,11 +419,11 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
             {/* Search & Filter Tabs */}
             <div className="p-5 pb-2 space-y-4">
                 <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-amber-400 transition-colors" size={16} />
                     <input
                         type="text"
                         placeholder="Search leads..."
-                        className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
+                        className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
                     />
                 </div>
 
@@ -434,7 +435,7 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                             className={cn(
                                 "px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
                                 filter === status
-                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                                    ? "bg-amber-600 border-indigo-600 text-white shadow-md shadow-amber-500/20"
                                     : "bg-transparent border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200"
                             )}
                         >
@@ -453,17 +454,17 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                         className={cn(
                             "p-4 rounded-xl cursor-pointer transition-all relative overflow-hidden group border",
                             selectedId === lead.id
-                                ? "bg-gradient-to-r from-indigo-900/20 to-indigo-900/10 border-indigo-500/30 shadow-lg shadow-indigo-900/10"
-                                : "glass-card hover:border-indigo-500/20"
+                                ? "bg-gradient-to-r from-amber-900/20 to-indigo-900/10 border-amber-500/30 shadow-lg shadow-indigo-900/10"
+                                : "glass-card hover:border-amber-500/20"
                         )}
                     >
-                        {selectedId === lead.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />}
+                        {selectedId === lead.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />}
 
                         <div className="flex justify-between items-start mb-1.5">
                             <h4 className={cn("font-bold text-sm", selectedId === lead.id ? "text-white" : "text-slate-200 group-hover:text-white")}>
                                 {lead.name}
                             </h4>
-                            <span className="text-[9px] text-slate-500 font-medium bg-[#0d111c] px-1.5 py-0.5 rounded-full border border-white/5">
+                            <span className="text-[9px] text-slate-500 font-medium bg-[#030305] px-1.5 py-0.5 rounded-full border border-white/5">
                                 {formatTime(lead.history?.[lead.history?.length - 1]?.timestamp || lead.created_at)}
                             </span>
                         </div>
@@ -514,8 +515,8 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 
     if (!lead) {
         return (
-            <div className="flex-1 bg-[#0d111c] flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-[#0d111c] to-[#0d111c]" />
+            <div className="flex-1 bg-[#030305] flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/10 via-[#030305] to-[#030305]" />
                 <div className="w-20 h-20 glass-panel rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-black/20 relative z-10">
                     <Users size={40} className="text-slate-600" />
                 </div>
@@ -553,8 +554,8 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             case 'email': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
             case 'call': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
             case 'voice_transcript': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
-            case 'task': return 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20';
-            case 'meeting': return 'text-purple-400 bg-purple-400/10 border-purple-400/20';
+            case 'task': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+            case 'meeting': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
             case 'lifecycle': return 'text-pink-400 bg-pink-400/10 border-pink-400/20';
             default: return 'text-slate-400 bg-slate-400/10 border-slate-400/20';
         }
@@ -565,11 +566,11 @@ const LeadDetail = ({ lead, onSendMessage }) => {
         : lead.history.filter(h => h.type.toLowerCase() === activeTab.toLowerCase().slice(0, -1)); // Simple plural to singular conversion
 
     return (
-        <div className="flex-1 flex flex-col bg-[#0d111c] h-full overflow-hidden relative">
+        <div className="flex-1 flex flex-col bg-[#030305] h-full overflow-hidden relative">
             {/* Header */}
             <div className="h-20 flex items-center justify-between px-6 glass-header z-20 border-b border-white/5">
                 <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/20 ring-2 ring-white/5">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-amber-500/20 ring-2 ring-white/5">
                         {lead.name.charAt(0)}
                     </div>
                     <div>
@@ -588,20 +589,20 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
+                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
                         <Phone size={18} />
                     </button>
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
+                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
                         <Mail size={18} />
                     </button>
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
+                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
                         <MoreVertical size={18} />
                     </button>
                 </div>
             </div>
 
             {/* Lead Info Grid (Compact) */}
-            <div className="px-6 py-4 z-10 border-b border-white/5 bg-[#0d111c]">
+            <div className="px-6 py-4 z-10 border-b border-white/5 bg-[#030305]">
                 <div className="grid grid-cols-4 gap-4">
                     <div className="space-y-1">
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
@@ -635,7 +636,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             </div>
 
             {/* Tabs */}
-            <div className="px-6 pt-4 border-b border-white/5 bg-[#0d111c]">
+            <div className="px-6 pt-4 border-b border-white/5 bg-[#030305]">
                 <div className="flex gap-6 overflow-x-auto scrollbar-hide">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
@@ -646,7 +647,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                 className={cn(
                                     "flex items-center gap-2 pb-3 text-xs font-bold transition-all border-b-2",
                                     activeTab === tab.id
-                                        ? "text-indigo-400 border-indigo-500"
+                                        ? "text-amber-400 border-amber-500"
                                         : "text-slate-500 border-transparent hover:text-slate-300"
                                 )}
                             >
@@ -659,7 +660,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             </div>
 
             {/* Content Area: Input + Timeline */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-[#0d111c]">
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#030305]">
                 {/* Input Area Removed as per user request */}
 
                 {/* Timeline */}
@@ -685,7 +686,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                                 </span>
                                                 <span className="text-[10px] text-slate-500">• {formatTime(event.timestamp)}</span>
                                             </div>
-                                            <button className="text-slate-600 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button className="text-slate-600 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <MoreHorizontal size={14} />
                                             </button>
                                         </div>
@@ -694,7 +695,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 
                                             {/* Render Audio for Voice Messages */}
                                             {event.type === 'Voice' && event.meta && (
-                                                <div className="mt-3 bg-[#0d111c] p-2 rounded-lg border border-white/10">
+                                                <div className="mt-3 bg-[#030305] p-2 rounded-lg border border-white/10">
                                                     <audio controls src={event.meta} className="w-full h-8" />
                                                 </div>
                                             )}
@@ -746,7 +747,7 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
         if (!lead) return <div className="flex-1 flex items-center justify-center text-slate-500">Select a conversation</div>;
 
         return (
-            <div className="flex-1 flex flex-col h-full bg-[#0d111c]">
+            <div className="flex-1 flex flex-col h-full bg-[#030305]">
                 <div className="h-16 border-b border-white/5 flex items-center px-6">
                     <h3 className="font-bold text-white">{lead.name}</h3>
                 </div>
@@ -755,7 +756,7 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
                         <div key={i} className={cn("flex w-full", m.sender === 'User' ? "justify-end" : "justify-start")}>
                             <div className={cn(
                                 "max-w-[70%] px-4 py-2 rounded-2xl text-sm",
-                                m.sender === 'User' ? "bg-indigo-600 text-white" : "glass-panel text-slate-200"
+                                m.sender === 'User' ? "bg-amber-600 text-white" : "glass-panel text-slate-200"
                             )}>
                                 {m.content}
                             </div>
@@ -767,10 +768,10 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
                         <input
                             value={msg}
                             onChange={e => setMsg(e.target.value)}
-                            className="flex-1 bg-[#1a202c] rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="flex-1 bg-[#1a202c] rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
                             placeholder="Type a message..."
                         />
-                        <button type="submit" className="bg-indigo-600 p-2 rounded-xl text-white"><Send size={18} /></button>
+                        <button type="submit" className="bg-amber-600 p-2 rounded-xl text-white"><Send size={18} /></button>
                     </form>
                 </div>
             </div>
@@ -778,7 +779,7 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
     };
 
     return (
-        <div className="flex flex-1 w-full overflow-hidden bg-[#0d111c]">
+        <div className="flex flex-1 w-full overflow-hidden bg-[#030305]">
             {/* Inbox List */}
             <div className="w-80 flex-shrink-0 border-r border-white/5 flex flex-col h-full relative z-10">
                 <div className="h-20 flex items-center justify-between px-5 border-b border-white/5">
@@ -789,11 +790,11 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
                 </div>
                 <div className="p-4">
                     <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={16} />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-amber-400 transition-colors" size={16} />
                         <input
                             type="text"
                             placeholder="Search messages..."
-                            className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
+                            className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
                         />
                     </div>
                 </div>
@@ -1031,7 +1032,7 @@ function CRMApp() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-[#0d111c] text-slate-200 font-sans overflow-hidden selection:bg-indigo-500/30 relative">
+        <div className="flex h-dvh w-full bg-[#030305] text-slate-200 font-sans overflow-hidden selection:bg-amber-500/30 relative">
             {error && (
                 <div className="absolute top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/10 max-w-md animate-in slide-in-from-top-5 fade-in duration-300">
                     <XCircle size={20} className="flex-shrink-0" />
@@ -1068,7 +1069,7 @@ class ErrorBoundary extends React.Component {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-screen bg-[#0d111c] flex items-center justify-center p-4">
+                <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4">
                     <div className="max-w-md glass-panel p-8 rounded-3xl border border-red-900/50 shadow-2xl text-center">
                         <XCircle className="text-red-500 mx-auto mb-4" size={48} />
                         <h2 className="text-xl font-bold text-white mb-2">Application Error</h2>
@@ -1094,12 +1095,12 @@ export default function DashboardApp() {
 
     if (isInvalidKey) {
         return (
-            <div className="min-h-screen bg-[#0d111c] flex items-center justify-center p-4">
+            <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4">
                 <div className="max-w-md glass-panel p-8 rounded-3xl border border-red-900/50 shadow-2xl text-center">
                     <XCircle className="text-red-500 mx-auto mb-4" size={48} />
                     <h2 className="text-xl font-bold text-white mb-2">Configuration Error</h2>
                     <p className="text-slate-400 mb-4 text-sm">Missing Clerk Publishable Key</p>
-                    <code className="block bg-[#0d111c] p-3 rounded-xl text-xs text-emerald-400 font-mono border border-white/10">
+                    <code className="block bg-[#030305] p-3 rounded-xl text-xs text-emerald-400 font-mono border border-white/10">
                         VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
                     </code>
                 </div>
@@ -1112,11 +1113,11 @@ export default function DashboardApp() {
             <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
                 <>
                     <SignedOut>
-                        <div className="min-h-screen bg-[#0d111c] flex items-center justify-center p-4 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#0d111c] to-[#0d111c]" />
+                        <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/20 via-[#030305] to-[#030305]" />
                             <div className="w-full max-w-md glass-panel rounded-3xl border border-white/10 p-10 shadow-2xl relative z-10">
-                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/30">
-                                    <span className="text-white font-bold text-3xl">A</span>
+                                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-white/10">
+                                    <Aperture size={32} className="text-black" />
                                 </div>
                                 <h2 className="text-3xl font-bold text-white text-center mb-2">Welcome to AURO</h2>
                                 <p className="text-slate-400 text-center mb-8">Sign in to access your AI Real Estate CRM</p>
@@ -1128,10 +1129,10 @@ export default function DashboardApp() {
                                             card: "bg-transparent shadow-none p-0",
                                             headerTitle: "hidden",
                                             headerSubtitle: "hidden",
-                                            formButtonPrimary: "bg-indigo-600 hover:bg-indigo-500 text-white normal-case text-sm h-12 rounded-xl shadow-lg shadow-indigo-500/20",
-                                            formFieldInput: "bg-[#0d111c] border-white/10 text-white focus:border-indigo-500 rounded-xl transition-colors h-12",
+                                            formButtonPrimary: "bg-amber-600 hover:bg-amber-500 text-white normal-case text-sm h-12 rounded-xl shadow-lg shadow-amber-500/20",
+                                            formFieldInput: "bg-[#030305] border-white/10 text-white focus:border-amber-500 rounded-xl transition-colors h-12",
                                             formFieldLabel: "text-slate-400",
-                                            footerActionLink: "text-indigo-400 hover:text-indigo-300"
+                                            footerActionLink: "text-amber-400 hover:text-amber-300"
                                         }
                                     }} />
                             </div>

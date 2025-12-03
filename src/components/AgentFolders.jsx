@@ -253,7 +253,7 @@ const AgentFolders = () => {
     };
 
     return (
-        <div className="flex-1 bg-[#0d111c] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
@@ -374,7 +374,7 @@ const AgentFolders = () => {
                                     value={urlInput}
                                     onChange={(e) => setUrlInput(e.target.value)}
                                     placeholder="https://..."
-                                    className="w-full bg-[#0d111c] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                                    className="w-full bg-[#030305] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
                                 />
                                 <button
                                     onClick={handleAddUrl}
@@ -402,7 +402,7 @@ const AgentFolders = () => {
                                 value={hotTopicInput}
                                 onChange={(e) => setHotTopicInput(e.target.value)}
                                 placeholder="E.g. 'The current special offer is a 50/50 payment plan for the next 30 days only.'"
-                                className="w-full bg-[#0d111c] border border-white/10 rounded-xl p-4 text-sm text-white focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 focus:outline-none min-h-[100px] resize-none"
+                                className="w-full bg-[#030305] border border-white/10 rounded-xl p-4 text-sm text-white focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 focus:outline-none min-h-[100px] resize-none"
                             />
                             <button
                                 onClick={handleSetContext}
