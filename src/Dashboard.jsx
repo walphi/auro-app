@@ -128,10 +128,11 @@ const Sidebar = ({ activeView, setActiveView }) => {
                 })}
             </nav>
 
+
             {/* User Profile */}
             <div className="p-4 mt-auto">
-                <div className="glass-panel p-3 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors cursor-pointer group">
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold ring-2 ring-white/10 group-hover:ring-amber-500/50 transition-all">
+                <div className="glass-panel p-3 rounded-xl flex items-center gap-3 relative group">
+                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold ring-2 ring-white/10 transition-all">
                         {user?.imageUrl ? (
                             <img src={user.imageUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
                         ) : (
@@ -140,13 +141,25 @@ const Sidebar = ({ activeView, setActiveView }) => {
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-200 truncate">{user?.fullName || 'User'}</p>
-                        <p className="text-[10px] text-slate-500 truncate">View Profile</p>
+                        <button
+                            onClick={() => document.querySelector('.cl-userButtonTrigger')?.click()}
+                            className="text-[10px] text-slate-500 hover:text-amber-400 truncate cursor-pointer transition-colors text-left"
+                        >
+                            View Profile
+                        </button>
                     </div>
-                    <Settings size={14} className="text-slate-500 group-hover:text-amber-400 transition-colors" />
+                    <button
+                        onClick={() => document.querySelector('.cl-userButtonTrigger')?.click()}
+                        className="text-slate-500 hover:text-amber-400 transition-colors cursor-pointer z-10"
+                    >
+                        <Settings size={14} />
+                    </button>
                 </div>
-                <div className="mt-2 flex justify-center scale-90 origin-bottom">
-                    <UserButton afterSignOutUrl="/" />
-                </div>
+            </div>
+
+            {/* Hidden Clerk UserButton - fixed positioning to avoid layout shifts */}
+            <div className="fixed bottom-4 left-4 opacity-0 pointer-events-auto z-[100]">
+                <UserButton afterSignOutUrl="/" />
             </div>
         </div>
     );
