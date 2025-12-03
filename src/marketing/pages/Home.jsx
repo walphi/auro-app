@@ -15,7 +15,7 @@ const HomePage = () => {
             <CityCanvas />
 
             {/* Hero Section */}
-            <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6">
+            <section className="relative pt-24 pb-20 lg:pt-32 lg:pb-32 px-6">
                 <div className="max-w-7xl mx-auto relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         <div className="animate-fade-in-up">
