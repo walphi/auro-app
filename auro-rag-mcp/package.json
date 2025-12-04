@@ -1,0 +1,22 @@
+{
+  "name": "auro-rag-mcp",
+  "version": "1.0.0",
+  "description": "AURO RAG MCP Server - Multi-tenant vector search for AI agents",
+  "main": "auro-rag-mcp.js",
+  "scripts": {
+    "start": "node auro-rag-mcp.js",
+    "test": "echo 'Test with: echo {\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"} | node auro-rag-mcp.js'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "keywords": [
+    "mcp",
+    "rag",
+    "vector-search",
+    "auro",
+    "real-estate"
+  ],
+  "author": "AURO",
+  "license": "ISC"
+}

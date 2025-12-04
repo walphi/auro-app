@@ -1,0 +1,45 @@
+# AURO RAG MCP Server - Docker Compose Configuration
+#
+# This allows multiple AI agents to connect to the RAG server
+# Each agent connects via stdio to the MCP protocol
+#
+# Usage:
+#   docker compose build
+#   docker compose up -d
+#
+# For AI agent integration (e.g., Claude, Antigravity):
+#   Configure your MCP client to connect to this container
+
+version: '3.8'
+
+services:
+  auro-rag-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auro-rag-mcp
+    restart: unless-stopped
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - EMBEDDING_DIMENSION=768
+      - RAG_SCHEMA=public
+      - RAG_TABLE=rag_chunks
+    # MCP uses stdio, so we need interactive mode
+    stdin_open: true
+    tty: true
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# To run multiple instances for different agents:
+#   auro-rag-agent1:
+#     extends: auro-rag-mcp
+#     container_name: auro-rag-agent1
+#   
+#   auro-rag-agent2:
+#     extends: auro-rag-mcp
+#     container_name: auro-rag-agent2

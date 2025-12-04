@@ -1,0 +1,1 @@
+﻿{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query_folder","arguments":{"client_id":"test-client","folder_id":"test-folder","query":"hello","top_k":3}}}
