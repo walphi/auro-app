@@ -135,8 +135,12 @@ const AgentFolders = () => {
                 setIndexingProgress(30);
 
                 try {
+                    // Import pdfjs-dist and worker for Vite
                     const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+                    // For pdfjs-dist v5.x, use the bundled worker
+                    const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
 
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

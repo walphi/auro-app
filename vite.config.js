@@ -8,4 +8,10 @@ export default defineConfig({
     build: {
         outDir: 'dist',
     },
+    optimizeDeps: {
+        include: ['pdfjs-dist'],
+    },
+    worker: {
+        format: 'es',
+    },
 })

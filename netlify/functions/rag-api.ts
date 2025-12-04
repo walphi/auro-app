@@ -1,53 +1,176 @@
 import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import * as multipart from 'lambda-multipart-parser';
 import * as cheerio from 'cheerio';
 
+// Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
 // Helper to chunk text
-function chunkText(text: string, chunkSize: number = 1000, overlap: number = 100): string[] {
+function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): Array<{ text: string, index: number, start: number, end: number }> {
     const chunks = [];
     let start = 0;
+    let index = 0;
+
     while (start < text.length) {
-        const end = Math.min(start + chunkSize, text.length);
-        chunks.push(text.substring(start, end));
-        start += chunkSize - overlap;
+        let end = Math.min(start + chunkSize, text.length);
+
+        // Try to break at sentence boundary
+        if (end < text.length) {
+            const breakPoint = text.lastIndexOf('. ', end);
+            if (breakPoint > start + chunkSize / 2) {
+                end = breakPoint + 1;
+            }
+        }
+
+        const chunkText = text.substring(start, end).trim();
+        if (chunkText.length > 0) {
+            chunks.push({
+                text: chunkText,
+                index: index++,
+                start,
+                end
+            });
+        }
+
+        start = end - overlap;
+        if (start >= text.length) break;
     }
     return chunks;
 }
 
 // Helper to embed and store
-async function embedAndStore(content: string, sourceName: string, type: string, projectId: string, metadata: any = {}, relevanceScore: number = 1.0) {
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+async function embedAndStore(
+    content: string,
+    filename: string,
+    type: string,
+    clientId: string,
+    folderId: string,
+    metadata: any = {}
+) {
+    console.log(`[RAG] Processing ${filename} for client=${clientId}, folder=${folderId}`);
+    console.log(`[RAG] Content length: ${content.length} chars`);
 
-    // Chunking
-    const chunks = chunkText(content);
-
-    for (const chunk of chunks) {
-        const result = await model.embedContent(chunk);
-        const embedding = result.embedding.values;
-
-        const { error } = await supabase.from('knowledge_base').insert({
-            project_id: projectId,
+    // 1. Create Document Record in knowledge_base (for UI listing)
+    const { data: docData, error: docError } = await supabase
+        .from('knowledge_base')
+        .insert({
+            project_id: folderId,
             type,
-            source_name: sourceName,
-            content: chunk,
-            embedding,
-            metadata,
-            relevance_score: relevanceScore
-        });
+            source_name: filename,
+            content: content.substring(0, 1000),
+            metadata: { ...metadata, client_id: clientId },
+            relevance_score: 1.0
+        })
+        .select()
+        .single();
 
-        if (error) throw error;
+    if (docError) {
+        console.error('[RAG] Failed to create knowledge_base record:', docError);
+    }
+
+    const documentId = docData?.id || `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[RAG] Document ID: ${documentId}`);
+
+    // 2. Generate Embeddings and Store in rag_chunks
+    // Skip if SKIP_EMBEDDINGS is set
+    if (process.env.SKIP_EMBEDDINGS === 'true') {
+        console.log('[RAG] Skipping embeddings (SKIP_EMBEDDINGS=true)');
+        return { success: true, documentId, chunksCreated: 0 };
+    }
+
+    try {
+        const chunks = chunkText(content);
+        console.log(`[RAG] Chunked into ${chunks.length} parts`);
+
+        let totalChunksCreated = 0;
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+        if (!GEMINI_API_KEY) {
+            throw new Error('GEMINI_API_KEY not configured');
+        }
+
+        // Process in small batches
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+            const batch = chunks.slice(i, i + BATCH_SIZE);
+            const vectorRows: any[] = [];
+
+            console.log(`[RAG] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}...`);
+
+            for (const chunk of batch) {
+                try {
+                    console.log(`[RAG] Generating embedding for chunk ${chunk.index}...`);
+
+                    // Use direct REST API instead of SDK
+                    const response = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                content: { parts: [{ text: chunk.text }] }
+                            })
+                        }
+                    );
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+                    }
+
+                    const result = await response.json();
+                    const embedding = result.embedding?.values;
+
+                    vectorRows.push({
+                        chunk_id: `${clientId}:${folderId}:${documentId}:${chunk.index}`,
+                        client_id: clientId,
+                        folder_id: folderId,
+                        document_id: String(documentId),
+                        content: chunk.text,
+                        embedding: embedding,
+                        metadata: {
+                            ...metadata,
+                            filename,
+                            type,
+                            chunk_index: chunk.index,
+                            chunk_total: chunks.length,
+                            indexed_at: new Date().toISOString()
+                        }
+                    });
+                } catch (embedError: any) {
+                    console.error(`[RAG] Failed to embed chunk ${chunk.index}:`, embedError.message);
+                }
+            }
+
+            // Upsert to rag_chunks
+            if (vectorRows.length > 0) {
+                console.log(`[RAG] Upserting ${vectorRows.length} chunks...`);
+                const { error: upsertError } = await supabase
+                    .from('rag_chunks')
+                    .upsert(vectorRows, { onConflict: 'chunk_id' });
+
+                if (upsertError) {
+                    console.error('[RAG] Upsert error:', JSON.stringify(upsertError));
+                } else {
+                    totalChunksCreated += vectorRows.length;
+                    console.log(`[RAG] Upserted ${vectorRows.length} chunks successfully`);
+                }
+            }
+        }
+
+        console.log(`[RAG] Successfully indexed ${totalChunksCreated} chunks total`);
+        return { success: true, documentId, chunksCreated: totalChunksCreated };
+
+    } catch (error: any) {
+        console.error('[RAG] Embedding/Storage error:', error.message);
+        throw error;
     }
 }
 
 export const handler: Handler = async (event, context) => {
+    // Path format: /api/v1/client/:clientId/rag/:action
     const pathSegments = event.path.split('/');
     const clientId = pathSegments[4];
     const action = pathSegments[6];
@@ -56,87 +179,46 @@ export const handler: Handler = async (event, context) => {
         return { statusCode: 400, body: JSON.stringify({ error: 'Invalid path format' }) };
     }
 
+    // CORS headers
+    const headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    };
+
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers, body: '' };
+    }
+
     try {
-        if (action === 'upload_file') {
-            console.log('Processing file upload...');
-            const result = await multipart.parse(event);
-            console.log('Multipart parsed:', { fileCount: result.files?.length });
-
-            const file = result.files?.[0];
-            const projectId = result.project_id || (await getDefaultProjectId(clientId));
-
-            console.log('File info:', {
-                hasFile: !!file,
-                projectId,
-                contentType: file?.contentType,
-                filename: file?.filename
-            });
-
-            if (!file) return { statusCode: 400, body: JSON.stringify({ error: 'No file uploaded' }) };
-
-            let textContent = '';
-
-            if (file.contentType === 'application/pdf' || file.filename.endsWith('.pdf')) {
-                try {
-                    // Dynamic import for pdf-parse
-                    const pdfParseModule = await import('pdf-parse');
-                    const pdfParse = pdfParseModule.default || pdfParseModule;
-                    const pdfData = await pdfParse(file.content);
-                    textContent = pdfData.text;
-                    console.log('PDF parsed successfully, text length:', textContent.length);
-                } catch (pdfError: any) {
-                    console.error('PDF parsing error:', pdfError);
-                    return {
-                        statusCode: 500,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            error: 'Failed to parse PDF file',
-                            details: pdfError.message
-                        })
-                    };
-                }
-            } else if (file.contentType === 'text/plain' || file.filename.endsWith('.txt')) {
-                textContent = file.content.toString();
-            } else {
-                return {
-                    statusCode: 400,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        error: 'Unsupported file type. Please upload PDF or TXT files.',
-                        fileType: file.contentType,
-                        filename: file.filename
-                    })
-                };
-            }
-
-            await embedAndStore(textContent, file.filename, 'file', projectId);
-            return { statusCode: 200, body: JSON.stringify({ success: true, message: 'File indexed' }) };
-        }
-
+        // 1. Upload Text
         if (action === 'upload_text') {
             const { text, filename, project_id } = JSON.parse(event.body || '{}');
-            const projectId = project_id || (await getDefaultProjectId(clientId));
+            const folderId = project_id || 'default';
 
             if (!text || !filename) {
-                return {
-                    statusCode: 400,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ error: 'Missing text or filename' })
-                };
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing text or filename' }) };
             }
 
-            console.log('Processing text upload:', { filename, textLength: text.length, projectId });
+            await embedAndStore(text, filename, 'file', clientId, folderId);
 
-            await embedAndStore(text, filename, 'file', projectId);
-            return { statusCode: 200, body: JSON.stringify({ success: true, message: 'Text indexed' }) };
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ success: true, message: 'Text indexed successfully' })
+            };
         }
 
+        // 2. Add URL
         if (action === 'add_url') {
             const { url, project_id } = JSON.parse(event.body || '{}');
-            const projectId = project_id || (await getDefaultProjectId(clientId));
+            const folderId = project_id || 'default';
 
-            if (!url) return { statusCode: 400, body: 'Missing URL' };
+            if (!url) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing URL' }) };
+            }
 
+            console.log(`[RAG] Fetching URL: ${url}`);
             const response = await fetch(url);
             const html = await response.text();
             const $ = cheerio.load(html);
@@ -144,41 +226,48 @@ export const handler: Handler = async (event, context) => {
             // Clean HTML
             $('script').remove();
             $('style').remove();
+            $('nav').remove();
+            $('footer').remove();
             const text = $('body').text().replace(/\s+/g, ' ').trim();
+            const title = $('title').text() || url;
 
-            await embedAndStore(text, url, 'url', projectId);
-            return { statusCode: 200, body: JSON.stringify({ success: true, message: 'URL indexed' }) };
+            console.log(`[RAG] Extracted ${text.length} chars from URL`);
+
+            await embedAndStore(text, title, 'url', clientId, folderId, { source_url: url });
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ success: true, message: 'URL indexed successfully' })
+            };
         }
 
+        // 3. Set Context (Hot Topic)
         if (action === 'set_context') {
             const { context, project_id } = JSON.parse(event.body || '{}');
-            const projectId = project_id || (await getDefaultProjectId(clientId));
+            const folderId = project_id || 'default';
 
-            if (!context) return { statusCode: 400, body: 'Missing context' };
+            if (!context) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing context' }) };
+            }
 
-            await embedAndStore(context, 'Manual Context', 'text', projectId, {}, 1.5); // Higher relevance
-            return { statusCode: 200, body: JSON.stringify({ success: true, message: 'Context set' }) };
+            await embedAndStore(context, 'Hot Topic Context', 'hot_topic', clientId, folderId, { priority: 'high' });
+
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({ success: true, message: 'Context set successfully' })
+            };
         }
 
-        return { statusCode: 404, body: 'Action not found' };
+        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Action not found' }) };
 
     } catch (error: any) {
-        console.error(`Error in RAG API (${action}):`, error);
-        console.error('Error stack:', error.stack);
+        console.error(`[RAG] Error in ${action}:`, error.message);
         return {
             statusCode: 500,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                error: error.message,
-                action,
-                details: error.toString()
-            })
+            headers,
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
-
-async function getDefaultProjectId(clientId: string) {
-    // Helper to get a default project if none provided
-    const { data } = await supabase.from('projects').select('id').limit(1).single();
-    return data?.id;
-}
