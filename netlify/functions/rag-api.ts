@@ -5,6 +5,11 @@ import * as cheerio from 'cheerio';
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+
+console.log('[RAG Init] Supabase URL:', supabaseUrl ? 'SET' : 'NOT SET');
+console.log('[RAG Init] Supabase Key:', supabaseKey ? 'SET' : 'NOT SET');
+console.log('[RAG Init] Gemini Key:', process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET');
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Helper to chunk text
@@ -16,7 +21,6 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
     while (start < text.length) {
         let end = Math.min(start + chunkSize, text.length);
 
-        // Try to break at sentence boundary
         if (end < text.length) {
             const breakPoint = text.lastIndexOf('. ', end);
             if (breakPoint > start + chunkSize / 2) {
@@ -40,6 +44,41 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
     return chunks;
 }
 
+// Helper to generate embedding via Gemini REST API
+async function generateEmbedding(text: string): Promise<number[] | null> {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+    if (!GEMINI_API_KEY) {
+        console.error('[RAG] GEMINI_API_KEY not configured');
+        return null;
+    }
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: { parts: [{ text: text.substring(0, 5000) }] } // Limit text length
+                })
+            }
+        );
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`[RAG] Gemini API error: ${response.status} - ${errText}`);
+            return null;
+        }
+
+        const result = await response.json();
+        return result.embedding?.values || null;
+    } catch (err: any) {
+        console.error('[RAG] Embedding error:', err.message);
+        return null;
+    }
+}
+
 // Helper to embed and store
 async function embedAndStore(
     content: string,
@@ -53,129 +92,103 @@ async function embedAndStore(
     console.log(`[RAG] Content length: ${content.length} chars`);
 
     // 1. Create Document Record in knowledge_base (for UI listing)
-    const { data: docData, error: docError } = await supabase
-        .from('knowledge_base')
-        .insert({
-            project_id: folderId,
-            type,
-            source_name: filename,
-            content: content.substring(0, 1000),
-            metadata: { ...metadata, client_id: clientId },
-            relevance_score: 1.0
-        })
-        .select()
-        .single();
+    let documentId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    if (docError) {
-        console.error('[RAG] Failed to create knowledge_base record:', docError);
+    try {
+        const { data: docData, error: docError } = await supabase
+            .from('knowledge_base')
+            .insert({
+                project_id: folderId, // This must be a valid UUID from projects table
+                type,
+                source_name: filename,
+                content: content.substring(0, 1000),
+                metadata: { ...metadata, client_id: clientId },
+                relevance_score: 1.0
+            })
+            .select()
+            .single();
+
+        if (docError) {
+            console.error('[RAG] knowledge_base insert error:', JSON.stringify(docError));
+            // Continue anyway - rag_chunks is the primary store
+        } else if (docData) {
+            documentId = docData.id;
+        }
+    } catch (err: any) {
+        console.error('[RAG] knowledge_base exception:', err.message);
     }
 
-    const documentId = docData?.id || `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`[RAG] Document ID: ${documentId}`);
 
     // 2. Generate Embeddings and Store in rag_chunks
-    // Skip if SKIP_EMBEDDINGS is set
     if (process.env.SKIP_EMBEDDINGS === 'true') {
         console.log('[RAG] Skipping embeddings (SKIP_EMBEDDINGS=true)');
         return { success: true, documentId, chunksCreated: 0 };
     }
 
-    try {
-        const chunks = chunkText(content);
-        console.log(`[RAG] Chunked into ${chunks.length} parts`);
+    const chunks = chunkText(content);
+    console.log(`[RAG] Chunked into ${chunks.length} parts`);
 
-        let totalChunksCreated = 0;
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    let totalChunksCreated = 0;
 
-        if (!GEMINI_API_KEY) {
-            throw new Error('GEMINI_API_KEY not configured');
-        }
+    // Process chunks
+    for (const chunk of chunks) {
+        try {
+            console.log(`[RAG] Processing chunk ${chunk.index + 1}/${chunks.length}...`);
 
-        // Process in small batches
-        const BATCH_SIZE = 3;
-        for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-            const batch = chunks.slice(i, i + BATCH_SIZE);
-            const vectorRows: any[] = [];
+            const embedding = await generateEmbedding(chunk.text);
 
-            console.log(`[RAG] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}...`);
+            if (!embedding) {
+                console.error(`[RAG] Failed to generate embedding for chunk ${chunk.index}`);
+                continue;
+            }
 
-            for (const chunk of batch) {
-                try {
-                    console.log(`[RAG] Generating embedding for chunk ${chunk.index}...`);
+            console.log(`[RAG] Embedding generated: ${embedding.length} dimensions`);
 
-                    // Use direct REST API instead of SDK
-                    const response = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${GEMINI_API_KEY}`,
-                        {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                content: { parts: [{ text: chunk.text }] }
-                            })
-                        }
-                    );
-
-                    if (!response.ok) {
-                        const errText = await response.text();
-                        throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+            // Insert into rag_chunks
+            const { error: upsertError } = await supabase
+                .from('rag_chunks')
+                .upsert({
+                    chunk_id: `${clientId}:${folderId}:${documentId}:${chunk.index}`,
+                    client_id: clientId,
+                    folder_id: folderId,
+                    document_id: String(documentId),
+                    content: chunk.text,
+                    embedding: embedding,
+                    metadata: {
+                        ...metadata,
+                        filename,
+                        type,
+                        chunk_index: chunk.index,
+                        chunk_total: chunks.length,
+                        indexed_at: new Date().toISOString()
                     }
+                }, { onConflict: 'chunk_id' });
 
-                    const result = await response.json();
-                    const embedding = result.embedding?.values;
-
-                    vectorRows.push({
-                        chunk_id: `${clientId}:${folderId}:${documentId}:${chunk.index}`,
-                        client_id: clientId,
-                        folder_id: folderId,
-                        document_id: String(documentId),
-                        content: chunk.text,
-                        embedding: embedding,
-                        metadata: {
-                            ...metadata,
-                            filename,
-                            type,
-                            chunk_index: chunk.index,
-                            chunk_total: chunks.length,
-                            indexed_at: new Date().toISOString()
-                        }
-                    });
-                } catch (embedError: any) {
-                    console.error(`[RAG] Failed to embed chunk ${chunk.index}:`, embedError.message);
-                }
+            if (upsertError) {
+                console.error('[RAG] rag_chunks upsert error:', JSON.stringify(upsertError));
+            } else {
+                totalChunksCreated++;
+                console.log(`[RAG] Chunk ${chunk.index} upserted successfully`);
             }
-
-            // Upsert to rag_chunks
-            if (vectorRows.length > 0) {
-                console.log(`[RAG] Upserting ${vectorRows.length} chunks...`);
-                const { error: upsertError } = await supabase
-                    .from('rag_chunks')
-                    .upsert(vectorRows, { onConflict: 'chunk_id' });
-
-                if (upsertError) {
-                    console.error('[RAG] Upsert error:', JSON.stringify(upsertError));
-                } else {
-                    totalChunksCreated += vectorRows.length;
-                    console.log(`[RAG] Upserted ${vectorRows.length} chunks successfully`);
-                }
-            }
+        } catch (err: any) {
+            console.error(`[RAG] Chunk ${chunk.index} error:`, err.message);
         }
-
-        console.log(`[RAG] Successfully indexed ${totalChunksCreated} chunks total`);
-        return { success: true, documentId, chunksCreated: totalChunksCreated };
-
-    } catch (error: any) {
-        console.error('[RAG] Embedding/Storage error:', error.message);
-        throw error;
     }
+
+    console.log(`[RAG] Total chunks created: ${totalChunksCreated}/${chunks.length}`);
+    return { success: totalChunksCreated > 0, documentId, chunksCreated: totalChunksCreated };
 }
 
 export const handler: Handler = async (event, context) => {
     // Path format: /api/v1/client/:clientId/rag/:action
     const pathSegments = event.path.split('/');
-    const clientId = pathSegments[4];
+    const clientId = pathSegments[4] || 'demo';
     const action = pathSegments[6];
 
-    if (!clientId || !action) {
+    console.log(`[RAG Handler] Action: ${action}, Client: ${clientId}`);
+
+    if (!action) {
         return { statusCode: 400, body: JSON.stringify({ error: 'Invalid path format' }) };
     }
 
@@ -200,12 +213,12 @@ export const handler: Handler = async (event, context) => {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing text or filename' }) };
             }
 
-            await embedAndStore(text, filename, 'file', clientId, folderId);
+            const result = await embedAndStore(text, filename, 'file', clientId, folderId);
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ success: true, message: 'Text indexed successfully' })
+                body: JSON.stringify({ success: result.success, message: `Indexed ${result.chunksCreated} chunks` })
             };
         }
 
@@ -219,11 +232,17 @@ export const handler: Handler = async (event, context) => {
             }
 
             console.log(`[RAG] Fetching URL: ${url}`);
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'AURO-Bot/1.0' }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch URL: ${response.status}`);
+            }
+
             const html = await response.text();
             const $ = cheerio.load(html);
 
-            // Clean HTML
             $('script').remove();
             $('style').remove();
             $('nav').remove();
@@ -233,12 +252,12 @@ export const handler: Handler = async (event, context) => {
 
             console.log(`[RAG] Extracted ${text.length} chars from URL`);
 
-            await embedAndStore(text, title, 'url', clientId, folderId, { source_url: url });
+            const result = await embedAndStore(text, title, 'url', clientId, folderId, { source_url: url });
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ success: true, message: 'URL indexed successfully' })
+                body: JSON.stringify({ success: result.success, message: `URL indexed: ${result.chunksCreated} chunks` })
             };
         }
 
@@ -251,19 +270,19 @@ export const handler: Handler = async (event, context) => {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing context' }) };
             }
 
-            await embedAndStore(context, 'Hot Topic Context', 'hot_topic', clientId, folderId, { priority: 'high' });
+            const result = await embedAndStore(context, 'Hot Topic Context', 'hot_topic', clientId, folderId, { priority: 'high' });
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ success: true, message: 'Context set successfully' })
+                body: JSON.stringify({ success: result.success, message: `Context set: ${result.chunksCreated} chunks` })
             };
         }
 
         return { statusCode: 404, headers, body: JSON.stringify({ error: 'Action not found' }) };
 
     } catch (error: any) {
-        console.error(`[RAG] Error in ${action}:`, error.message);
+        console.error(`[RAG] Handler error:`, error.message, error.stack);
         return {
             statusCode: 500,
             headers,
