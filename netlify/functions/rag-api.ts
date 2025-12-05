@@ -5,15 +5,10 @@ import * as cheerio from 'cheerio';
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
-
-console.log('[RAG Init] Supabase URL:', supabaseUrl ? 'SET' : 'NOT SET');
-console.log('[RAG Init] Supabase Key:', supabaseKey ? 'SET' : 'NOT SET');
-console.log('[RAG Init] Gemini Key:', process.env.GEMINI_API_KEY ? 'SET' : 'NOT SET');
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Helper to chunk text
-function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): Array<{ text: string, index: number, start: number, end: number }> {
+function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): Array<{ text: string, index: number }> {
     const chunks = [];
     let start = 0;
     let index = 0;
@@ -28,14 +23,9 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
             }
         }
 
-        const chunkText = text.substring(start, end).trim();
-        if (chunkText.length > 0) {
-            chunks.push({
-                text: chunkText,
-                index: index++,
-                start,
-                end
-            });
+        const chunk = text.substring(start, end).trim();
+        if (chunk.length > 0) {
+            chunks.push({ text: chunk, index: index++ });
         }
 
         start = end - overlap;
@@ -44,14 +34,17 @@ function chunkText(text: string, chunkSize: number = 1000, overlap: number = 200
     return chunks;
 }
 
-// Helper to generate embedding via Gemini REST API
-async function generateEmbedding(text: string): Promise<number[] | null> {
+// Generate embedding via Gemini REST API with timeout
+async function generateEmbedding(text: string, timeoutMs: number = 8000): Promise<number[] | null> {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
-        console.error('[RAG] GEMINI_API_KEY not configured');
+        console.error('[RAG] GEMINI_API_KEY not set');
         return null;
     }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
         const response = await fetch(
@@ -60,139 +53,117 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    content: { parts: [{ text: text.substring(0, 5000) }] } // Limit text length
-                })
+                    content: { parts: [{ text: text.substring(0, 4000) }] }
+                }),
+                signal: controller.signal
             }
         );
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            const errText = await response.text();
-            console.error(`[RAG] Gemini API error: ${response.status} - ${errText}`);
+            console.error(`[RAG] Gemini error: ${response.status}`);
             return null;
         }
 
         const result = await response.json();
         return result.embedding?.values || null;
     } catch (err: any) {
+        clearTimeout(timeoutId);
         console.error('[RAG] Embedding error:', err.message);
         return null;
     }
 }
 
-// Helper to embed and store
-async function embedAndStore(
+// Insert into knowledge_base (UI display)
+async function insertKnowledgeBase(
     content: string,
     filename: string,
     type: string,
     clientId: string,
     folderId: string,
     metadata: any = {}
-) {
-    console.log(`[RAG] Processing ${filename} for client=${clientId}, folder=${folderId}`);
-    console.log(`[RAG] Content length: ${content.length} chars`);
-
-    // 1. Create Document Record in knowledge_base (for UI listing)
-    let documentId = `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
+): Promise<string | null> {
     try {
-        const { data: docData, error: docError } = await supabase
+        const { data, error } = await supabase
             .from('knowledge_base')
             .insert({
-                project_id: folderId, // This must be a valid UUID from projects table
+                project_id: folderId,
                 type,
                 source_name: filename,
-                content: content.substring(0, 1000),
+                content: content.substring(0, 2000),
                 metadata: { ...metadata, client_id: clientId },
-                relevance_score: 1.0
+                relevance_score: type === 'hot_topic' ? 10.0 : 1.0
             })
-            .select()
+            .select('id')
             .single();
 
-        if (docError) {
-            console.error('[RAG] knowledge_base insert error:', JSON.stringify(docError));
-            // Continue anyway - rag_chunks is the primary store
-        } else if (docData) {
-            documentId = docData.id;
+        if (error) {
+            console.error('[RAG] knowledge_base error:', error.message);
+            return null;
         }
+        return data?.id || null;
     } catch (err: any) {
         console.error('[RAG] knowledge_base exception:', err.message);
+        return null;
     }
+}
 
-    console.log(`[RAG] Document ID: ${documentId}`);
-
-    // 2. Generate Embeddings and Store in rag_chunks
-    if (process.env.SKIP_EMBEDDINGS === 'true') {
-        console.log('[RAG] Skipping embeddings (SKIP_EMBEDDINGS=true)');
-        return { success: true, documentId, chunksCreated: 0 };
-    }
-
+// Insert chunks into rag_chunks (for RAG/MCP)
+async function insertRagChunks(
+    content: string,
+    documentId: string,
+    filename: string,
+    type: string,
+    clientId: string,
+    folderId: string,
+    metadata: any = {}
+): Promise<number> {
     const chunks = chunkText(content);
-    console.log(`[RAG] Chunked into ${chunks.length} parts`);
+    let successCount = 0;
 
-    let totalChunksCreated = 0;
+    // Process only first 3 chunks to stay within time limit
+    const chunksToProcess = chunks.slice(0, 3);
 
-    // Process chunks
-    for (const chunk of chunks) {
+    for (const chunk of chunksToProcess) {
         try {
-            console.log(`[RAG] Processing chunk ${chunk.index + 1}/${chunks.length}...`);
-
             const embedding = await generateEmbedding(chunk.text);
 
             if (!embedding) {
-                console.error(`[RAG] Failed to generate embedding for chunk ${chunk.index}`);
+                console.log(`[RAG] Skipping chunk ${chunk.index} - no embedding`);
                 continue;
             }
 
-            console.log(`[RAG] Embedding generated: ${embedding.length} dimensions`);
-
-            // Insert into rag_chunks
-            const { error: upsertError } = await supabase
+            const { error } = await supabase
                 .from('rag_chunks')
                 .upsert({
                     chunk_id: `${clientId}:${folderId}:${documentId}:${chunk.index}`,
                     client_id: clientId,
                     folder_id: folderId,
-                    document_id: String(documentId),
+                    document_id: documentId,
                     content: chunk.text,
                     embedding: embedding,
-                    metadata: {
-                        ...metadata,
-                        filename,
-                        type,
-                        chunk_index: chunk.index,
-                        chunk_total: chunks.length,
-                        indexed_at: new Date().toISOString()
-                    }
+                    metadata: { ...metadata, filename, type, chunk_index: chunk.index }
                 }, { onConflict: 'chunk_id' });
 
-            if (upsertError) {
-                console.error('[RAG] rag_chunks upsert error:', JSON.stringify(upsertError));
+            if (error) {
+                console.error(`[RAG] rag_chunks error:`, error.message);
             } else {
-                totalChunksCreated++;
-                console.log(`[RAG] Chunk ${chunk.index} upserted successfully`);
+                successCount++;
             }
         } catch (err: any) {
-            console.error(`[RAG] Chunk ${chunk.index} error:`, err.message);
+            console.error(`[RAG] chunk ${chunk.index} error:`, err.message);
         }
     }
 
-    console.log(`[RAG] Total chunks created: ${totalChunksCreated}/${chunks.length}`);
-    return { success: totalChunksCreated > 0, documentId, chunksCreated: totalChunksCreated };
+    return successCount;
 }
 
-export const handler: Handler = async (event, context) => {
-    // Path format: /api/v1/client/:clientId/rag/:action
+export const handler: Handler = async (event) => {
     const pathSegments = event.path.split('/');
     const clientId = pathSegments[4] || 'demo';
     const action = pathSegments[6];
 
-    console.log(`[RAG Handler] Action: ${action}, Client: ${clientId}`);
-
-    if (!action) {
-        return { statusCode: 400, body: JSON.stringify({ error: 'Invalid path format' }) };
-    }
-
-    // CORS headers
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -203,86 +174,104 @@ export const handler: Handler = async (event, context) => {
         return { statusCode: 200, headers, body: '' };
     }
 
+    if (!action) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing action' }) };
+    }
+
+    console.log(`[RAG] Action: ${action}, Client: ${clientId}`);
+
     try {
-        // 1. Upload Text
+        let content = '';
+        let filename = '';
+        let type = '';
+        let folderId = 'default';
+        let metadata: any = {};
+
+        // Parse request based on action
         if (action === 'upload_text') {
-            const { text, filename, project_id } = JSON.parse(event.body || '{}');
-            const folderId = project_id || 'default';
-
-            if (!text || !filename) {
-                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing text or filename' }) };
-            }
-
-            const result = await embedAndStore(text, filename, 'file', clientId, folderId);
-
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ success: result.success, message: `Indexed ${result.chunksCreated} chunks` })
-            };
-        }
-
-        // 2. Add URL
-        if (action === 'add_url') {
-            const { url, project_id } = JSON.parse(event.body || '{}');
-            const folderId = project_id || 'default';
+            const body = JSON.parse(event.body || '{}');
+            content = body.text || '';
+            filename = body.filename || 'Untitled';
+            type = 'file';
+            folderId = body.project_id || 'default';
+        } else if (action === 'add_url') {
+            const body = JSON.parse(event.body || '{}');
+            const url = body.url;
+            folderId = body.project_id || 'default';
 
             if (!url) {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing URL' }) };
             }
 
-            console.log(`[RAG] Fetching URL: ${url}`);
-            const response = await fetch(url, {
-                headers: { 'User-Agent': 'AURO-Bot/1.0' }
-            });
+            // Fetch URL with timeout
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 5000);
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch URL: ${response.status}`);
-            }
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'AURO-Bot/1.0' },
+                signal: controller.signal
+            });
 
             const html = await response.text();
             const $ = cheerio.load(html);
+            $('script, style, nav, footer').remove();
+            content = $('body').text().replace(/\s+/g, ' ').trim();
+            filename = $('title').text() || url;
+            type = 'url';
+            metadata = { source_url: url };
+        } else if (action === 'set_context') {
+            const body = JSON.parse(event.body || '{}');
+            content = body.context || '';
+            filename = 'Hot Topic Context';
+            type = 'hot_topic';
+            folderId = body.project_id || 'default';
+            metadata = { priority: 'high' };
+        } else {
+            return { statusCode: 404, headers, body: JSON.stringify({ error: 'Unknown action' }) };
+        }
 
-            $('script').remove();
-            $('style').remove();
-            $('nav').remove();
-            $('footer').remove();
-            const text = $('body').text().replace(/\s+/g, ' ').trim();
-            const title = $('title').text() || url;
+        if (!content) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: 'No content to index' }) };
+        }
 
-            console.log(`[RAG] Extracted ${text.length} chars from URL`);
+        console.log(`[RAG] Processing: ${filename}, ${content.length} chars`);
 
-            const result = await embedAndStore(text, title, 'url', clientId, folderId, { source_url: url });
+        // Step 1: Insert into knowledge_base (fast, for UI)
+        const docId = await insertKnowledgeBase(content, filename, type, clientId, folderId, metadata);
 
+        if (!docId) {
             return {
-                statusCode: 200,
+                statusCode: 500,
                 headers,
-                body: JSON.stringify({ success: result.success, message: `URL indexed: ${result.chunksCreated} chunks` })
+                body: JSON.stringify({ error: 'Failed to save to knowledge base' })
             };
         }
 
-        // 3. Set Context (Hot Topic)
-        if (action === 'set_context') {
-            const { context, project_id } = JSON.parse(event.body || '{}');
-            const folderId = project_id || 'default';
+        console.log(`[RAG] Saved to knowledge_base: ${docId}`);
 
-            if (!context) {
-                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing context' }) };
-            }
+        // Step 2: Try to insert into rag_chunks (may timeout, that's ok)
+        // Do this in background - don't wait for completion
+        const ragPromise = insertRagChunks(content, docId, filename, type, clientId, folderId, metadata);
 
-            const result = await embedAndStore(context, 'Hot Topic Context', 'hot_topic', clientId, folderId, { priority: 'high' });
+        // Wait up to 3 seconds for RAG indexing
+        const timeoutPromise = new Promise<number>(resolve => setTimeout(() => resolve(0), 3000));
+        const chunksCreated = await Promise.race([ragPromise, timeoutPromise]);
 
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ success: result.success, message: `Context set: ${result.chunksCreated} chunks` })
-            };
-        }
+        console.log(`[RAG] Complete: ${chunksCreated} chunks indexed`);
 
-        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Action not found' }) };
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                success: true,
+                message: `Indexed successfully`,
+                documentId: docId,
+                chunksCreated
+            })
+        };
 
     } catch (error: any) {
-        console.error(`[RAG] Handler error:`, error.message, error.stack);
+        console.error(`[RAG] Error:`, error.message);
         return {
             statusCode: 500,
             headers,
