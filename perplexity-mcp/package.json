@@ -1,0 +1,19 @@
+{
+    "name": "perplexity-mcp",
+    "version": "1.0.0",
+    "description": "Perplexity AI MCP Server for AURO - Real-time web search for AI agents",
+    "main": "perplexity-mcp.js",
+    "scripts": {
+        "start": "node perplexity-mcp.js"
+    },
+    "dependencies": {},
+    "keywords": [
+        "mcp",
+        "perplexity",
+        "search",
+        "ai",
+        "auro"
+    ],
+    "author": "AURO",
+    "license": "ISC"
+}
