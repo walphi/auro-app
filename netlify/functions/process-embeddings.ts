@@ -1,4 +1,4 @@
-import { Handler, schedule } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase
@@ -161,5 +161,6 @@ export const handler: Handler = async (event) => {
 };
 
 // Scheduled version - runs every 5 minutes
-// Uncomment below to enable scheduled execution:
-// export const scheduledHandler = schedule("*/5 * * * *", handler);
+export const config = {
+    schedule: "*/5 * * * *"  // Every 5 minutes
+};
