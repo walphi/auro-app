@@ -11,6 +11,47 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// RAG Query Helper - tries rag_chunks first, falls back to knowledge_base
+async function queryRAG(query: string): Promise<string> {
+    try {
+        console.log('[RAG] Querying:', query);
+        const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const embResult = await embedModel.embedContent(query);
+        const embedding = embResult.embedding.values;
+
+        // Try new rag_chunks table first
+        let { data, error } = await supabase.rpc('match_rag_chunks', {
+            query_embedding: embedding,
+            match_threshold: 0.3,
+            match_count: 5,
+            filter_client_id: 'demo',
+            filter_folder_id: null
+        });
+
+        // Fallback to knowledge_base if rag_chunks fails or returns empty
+        if (error || !data || data.length === 0) {
+            console.log('[RAG] Trying knowledge_base fallback');
+            const fallback = await supabase.rpc('match_knowledge', {
+                query_embedding: embedding,
+                match_threshold: 0.4,
+                match_count: 5,
+                filter_project_id: null
+            });
+            if (!fallback.error) data = fallback.data;
+        }
+
+        if (data && data.length > 0) {
+            console.log('[RAG] Found', data.length, 'results');
+            return data.map((i: any) => i.content).join("\n\n");
+        } else {
+            return "No relevant information found in knowledge base.";
+        }
+    } catch (e: any) {
+        console.error('[RAG] Exception:', e.message);
+        return "Error searching knowledge base.";
+    }
+}
+
 async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
     try {
         const payload = {
@@ -320,15 +361,7 @@ RULES:
                     let toolResult = "";
 
                     if (name === 'RAG_QUERY_TOOL') {
-                        try {
-                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                            const embResult = await embedModel.embedContent((args as any).query);
-                            const { data } = await supabase.rpc('match_knowledge', {
-                                query_embedding: embResult.embedding.values,
-                                match_threshold: 0.5, match_count: 3, filter_project_id: null
-                            });
-                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                        } catch (e) { toolResult = "Error searching."; }
+                        toolResult = await queryRAG((args as any).query);
                     } else if (name === 'UPDATE_LEAD') {
                         console.log("UPDATE_LEAD called with:", JSON.stringify(args));
                         if (leadId) {
@@ -392,15 +425,7 @@ RULES:
                     let toolResult = "";
 
                     if (name === 'RAG_QUERY_TOOL') {
-                        try {
-                            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-                            const embResult = await embedModel.embedContent((args as any).query);
-                            const { data } = await supabase.rpc('match_knowledge', {
-                                query_embedding: embResult.embedding.values,
-                                match_threshold: 0.5, match_count: 3, filter_project_id: null
-                            });
-                            toolResult = data?.map((i: any) => i.content).join("\n\n") || "No info found.";
-                        } catch (e) { toolResult = "Error searching."; }
+                        toolResult = await queryRAG((args as any).query);
                     } else if (name === 'UPDATE_LEAD') {
                         console.log("UPDATE_LEAD called with:", JSON.stringify(args));
                         if (leadId) {
