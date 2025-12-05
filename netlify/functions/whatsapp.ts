@@ -11,7 +11,7 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// RAG Query Helper - tries rag_chunks first, falls back to knowledge_base
+// RAG Query Helper - prioritizes rag_chunks (hot topics), supplements with knowledge_base
 async function queryRAG(query: string): Promise<string> {
     try {
         console.log('[RAG] Querying:', query);
@@ -19,30 +19,45 @@ async function queryRAG(query: string): Promise<string> {
         const embResult = await embedModel.embedContent(query);
         const embedding = embResult.embedding.values;
 
-        // Try new rag_chunks table first
-        let { data, error } = await supabase.rpc('match_rag_chunks', {
+        let results: string[] = [];
+
+        // Primary: Get from rag_chunks (hot topics, recent content)
+        const { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
             query_embedding: embedding,
-            match_threshold: 0.3,
-            match_count: 5,
+            match_threshold: 0.5,  // Higher threshold for better relevance
+            match_count: 3,
             filter_client_id: 'demo',
             filter_folder_id: null
         });
 
-        // Fallback to knowledge_base if rag_chunks fails or returns empty
-        if (error || !data || data.length === 0) {
-            console.log('[RAG] Trying knowledge_base fallback');
-            const fallback = await supabase.rpc('match_knowledge', {
-                query_embedding: embedding,
-                match_threshold: 0.4,
-                match_count: 5,
-                filter_project_id: null
-            });
-            if (!fallback.error) data = fallback.data;
+        if (!ragError && ragData && ragData.length > 0) {
+            console.log('[RAG] rag_chunks:', ragData.length, 'results');
+            results = ragData.map((i: any) => i.content);
         }
 
-        if (data && data.length > 0) {
-            console.log('[RAG] Found', data.length, 'results');
-            return data.map((i: any) => i.content).join("\n\n");
+        // Supplement: Get from knowledge_base if needed
+        if (results.length < 2) {
+            const { data: kbData, error: kbError } = await supabase.rpc('match_knowledge', {
+                query_embedding: embedding,
+                match_threshold: 0.5,
+                match_count: 3,
+                filter_project_id: null
+            });
+
+            if (!kbError && kbData && kbData.length > 0) {
+                console.log('[RAG] knowledge_base:', kbData.length, 'results');
+                // Add only if not already included (avoid duplicates)
+                kbData.forEach((i: any) => {
+                    if (!results.includes(i.content)) {
+                        results.push(i.content);
+                    }
+                });
+            }
+        }
+
+        if (results.length > 0) {
+            console.log('[RAG] Total results:', results.length);
+            return results.slice(0, 3).join("\n\n");  // Max 3 results
         } else {
             return "No relevant information found in knowledge base.";
         }
