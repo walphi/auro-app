@@ -74,10 +74,46 @@ export const handler: Handler = async (event) => {
                 const html = await response.text();
                 console.log('[RAG] HTML received:', html.length, 'bytes');
                 const $ = cheerio.load(html);
+
+                // Try multiple extraction methods
+                let extractedContent = '';
+
+                // Method 1: Try JSON-LD structured data
+                $('script[type="application/ld+json"]').each((i, el) => {
+                    try {
+                        const jsonLd = JSON.parse($(el).html() || '{}');
+                        if (jsonLd.description) extractedContent += jsonLd.description + ' ';
+                        if (jsonLd.name) extractedContent += jsonLd.name + ' ';
+                        if (jsonLd.text) extractedContent += jsonLd.text + ' ';
+                    } catch (e) { }
+                });
+
+                // Method 2: Meta description and OG tags
+                const metaDesc = $('meta[name="description"]').attr('content') || '';
+                const ogDesc = $('meta[property="og:description"]').attr('content') || '';
+                const ogTitle = $('meta[property="og:title"]').attr('content') || '';
+                extractedContent += `${metaDesc} ${ogDesc} ${ogTitle} `;
+
+                // Method 3: Body text (after removing scripts)
                 $('script, style, nav, footer, header, noscript, iframe').remove();
-                content = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 10000);
-                filename = $('title').text() || url;
+                const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+                extractedContent += bodyText;
+
+                content = extractedContent.trim().substring(0, 10000);
+                filename = $('title').text() || ogTitle || url;
                 console.log('[RAG] Extracted content:', content.length, 'chars');
+
+                // If still no content, it's likely a JavaScript SPA
+                if (content.length < 50) {
+                    console.error('[RAG] No content extracted - likely JavaScript SPA');
+                    return {
+                        statusCode: 400,
+                        headers,
+                        body: JSON.stringify({
+                            error: 'This website uses JavaScript to render content. Please copy and paste the text manually using "Set Context" instead.'
+                        })
+                    };
+                }
             } catch (fetchErr: any) {
                 clearTimeout(timeoutId);
                 console.error('[RAG] URL fetch error:', fetchErr.message);
