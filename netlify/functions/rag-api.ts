@@ -51,26 +51,37 @@ export const handler: Handler = async (event) => {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing URL' }) };
             }
 
-            // Fetch URL with 5 second timeout
+            // Fetch URL with 8 second timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
 
             try {
+                console.log('[RAG] Fetching URL:', url);
                 const response = await fetch(url, {
-                    headers: { 'User-Agent': 'AURO-Bot/1.0' },
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; AURO-Bot/1.0)',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    },
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
 
+                if (!response.ok) {
+                    console.error('[RAG] URL response not OK:', response.status);
+                    return { statusCode: 400, headers, body: JSON.stringify({ error: `Failed to fetch URL: HTTP ${response.status}` }) };
+                }
+
                 const html = await response.text();
+                console.log('[RAG] HTML received:', html.length, 'bytes');
                 const $ = cheerio.load(html);
-                $('script, style, nav, footer, header').remove();
+                $('script, style, nav, footer, header, noscript, iframe').remove();
                 content = $('body').text().replace(/\s+/g, ' ').trim().substring(0, 10000);
                 filename = $('title').text() || url;
+                console.log('[RAG] Extracted content:', content.length, 'chars');
             } catch (fetchErr: any) {
                 clearTimeout(timeoutId);
                 console.error('[RAG] URL fetch error:', fetchErr.message);
-                return { statusCode: 400, headers, body: JSON.stringify({ error: 'Failed to fetch URL' }) };
+                return { statusCode: 400, headers, body: JSON.stringify({ error: `Failed to fetch URL: ${fetchErr.message}` }) };
             }
 
             type = 'url';
