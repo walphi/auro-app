@@ -67,6 +67,45 @@ async function queryRAG(query: string): Promise<string> {
     }
 }
 
+// Web Search Helper (Perplexity API)
+async function searchWeb(query: string): Promise<string> {
+    const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+    if (!PERPLEXITY_API_KEY) return "Web search is disabled (API key missing).";
+
+    try {
+        console.log('[Web] Searching:', query);
+        const response = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'sonar',
+                messages: [
+                    { role: 'system', content: 'You are a search assistant. Provide concise, factual answers with sources.' },
+                    { role: 'user', content: query }
+                ],
+                max_tokens: 500,
+                temperature: 0.2
+            })
+        });
+
+        if (!response.ok) {
+            console.error('[Web] API error:', response.status);
+            return "Error searching the web.";
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "No results found.";
+        console.log('[Web] Result length:', content.length);
+        return content;
+    } catch (e: any) {
+        console.error('[Web] Exception:', e.message);
+        return "Error searching the web.";
+    }
+}
+
 async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
     try {
         const payload = {
@@ -281,8 +320,9 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 RULES:
 - IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
 - IF the user asks to be called (e.g., "call me", "can you call me", "ring me") in text or voice, YOU MUST CALL the 'INITIATE_CALL' tool.
+- USE 'SEARCH_WEB_TOOL' if the user asks for current market data, competitor info, or general questions not in your knowledge base.
 - DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
-- ALWAYS ground your answers in the RAG data.
+- ALWAYS ground your answers in the RAG data or Web Search results.
 - NEVER invent information.
 - Maintain a professional, high-value tone.
 - Keep responses under 50 words.`;
@@ -302,8 +342,19 @@ RULES:
                         }
                     },
                     {
+                        name: "SEARCH_WEB_TOOL",
+                        description: "Search the live web for real-time information, market trends, news, or competitor data.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                query: { type: "STRING", description: "The search query" }
+                            },
+                            required: ["query"]
+                        }
+                    },
+                    {
                         name: "UPDATE_LEAD",
-                        description: "Update lead qualification details. Call this whenever the user provides their name, email, budget, etc.",
+                        description: "Update the lead's profile with new information provided in the conversation.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
@@ -312,172 +363,105 @@ RULES:
                                 budget: { type: "STRING" },
                                 property_type: { type: "STRING" },
                                 location: { type: "STRING" },
-                                timeline: { type: "STRING" },
-                                status: { type: "STRING" }
+                                timeline: { type: "STRING" }
                             }
                         }
                     },
                     {
-                        name: "LOG_ACTIVITY",
-                        description: "Log a summary of the conversation or specific activity",
+                        name: "INITIATE_CALL",
+                        description: "Initiate an outbound voice call to the user immediately. Use this when the user asks to be called.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
-                                content: { type: "STRING", description: "Summary of activity" }
-                            },
-                            required: ["content"]
-                        }
-                    },
-                    {
-                        name: "INITIATE_CALL",
-                        description: "Trigger a voice call to the user immediately. Use this when the user explicitly asks for a call.",
-                        parameters: {
-                            type: "OBJECT",
-                            properties: {},
+                                reason: { type: "STRING", description: "Reason for the call" }
+                            }
                         }
                     }
                 ]
             }
         ];
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", tools: tools as any });
-
-        const chat = model.startChat({
-            history: [
-                { role: "user", parts: [{ text: systemInstruction }] },
-                { role: "model", parts: [{ text: "Understood. I have the lead's context and am ready to assist." }] }
-            ]
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            systemInstruction: systemInstruction,
+            tools: tools
         });
 
-        let finalResponse = "";
+        const chat = model.startChat();
 
-        if (numMedia > 0 && mediaBuffer && mediaType) {
-            // Handle Media (Voice/Image) with Gemini
-            const audioBase64 = mediaBuffer.toString('base64');
-
-            // Send audio/image to chat
-            const result = await chat.sendMessage([
-                { inlineData: { mimeType: mediaType, data: audioBase64 } },
-                { text: "Analyze this media and reply to the user." }
-            ]);
-
-            // Handle potential function calls
-            let response = result.response;
-            let functionCalls = response.functionCalls();
-
-            // Loop for tool calls (Max 3 turns)
-            let turns = 0;
-            while (functionCalls && functionCalls.length > 0 && turns < 3) {
-                turns++;
-                const parts = [];
-                for (const call of functionCalls) {
-                    const name = call.name;
-                    const args = call.args;
-                    let toolResult = "";
-
-                    if (name === 'RAG_QUERY_TOOL') {
-                        toolResult = await queryRAG((args as any).query);
-                    } else if (name === 'UPDATE_LEAD') {
-                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
-                        if (leadId) {
-                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                            if (error) {
-                                console.error("Error updating lead:", error);
-                                toolResult = "Error updating lead.";
-                            } else {
-                                console.log("Lead updated successfully.");
-                                toolResult = "Lead updated.";
-                            }
-                        } else {
-                            toolResult = "No lead ID found.";
-                        }
-                    } else if (name === 'LOG_ACTIVITY') {
-                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                        toolResult = "Logged.";
-                    } else if (name === 'INITIATE_CALL') {
-                        console.log("INITIATE_CALL triggered by AI (Media).");
-                        const callSuccess = await initiateVapiCall(fromNumber);
-                        if (callSuccess) {
-                            toolResult = "Call initiated successfully. Tell the user Morgan is calling now.";
-                        } else {
-                            toolResult = "Failed to initiate call. Apologize to the user.";
-                        }
-                    }
-
-                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
-                }
-                const nextResult = await chat.sendMessage(parts);
-                response = nextResult.response;
-                functionCalls = response.functionCalls();
-            }
-            finalResponse = response.text();
+        // Check if voice note or text
+        let promptText = userMessage;
+        if (numMedia > 0 && mediaType?.startsWith('audio/') && mediaBuffer) {
             isVoiceResponse = true;
-
-        } else if (userMessage.toLowerCase().includes("pictures") || userMessage.toLowerCase().includes("brochure")) {
-            finalResponse = "Here is the brochure: https://example.com/marina-zenith-brochure.pdf";
-        } else if (userMessage.toLowerCase().includes("call me") || userMessage.toLowerCase().includes("can someone call me")) {
-            console.log("User requested a call. Initiating Vapi call...");
-            const callSuccess = await initiateVapiCall(fromNumber);
-            if (callSuccess) {
-                finalResponse = "Sure, I'm having Morgan call you now...";
-            } else {
-                finalResponse = "I'm sorry, I couldn't initiate the call at this moment. Please try again later.";
-            }
-        } else {
-            // Text Message
-            let result = await chat.sendMessage(userMessage);
-            let response = result.response;
-            let functionCalls = response.functionCalls();
-
-            // Loop for tool calls (Max 3 turns)
-            let turns = 0;
-            while (functionCalls && functionCalls.length > 0 && turns < 3) {
-                turns++;
-                const parts = [];
-                for (const call of functionCalls) {
-                    const name = call.name;
-                    const args = call.args;
-                    let toolResult = "";
-
-                    if (name === 'RAG_QUERY_TOOL') {
-                        toolResult = await queryRAG((args as any).query);
-                    } else if (name === 'UPDATE_LEAD') {
-                        console.log("UPDATE_LEAD called with:", JSON.stringify(args));
-                        if (leadId) {
-                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                            if (error) {
-                                console.error("Error updating lead:", error);
-                                toolResult = "Error updating lead.";
-                            } else {
-                                console.log("Lead updated successfully.");
-                                toolResult = "Lead updated.";
-                            }
-                        } else {
-                            toolResult = "No lead ID found.";
-                        }
-                    } else if (name === 'LOG_ACTIVITY') {
-                        if (leadId) await supabase.from('messages').insert({ lead_id: leadId, type: 'System_Note', sender: 'System', content: (args as any).content });
-                        toolResult = "Logged.";
-                    } else if (name === 'INITIATE_CALL') {
-                        console.log("INITIATE_CALL triggered by AI (Text).");
-                        const callSuccess = await initiateVapiCall(fromNumber);
-                        if (callSuccess) {
-                            toolResult = "Call initiated successfully. Tell the user Morgan is calling now.";
-                        } else {
-                            toolResult = "Failed to initiate call. Apologize to the user.";
-                        }
-                    }
-
-                    parts.push({ functionResponse: { name, response: { result: toolResult } } });
-                }
-                const nextResult = await chat.sendMessage(parts);
-                response = nextResult.response;
-                functionCalls = response.functionCalls();
-            }
-            finalResponse = response.text();
+            console.log("Processing audio message...");
+            promptText = "[USER SENT A VOICE NOTE - PLEASE REPLY CONFIRMING RECEIPT AND ASK TO CONTINUE IN TEXT OR SCHEDULE A CALL]";
         }
 
-        responseText = finalResponse;
+        console.log("Sending prompt to Gemini:", promptText);
+        const result = await chat.sendMessage(promptText);
+        const response = await result.response;
+
+        let functionCalls = response.functionCalls();
+        let textResponse = response.text();
+
+        // Handle function calls loop (max 3 turns)
+        let turns = 0;
+        while (functionCalls && functionCalls.length > 0 && turns < 3) {
+            turns++;
+            const parts = [];
+            for (const call of functionCalls) {
+                const name = call.name;
+                const args = call.args;
+                let toolResult = "";
+
+                if (name === 'RAG_QUERY_TOOL') {
+                    toolResult = await queryRAG((args as any).query);
+                } else if (name === 'SEARCH_WEB_TOOL') {
+                    toolResult = await searchWeb((args as any).query);
+                } else if (name === 'UPDATE_LEAD') {
+                    console.log("UPDATE_LEAD called with:", JSON.stringify(args));
+                    if (leadId) {
+                        const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                        if (error) {
+                            console.error("Error updating lead:", error);
+                            toolResult = "Error updating lead.";
+                        } else {
+                            console.log("Lead updated successfully.");
+                            toolResult = "Lead updated successfully.";
+                        }
+                    } else {
+                        toolResult = "No lead ID found.";
+                    }
+                } else if (name === 'INITIATE_CALL') {
+                    console.log("INITIATE_CALL called");
+                    const callStarted = await initiateVapiCall(fromNumber);
+                    if (callStarted) {
+                        toolResult = "Call initiated successfully.";
+                    } else {
+                        toolResult = "Failed to initiate call.";
+                    }
+                }
+
+                parts.push({
+                    functionResponse: {
+                        name: name,
+                        response: {
+                            name: name,
+                            content: toolResult
+                        }
+                    }
+                });
+            }
+
+            // Send tool results back to model
+            console.log("Sending tool results back to Gemini...");
+            const nextResult = await chat.sendMessage(parts);
+            const nextResponse = await nextResult.response;
+            functionCalls = nextResponse.functionCalls();
+            textResponse = nextResponse.text();
+        }
+
+        responseText = textResponse || "I didn't quite catch that. Could you repeat?";
 
         // --- SUPABASE: Log AI Response ---
         if (leadId && responseText) {
@@ -486,9 +470,6 @@ RULES:
 
             if (isVoiceResponse) {
                 messageType = 'Voice';
-                // For AI voice response, we don't have a URL yet (it's generated on the fly by Twilio), 
-                // but we can flag it or store the TTS URL if we want.
-                // Let's store the TTS URL in meta so the frontend can play it if needed.
                 meta = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             }
 
@@ -508,7 +489,6 @@ RULES:
     `;
 
         if (isVoiceResponse) {
-            // Add Media tag for TTS
             const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             twiml += `<Media>${ttsUrl}</Media>`;
         }
