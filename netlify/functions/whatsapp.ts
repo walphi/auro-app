@@ -390,15 +390,26 @@ RULES:
         const chat = model.startChat();
 
         // Check if voice note or text
-        let promptText = userMessage;
+        let promptContent: any = userMessage;
+
         if (numMedia > 0 && mediaType?.startsWith('audio/') && mediaBuffer) {
             isVoiceResponse = true;
             console.log("Processing audio message...");
-            promptText = "[USER SENT A VOICE NOTE - PLEASE REPLY CONFIRMING RECEIPT AND ASK TO CONTINUE IN TEXT OR SCHEDULE A CALL]";
+
+            // Send audio directly to Gemini (Multimodal)
+            promptContent = [
+                { text: "The user sent this audio message. Listen to it and respond accordingly." },
+                {
+                    inlineData: {
+                        mimeType: mediaType,
+                        data: Buffer.from(mediaBuffer).toString("base64")
+                    }
+                }
+            ];
         }
 
-        console.log("Sending prompt to Gemini:", promptText);
-        const result = await chat.sendMessage(promptText);
+        console.log("Sending prompt to Gemini (Text or Audio)...");
+        const result = await chat.sendMessage(promptContent);
         const response = await result.response;
 
         let functionCalls = response.functionCalls();
