@@ -1,5 +1,5 @@
 import { Handler } from "@netlify/functions";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
 const handler: Handler = async (event) => {
     try {
@@ -11,79 +11,40 @@ const handler: Handler = async (event) => {
             };
         }
 
-        console.log(`[TTS] Generating Gemini Native Audio (Kore) for: "${text.substring(0, 50)}..."`);
+        console.log(`[TTS] Generating OpenAI Audio (Onyx) for: "${text.substring(0, 50)}..."`);
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.OPENAI_API_KEY;
         if (!apiKey) {
-            throw new Error("Missing GEMINI_API_KEY");
+            throw new Error("Missing OPENAI_API_KEY");
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const openai = new OpenAI({ apiKey: apiKey });
 
-        // Use Gemini 2.0 Flash Experimental for native audio generation
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash-exp",
-            generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: {
-                            voiceName: "Kore"
-                        }
-                    }
-                }
-            } as any // Cast to any because SDK types might not be fully updated for this exp feature yet
+        // Generate speech using OpenAI TTS HD
+        const mp3 = await openai.audio.speech.create({
+            model: "tts-1-hd",
+            voice: "onyx", // 'onyx' is deep and professional, closest to 'Elliot'
+            input: text,
         });
 
-        // Prompt the model to speak the text
-        const prompt = `Please read the following text clearly and naturally: "${text}"`;
+        // Get the raw buffer
+        const buffer = Buffer.from(await mp3.arrayBuffer());
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-
-        // The audio content comes in parts
-        // Typically response.candidates[0].content.parts[0].inlineData.data
-        // But the SDK simplifies access. 
-        // Let's check how the raw response looks or use the parts directly.
-
-        // Standard SDK access usually allows extracting parts.
-        // For Audio, it returns base64 string in inlineData.
-
-        // We handle potential structure variations for experimental model
-        const parts = response.candidates?.[0]?.content?.parts;
-        let audioBase64 = null;
-
-        if (parts) {
-            for (const part of parts) {
-                if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
-                    audioBase64 = part.inlineData.data;
-                    break;
-                }
-            }
-        }
-
-        if (!audioBase64) {
-            throw new Error("No audio data returned from Gemini.");
-        }
-
-        console.log(`[TTS] Generated Audio Length: ${audioBase64.length} chars (base64)`);
+        console.log(`[TTS] Generated Audio Length: ${buffer.length} bytes`);
 
         return {
             statusCode: 200,
             headers: {
-                "Content-Type": "audio/wav", // Gemini usually outputs WAV or PCM in a container
-                "Content-Length": Buffer.from(audioBase64, 'base64').length.toString(),
+                "Content-Type": "audio/mpeg",
+                "Content-Length": buffer.length.toString(),
                 "Cache-Control": "public, max-age=31536000, immutable"
             },
-            body: audioBase64, // response.text() is empty for Audio modality, we use the base64 from inlineData
+            body: buffer.toString('base64'),
             isBase64Encoded: true
         };
 
     } catch (error: any) {
         console.error("[TTS] Error:", error.message);
-        if (error.response) {
-            console.error("[TTS] Gemini Response Details:", JSON.stringify(error.response, null, 2));
-        }
 
         return {
             statusCode: 500,
