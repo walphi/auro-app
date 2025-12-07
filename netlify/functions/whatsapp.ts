@@ -438,7 +438,9 @@ RULES:
                             toolResult = "Error updating lead.";
                         } else {
                             console.log("Lead updated successfully.");
-                            toolResult = "Lead updated successfully.";
+                            // Explicitly tell the model what it now knows to prevent loops
+                            const updatedFields = Object.keys(args).join(", ");
+                            toolResult = `Lead updated successfully. You now KNOW the following details: ${updatedFields}. DO NOT ask for them again. Proceed to the next missing qualification criteria.`;
                         }
                     } else {
                         toolResult = "No lead ID found.";
