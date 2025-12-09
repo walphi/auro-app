@@ -106,13 +106,44 @@ export const handler: Handler = async (event) => {
                 // If still no content, it's likely a JavaScript SPA
                 if (content.length < 50) {
                     console.error('[RAG] No content extracted - likely JavaScript SPA');
-                    return {
-                        statusCode: 400,
-                        headers,
-                        body: JSON.stringify({
-                            error: 'This website uses JavaScript to render content. Please copy and paste the text manually using "Set Context" instead.'
-                        })
-                    };
+
+                    if (process.env.PARSE_API_KEY) {
+                        console.log('[RAG] Attempting Parse Fallback...');
+                        try {
+                            const parseResp = await fetch('https://api.parse.bot/scraper/98f4861a-6e6b-41ed-8efe-f9ff96ee8fe8/fetch_listing_page', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.PARSE_API_KEY },
+                                body: JSON.stringify({ page_url: url })
+                            });
+
+                            if (parseResp.ok) {
+                                const parseData = await parseResp.json();
+                                // Handle various response formats
+                                const parseContent = parseData.markdown || parseData.text || parseData.content || JSON.stringify(parseData, null, 2);
+
+                                if (parseContent && parseContent.length > 50) {
+                                    console.log('[RAG] Parse Success:', parseContent.length, 'chars');
+                                    content = parseContent;
+                                } else {
+                                    console.log('[RAG] Parse returned empty content.');
+                                }
+                            } else {
+                                console.error('[RAG] Parse API Error:', parseResp.status);
+                            }
+                        } catch (parseErr: any) {
+                            console.error('[RAG] Parse Exception:', parseErr.message);
+                        }
+                    }
+
+                    if (content.length < 50) {
+                        return {
+                            statusCode: 400,
+                            headers,
+                            body: JSON.stringify({
+                                error: 'This website uses JavaScript to render content and Parse fallback failed. Please copy and paste the text manually using "Set Context" instead.'
+                            })
+                        };
+                    }
                 }
             } catch (fetchErr: any) {
                 clearTimeout(timeoutId);
