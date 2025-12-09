@@ -239,27 +239,10 @@ const AgentFolders = () => {
         if (!confirm('Are you sure you want to delete this source?')) return;
 
         try {
-            // Delete from knowledge_base
-            const { error: kbError } = await supabase
-                .from('knowledge_base')
-                .delete()
-                .eq('id', sourceId);
-
-            if (kbError) {
-                console.error("knowledge_base delete error:", kbError);
-                throw kbError;
-            }
-
-            // Also delete from rag_chunks (the document_id references knowledge_base.id)
-            const { error: ragError } = await supabase
-                .from('rag_chunks')
-                .delete()
-                .eq('document_id', sourceId);
-
-            if (ragError) {
-                console.error("rag_chunks delete error:", ragError);
-                // Don't throw - rag_chunks might not have this entry
-            }
+            // Call Backend API to delete (bypasses RLS)
+            await axios.post('/api/v1/client/demo/rag/delete_source', {
+                id: sourceId
+            });
 
             // Refresh the knowledge base
             if (activeProject) {
@@ -269,7 +252,7 @@ const AgentFolders = () => {
             console.log('Source deleted successfully:', sourceId);
         } catch (error) {
             console.error("Failed to delete source:", error);
-            alert(`Failed to delete: ${error.message}`);
+            alert(`Failed to delete: ${error.response?.data?.error || error.message}`);
         }
     };
 

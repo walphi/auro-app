@@ -42,6 +42,20 @@ export const handler: Handler = async (event) => {
             filename = body.filename || 'Untitled';
             type = 'file';
             folderId = body.project_id || 'default';
+        } else if (action === 'delete_source') {
+            const body = JSON.parse(event.body || '{}');
+            const sourceId = body.id;
+            if (!sourceId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing ID' }) };
+
+            console.log(`[RAG] Deleting source: ${sourceId}`);
+            const { error: kbErr } = await supabase.from('knowledge_base').delete().eq('id', sourceId);
+            if (kbErr) {
+                console.error('[RAG] Delete error:', kbErr);
+                return { statusCode: 500, headers, body: JSON.stringify({ error: kbErr.message }) };
+            }
+
+            await supabase.from('rag_chunks').delete().eq('document_id', sourceId);
+            return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Deleted' }) };
         } else if (action === 'add_url') {
             const body = JSON.parse(event.body || '{}');
             const url = body.url;
