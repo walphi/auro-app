@@ -20,8 +20,8 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NE
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const AgentFolders = () => {
-    const [projects, setProjects] = useState([]);
-    const [activeProject, setActiveProject] = useState(null);
+    const [folders, setFolders] = useState([]);
+    const [activeFolder, setActiveFolder] = useState(null);
     const [knowledgeBase, setKnowledgeBase] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, indexing, complete
@@ -30,41 +30,41 @@ const AgentFolders = () => {
     // Inputs
     const [urlInput, setUrlInput] = useState('');
     const [hotTopicInput, setHotTopicInput] = useState('');
-    const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
+    const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
 
     useEffect(() => {
-        fetchProjects();
+        fetchFolders();
     }, []);
 
     useEffect(() => {
-        if (activeProject) {
-            fetchKnowledgeBase(activeProject.id);
+        if (activeFolder) {
+            fetchKnowledgeBase(activeFolder.id);
         }
-    }, [activeProject]);
+    }, [activeFolder]);
 
-    const fetchProjects = async () => {
+    const fetchFolders = async () => {
         try {
             const { data, error } = await supabase.from('projects').select('*');
             if (error) throw error;
 
             if (data && data.length > 0) {
-                setProjects(data);
-                setActiveProject(data[0]);
+                setFolders(data);
+                setActiveFolder(data[0]);
             } else {
-                // Create a default project if none exists
-                const { data: newProject, error: createError } = await supabase
+                // Create a default folder if none exists
+                const { data: newFolder, error: createError } = await supabase
                     .from('projects')
-                    .insert({ name: 'Default Project', status: 'Active' })
+                    .insert({ name: 'General Knowledge', status: 'Active' })
                     .select()
                     .single();
 
-                if (newProject) {
-                    setProjects([newProject]);
-                    setActiveProject(newProject);
+                if (newFolder) {
+                    setFolders([newFolder]);
+                    setActiveFolder(newFolder);
                 }
             }
         } catch (err) {
-            console.error("Error fetching projects:", err);
+            console.error("Error fetching folders:", err);
         } finally {
             setIsLoading(false);
         }
@@ -96,8 +96,8 @@ const AgentFolders = () => {
         }
     };
 
-    const handleCreateProject = async () => {
-        const name = prompt("Enter project name:");
+    const handleCreateFolder = async () => {
+        const name = prompt("Enter folder name:");
         if (!name) return;
 
         try {
@@ -109,18 +109,18 @@ const AgentFolders = () => {
 
             if (error) throw error;
 
-            setProjects([...projects, data]);
-            setActiveProject(data);
-            setIsProjectDropdownOpen(false);
+            setFolders([...folders, data]);
+            setActiveFolder(data);
+            setIsFolderDropdownOpen(false);
         } catch (err) {
-            console.error("Error creating project:", err);
-            alert(`Failed to create project: ${err.message || JSON.stringify(err)}`);
+            console.error("Error creating folder:", err);
+            alert(`Failed to create folder: ${err.message || JSON.stringify(err)}`);
         }
     };
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
-        if (!file || !activeProject) return;
+        if (!file || !activeFolder) return;
 
         setUploadStatus('uploading');
         setIndexingProgress(10);
@@ -176,13 +176,13 @@ const AgentFolders = () => {
             const response = await axios.post('/api/v1/client/demo/rag/upload_text', {
                 text: textContent,
                 filename: filename,
-                project_id: activeProject.id
+                project_id: activeFolder.id
             });
 
             setIndexingProgress(100);
             setUploadStatus('complete');
             setTimeout(() => setUploadStatus('idle'), 2000);
-            fetchKnowledgeBase(activeProject.id);
+            fetchKnowledgeBase(activeFolder.id);
 
         } catch (error) {
             console.error("Upload failed:", error);
@@ -192,7 +192,7 @@ const AgentFolders = () => {
     };
 
     const handleAddUrl = async () => {
-        if (!urlInput || !activeProject) return;
+        if (!urlInput || !activeFolder) return;
 
         setUploadStatus('indexing');
         setIndexingProgress(20);
@@ -200,14 +200,14 @@ const AgentFolders = () => {
         try {
             await axios.post('/api/v1/client/demo/rag/add_url', {
                 url: urlInput,
-                project_id: activeProject.id
+                project_id: activeFolder.id
             });
 
             setIndexingProgress(100);
             setUploadStatus('complete');
             setTimeout(() => setUploadStatus('idle'), 2000);
             setUrlInput('');
-            fetchKnowledgeBase(activeProject.id);
+            fetchKnowledgeBase(activeFolder.id);
 
         } catch (error) {
             console.error("URL indexing failed:", error);
@@ -217,16 +217,16 @@ const AgentFolders = () => {
     };
 
     const handleSetContext = async () => {
-        if (!hotTopicInput || !activeProject) return;
+        if (!hotTopicInput || !activeFolder) return;
 
         try {
             await axios.post('/api/v1/client/demo/rag/set_context', {
                 context: hotTopicInput,
-                project_id: activeProject.id
+                project_id: activeFolder.id
             });
 
             setHotTopicInput('');
-            fetchKnowledgeBase(activeProject.id);
+            fetchKnowledgeBase(activeFolder.id);
             alert("Context injected successfully.");
 
         } catch (error) {
@@ -245,8 +245,8 @@ const AgentFolders = () => {
             });
 
             // Refresh the knowledge base
-            if (activeProject) {
-                fetchKnowledgeBase(activeProject.id);
+            if (activeFolder) {
+                fetchKnowledgeBase(activeFolder.id);
             }
 
             console.log('Source deleted successfully:', sourceId);
@@ -268,37 +268,37 @@ const AgentFolders = () => {
                     <p className="text-slate-400 text-sm">Manage RAG knowledge bases for your AI agents.</p>
                 </div>
 
-                {/* Project Selector */}
+                {/* Folder Selector */}
                 <div className="relative">
                     <button
-                        onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+                        onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
                         className="glass-button px-4 py-2.5 rounded-xl text-white flex items-center gap-3 min-w-[240px] justify-between group"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="font-semibold">{activeProject?.name || 'Select Project'}</span>
+                            <span className="font-semibold">{activeFolder?.name || 'Select Folder'}</span>
                         </div>
                         <ChevronDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
                     </button>
 
-                    {isProjectDropdownOpen && (
+                    {isFolderDropdownOpen && (
                         <div className="absolute top-full right-0 mt-2 w-full glass-panel rounded-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                            {projects.map(p => (
+                            {folders.map(f => (
                                 <button
-                                    key={p.id}
-                                    onClick={() => { setActiveProject(p); setIsProjectDropdownOpen(false); }}
+                                    key={f.id}
+                                    onClick={() => { setActiveFolder(f); setIsFolderDropdownOpen(false); }}
                                     className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors flex justify-between items-center"
                                 >
-                                    {p.name}
-                                    {activeProject?.id === p.id && <CheckCircle2 size={14} className="text-indigo-400" />}
+                                    {f.name}
+                                    {activeFolder?.id === f.id && <CheckCircle2 size={14} className="text-indigo-400" />}
                                 </button>
                             ))}
                             <div className="border-t border-white/5 p-2">
                                 <button
-                                    onClick={handleCreateProject}
+                                    onClick={handleCreateFolder}
                                     className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors"
                                 >
-                                    <Plus size={14} /> New Project
+                                    <Plus size={14} /> New Folder
                                 </button>
                             </div>
                         </div>
@@ -423,7 +423,7 @@ const AgentFolders = () => {
                     <div className="p-5 border-b border-white/5 bg-white/5 flex justify-between items-center">
                         <h3 className="font-bold text-white text-sm">Active Sources</h3>
                         <button
-                            onClick={() => activeProject && fetchKnowledgeBase(activeProject.id)}
+                            onClick={() => activeFolder && fetchKnowledgeBase(activeFolder.id)}
                             className="text-slate-400 hover:text-white transition-colors"
                         >
                             <RefreshCw size={14} />

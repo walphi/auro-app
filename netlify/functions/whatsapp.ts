@@ -497,27 +497,40 @@ RULES:
             });
         }
 
-        let twiml = `
-      <Response>
-        <Message>
-          <Body>${responseText}</Body>
-    `;
+        // Helper to escape XML special characters
+        const escapeXml = (unsafe: string) => {
+            return unsafe.replace(/[<>&'"]/g, (c) => {
+                switch (c) {
+                    case '<': return '<';
+                    case '>': return '>';
+                    case '&': return '&';
+                    case "'": return "'";
+                    case '"': return '"';
+                    default: return c;
+                }
+            });
+        };
+
+        let twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>
+    <Body>${escapeXml(responseText)}</Body>`;
 
         if (isVoiceResponse) {
             const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
-            twiml += `<Media>${ttsUrl}</Media>`;
+            twiml += `
+    <Media>${ttsUrl}</Media>`;
         }
 
         twiml += `
-        </Message>
-      </Response>
-    `;
+  </Message>
+</Response>`;
 
         console.log("Generated TwiML:", twiml);
 
         return {
             statusCode: 200,
-            body: twiml,
+            body: twiml.trim(),
             headers: { "Content-Type": "text/xml" }
         };
 
