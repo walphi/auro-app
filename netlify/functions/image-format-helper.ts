@@ -53,22 +53,17 @@ export function convertToJpeg(imageUrl: string): string {
         return imageUrl.replace(/format=webp/gi, 'format=jpeg');
     }
 
-    // Pattern 4: Simple extension replacement
-    // Replace .webp with .jpg in the URL
-    let convertedUrl = imageUrl.replace(/\.webp/gi, '.jpg');
-
-    // If the URL has query parameters, try adding format conversion
-    if (convertedUrl.includes('?')) {
-        // Check if there's already a format parameter
-        if (!convertedUrl.match(/[?&](format|fm|f)=/i)) {
-            convertedUrl += '&format=jpeg';
-        }
-    } else {
-        // Add format parameter
-        convertedUrl += '?format=jpeg';
+    // Pattern 4: CloudFront - Simple extension replacement ONLY
+    // CloudFront doesn't support format conversion via query parameters
+    // Adding ?format=jpeg causes "Access Denied" errors
+    if (imageUrl.includes('cloudfront.net')) {
+        return imageUrl.replace(/\.webp/gi, '.jpg');
     }
 
-    return convertedUrl;
+    // Pattern 5: Simple extension replacement for other CDNs
+    // Replace .webp with .jpg in the URL
+    // DON'T add format parameters - they often cause access issues
+    return imageUrl.replace(/\.webp/gi, '.jpg');
 }
 
 /**
@@ -125,6 +120,11 @@ export function prepareImageForWhatsApp(imageUrl: string): string | null {
     // Ensure it's a valid HTTP(S) URL
     if (!imageUrl.match(/^https?:\/\//i)) {
         return null;
+    }
+
+    // If it's already JPEG or PNG, return as-is (don't add parameters)
+    if (isWhatsAppCompatible(imageUrl)) {
+        return imageUrl;
     }
 
     // Convert to JPEG if needed
