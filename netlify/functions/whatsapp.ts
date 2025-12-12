@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, formatListingsSummary, SearchFilters } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -317,17 +318,25 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 5. Preferred Location
 6. Timeline
 
+PROPERTY LISTINGS:
+You have access to the latest property listings from Provident Estate via the SEARCH_LISTINGS tool.
+- When the lead mentions budget, location, or property type preferences, PROACTIVELY search and suggest relevant listings.
+- When sharing a listing, include the property URL.
+- If the response includes [IMAGE:url], the image will be sent to the user automatically.
+- Format listings concisely: "[bedrooms]-bedroom [type] in [community] for AED [price]. [brief feature]. Link: [url]"
+- If multiple matches, present top 2-3 options briefly.
+
 RULES:
 - IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
+- IF the user asks about properties or mentions preferences, USE 'SEARCH_LISTINGS' to find matching listings.
 - IF all "Required Details" are known (none are "Unknown"), STOP asking questions. PROPOSE: "Would you like to schedule a call with one of our specialists to discuss specific units?"
 - IF the user agrees to a call (e.g., "yes", "sure", "call me"), YOU MUST CALL the 'INITIATE_CALL' tool immediately.
 - USE 'SEARCH_WEB_TOOL' if the user asks for current market data, competitor info, or general questions not in your knowledge base.
 - DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
-- ALWAYS ground your answers in the RAG data or Web Search results.
-- IF the RAG context contains a property image URL, you should include it in your response text so the user can see it.
+- ALWAYS ground your answers in the RAG data, listings, or Web Search results.
 - NEVER invent information.
 - Maintain a professional, high-value tone suitable for Provident Real Estate clients.
-- Keep responses under 50 words.`;
+- Keep responses under 100 words when sharing listings, 50 words otherwise.`;
 
         const tools = [
             {
@@ -376,6 +385,22 @@ RULES:
                             type: "OBJECT",
                             properties: {
                                 reason: { type: "STRING", description: "Reason for the call" }
+                            }
+                        }
+                    },
+                    {
+                        name: "SEARCH_LISTINGS",
+                        description: "Search available property listings from Provident Estate. Use when user mentions property preferences, budget, location, or asks to see properties.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                property_type: { type: "STRING", description: "Type: apartment, villa, townhouse, penthouse" },
+                                min_bedrooms: { type: "NUMBER", description: "Minimum number of bedrooms" },
+                                max_bedrooms: { type: "NUMBER", description: "Maximum number of bedrooms" },
+                                min_price: { type: "NUMBER", description: "Minimum price in AED" },
+                                max_price: { type: "NUMBER", description: "Maximum price in AED" },
+                                community: { type: "STRING", description: "Location/community name (e.g., Dubai Marina, Downtown)" },
+                                limit: { type: "NUMBER", description: "Max results to return (default 3)" }
                             }
                         }
                     }
@@ -455,6 +480,29 @@ RULES:
                     } else {
                         toolResult = "Failed to initiate call.";
                     }
+                } else if (name === 'SEARCH_LISTINGS') {
+                    console.log("SEARCH_LISTINGS called with:", JSON.stringify(args));
+                    try {
+                        const filters: SearchFilters = {
+                            property_type: (args as any).property_type,
+                            min_bedrooms: (args as any).min_bedrooms,
+                            max_bedrooms: (args as any).max_bedrooms,
+                            min_price: (args as any).min_price,
+                            max_price: (args as any).max_price,
+                            community: (args as any).community,
+                            limit: (args as any).limit || 3
+                        };
+                        const listings = await searchListings(filters);
+                        if (listings.length === 0) {
+                            toolResult = "No matching properties found. Try broadening the search criteria.";
+                        } else {
+                            toolResult = formatListingsSummary(listings);
+                        }
+                        console.log(`SEARCH_LISTINGS found ${listings.length} results`);
+                    } catch (e: any) {
+                        console.error("SEARCH_LISTINGS error:", e.message);
+                        toolResult = "Error searching listings. Please try again.";
+                    }
                 }
 
                 parts.push({
@@ -477,6 +525,17 @@ RULES:
         }
 
         responseText = textResponse || "I didn't quite catch that. Could you repeat?";
+
+        // --- EXTRACT IMAGE URL FROM RESPONSE ---
+        let listingImageUrl: string | null = null;
+        if (responseText.includes('[IMAGE:')) {
+            const imageMatch = responseText.match(/\[IMAGE:(https?:\/\/[^\]]+)\]/);
+            if (imageMatch) {
+                listingImageUrl = imageMatch[1];
+                // Remove the image marker from the text
+                responseText = responseText.replace(/\[IMAGE:[^\]]+\]/g, '').trim();
+            }
+        }
 
         // --- SUPABASE: Log AI Response ---
         if (leadId && responseText) {
@@ -516,10 +575,17 @@ RULES:
   <Message>
     <Body>${escapeXml(responseText)}</Body>`;
 
+        // Add TTS audio for voice responses
         if (isVoiceResponse) {
             const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             twiml += `
     <Media>${ttsUrl}</Media>`;
+        }
+        
+        // Add property listing image if present
+        if (listingImageUrl) {
+            twiml += `
+    <Media>${escapeXml(listingImageUrl)}</Media>`;
         }
 
         twiml += `
