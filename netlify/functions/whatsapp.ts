@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, formatListingsResponse, SearchFilters, ListingsResponse } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -157,6 +158,7 @@ const handler: Handler = async (event) => {
 
         let isVoiceResponse = false;
         let responseText = "";
+        let responseImages: string[] = [];
 
         console.log(`Received message from ${fromNumber}. Media: ${numMedia}, Text: "${userMessage.substring(0, 50)}..."`);
 
@@ -306,7 +308,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
         const systemInstruction = `You are the AI Assistant for Provident Real Estate, a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base (specifically the Provident Real Estate folder).
 
 YOUR GOAL:
-Qualify the lead by naturally asking for missing details.
+Qualify the lead by naturally asking for missing details, and help them find properties.
 ${leadContext}
 
 REQUIRED DETAILS (Ask only if "Unknown" above):
@@ -318,16 +320,17 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 6. Timeline
 
 RULES:
+- IF the user asks about available properties, listings, or what you have for sale/rent, USE the 'SEARCH_LISTINGS' tool immediately with any filters they mention.
 - IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
 - IF all "Required Details" are known (none are "Unknown"), STOP asking questions. PROPOSE: "Would you like to schedule a call with one of our specialists to discuss specific units?"
 - IF the user agrees to a call (e.g., "yes", "sure", "call me"), YOU MUST CALL the 'INITIATE_CALL' tool immediately.
 - USE 'SEARCH_WEB_TOOL' if the user asks for current market data, competitor info, or general questions not in your knowledge base.
 - DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
-- ALWAYS ground your answers in the RAG data or Web Search results.
+- ALWAYS ground your answers in the RAG data, Search Listings results, or Web Search results.
 - IF the RAG context contains a property image URL, you should include it in your response text so the user can see it.
 - NEVER invent information.
 - Maintain a professional, high-value tone suitable for Provident Real Estate clients.
-- Keep responses under 50 words.`;
+- Keep responses under 100 words when sharing property listings.`;
 
         const tools = [
             {
@@ -376,6 +379,43 @@ RULES:
                             type: "OBJECT",
                             properties: {
                                 reason: { type: "STRING", description: "Reason for the call" }
+                            }
+                        }
+                    },
+                    {
+                        name: "SEARCH_LISTINGS",
+                        description: "Search for property listings based on user criteria. Use this when the user asks about available properties, apartments, villas, or any real estate listings for sale or rent.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                property_type: {
+                                    type: "STRING",
+                                    description: "Type of property: apartment, villa, townhouse, penthouse, studio"
+                                },
+                                community: {
+                                    type: "STRING",
+                                    description: "Location/community name: Dubai Marina, Downtown, JBR, Palm Jumeirah, Business Bay, etc."
+                                },
+                                min_price: {
+                                    type: "NUMBER",
+                                    description: "Minimum price in AED"
+                                },
+                                max_price: {
+                                    type: "NUMBER",
+                                    description: "Maximum price in AED"
+                                },
+                                min_bedrooms: {
+                                    type: "NUMBER",
+                                    description: "Minimum number of bedrooms"
+                                },
+                                max_bedrooms: {
+                                    type: "NUMBER",
+                                    description: "Maximum number of bedrooms"
+                                },
+                                offering_type: {
+                                    type: "STRING",
+                                    description: "sale or rent (default: sale)"
+                                }
                             }
                         }
                     }
@@ -455,6 +495,31 @@ RULES:
                     } else {
                         toolResult = "Failed to initiate call.";
                     }
+                } else if (name === 'SEARCH_LISTINGS') {
+                    console.log("SEARCH_LISTINGS called with:", JSON.stringify(args));
+
+                    const filters: SearchFilters = {
+                        property_type: (args as any).property_type,
+                        community: (args as any).community,
+                        min_price: (args as any).min_price,
+                        max_price: (args as any).max_price,
+                        min_bedrooms: (args as any).min_bedrooms,
+                        max_bedrooms: (args as any).max_bedrooms,
+                        offering_type: (args as any).offering_type || 'sale',
+                        limit: 3
+                    };
+
+                    const listings = await searchListings(filters);
+                    console.log(`SEARCH_LISTINGS found ${listings.length} results`);
+
+                    const listingsResponse = formatListingsResponse(listings);
+                    toolResult = listingsResponse.text;
+
+                    // Store images to send in WhatsApp message
+                    if (listingsResponse.images.length > 0) {
+                        responseImages = listingsResponse.images;
+                        console.log(`Will send ${responseImages.length} property images`);
+                    }
                 }
 
                 parts.push({
@@ -520,6 +585,16 @@ RULES:
             const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             twiml += `
     <Media>${ttsUrl}</Media>`;
+        }
+
+        // Add property images if available (max 10 per WhatsApp message)
+        if (responseImages.length > 0) {
+            const imagesToSend = responseImages.slice(0, 10); // WhatsApp limit
+            for (const imageUrl of imagesToSend) {
+                twiml += `
+    <Media>${escapeXml(imageUrl)}</Media>`;
+            }
+            console.log(`Added ${imagesToSend.length} images to TwiML`);
         }
 
         twiml += `

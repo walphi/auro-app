@@ -1,6 +1,7 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, formatListingsForVoice, SearchFilters } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -180,6 +181,34 @@ const handler: Handler = async (event) => {
         } catch (err: any) {
           console.error("Log Activity Error:", err);
           return { toolCallId: call.id, result: "Error logging activity." };
+        }
+      }
+
+      // 4. SEARCH_LISTINGS
+      if (name === 'SEARCH_LISTINGS') {
+        console.log("[VAPI] SEARCH_LISTINGS called with:", JSON.stringify(args));
+        
+        try {
+          const filters: SearchFilters = {
+            property_type: args.property_type,
+            community: args.community,
+            min_price: args.min_price,
+            max_price: args.max_price,
+            min_bedrooms: args.min_bedrooms,
+            max_bedrooms: args.max_bedrooms,
+            offering_type: args.offering_type || 'sale',
+            limit: 3
+          };
+          
+          const listings = await searchListings(filters);
+          console.log(`[VAPI] SEARCH_LISTINGS found ${listings.length} results`);
+          
+          // Use voice-friendly format for VAPI
+          const voiceResponse = formatListingsForVoice(listings);
+          return { toolCallId: call.id, result: voiceResponse };
+        } catch (err: any) {
+          console.error("[VAPI] SEARCH_LISTINGS Error:", err);
+          return { toolCallId: call.id, result: "I encountered an error while searching for properties. Would you like me to try again?" };
         }
       }
 
