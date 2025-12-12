@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { convertImagesToJpeg, prepareImageForWhatsApp } from "./image-format-helper";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
@@ -143,9 +144,17 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
 
-        // Collect first image from each listing
+        // Collect first image from each listing and convert to WhatsApp-compatible format
         if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
-            images.push(listing.images[0]);
+            // Convert images to JPEG format for WhatsApp compatibility
+            const convertedImages = convertImagesToJpeg(listing.images);
+            if (convertedImages.length > 0) {
+                const whatsappImage = prepareImageForWhatsApp(convertedImages[0]);
+                if (whatsappImage) {
+                    images.push(whatsappImage);
+                    console.log(`[Listings] Converted image for WhatsApp: ${whatsappImage.substring(0, 80)}...`);
+                }
+            }
         }
         response += '\n';
     });

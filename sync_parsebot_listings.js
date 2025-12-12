@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
+import { convertImagesToJpeg } from './image-format-helper.js';
 
 // Load Environment
 const envPath = path.resolve('auro-rag-mcp', '.env');
@@ -116,6 +117,10 @@ function extractListings(parseData, sourceUrl) {
                     });
                 }
 
+                // Convert WebP images to JPEG for WhatsApp compatibility
+                const whatsappCompatibleImages = convertImagesToJpeg(imageUrls);
+                console.log(`  📸 Converted ${imageUrls.length} images (${whatsappCompatibleImages.length} compatible)`);
+
                 // Extract agent info
                 const agent = raw.link_to_employee || raw.crm_negotiator_id?.[0] || {};
 
@@ -141,7 +146,7 @@ function extractListings(parseData, sourceUrl) {
                     area_sqft: parseFloat(raw.floorarea_min || raw.floorarea_max || 0),
                     price: raw.price || 0,
                     price_per_sqft: raw.floorarea_min && raw.price ? (raw.price / raw.floorarea_min) : null,
-                    images: imageUrls,
+                    images: whatsappCompatibleImages, // Use converted images for WhatsApp compatibility
                     agent_name: agent.name || 'Provident Estate',
                     agent_phone: agent.phone || null,
                     agent_company: 'Provident Estate',

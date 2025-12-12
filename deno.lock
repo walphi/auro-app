@@ -11,12 +11,36 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@calcom/embed-react@^1.5.3",
+        "npm:@clerk/clerk-react@^5.56.0",
+        "npm:@google/genai@^1.30.0",
         "npm:@google/generative-ai@0.21",
         "npm:@netlify/functions@^2.6.0",
+        "npm:@supabase/supabase-js@^2.83.0",
+        "npm:@tailwindcss/postcss@^4.1.17",
         "npm:@types/node@^20.11.24",
+        "npm:@types/react-dom@^19.2.3",
+        "npm:@types/react@^19.2.7",
+        "npm:@vitejs/plugin-react@^5.1.1",
+        "npm:autoprefixer@^10.4.22",
+        "npm:axios@^1.13.2",
+        "npm:cheerio@^1.1.2",
+        "npm:clsx@^2.1.1",
         "npm:dotenv@^16.4.5",
+        "npm:google-tts-api@^2.0.2",
+        "npm:lambda-multipart-parser@^1.0.1",
+        "npm:lucide-react@0.554",
+        "npm:pdf-parse@^2.4.5",
+        "npm:pdfjs-dist@^5.4.394",
+        "npm:postcss@^8.5.6",
+        "npm:react-dom@^19.2.0",
+        "npm:react-router-dom@^7.9.6",
+        "npm:react@^19.2.0",
+        "npm:tailwind-merge@^3.4.0",
+        "npm:tailwindcss@^4.1.17",
         "npm:twilio@^4.23.0",
-        "npm:typescript@^5.3.3"
+        "npm:typescript@^5.3.3",
+        "npm:vite@^7.2.2"
       ]
     }
   }
