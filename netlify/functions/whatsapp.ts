@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, getListingDetails } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -303,10 +304,15 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
         }
 
         // --- GEMINI AGENT WITH TOOLS ---
-        const systemInstruction = `You are the AI Assistant for Provident Real Estate, a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base (specifically the Provident Real Estate folder).
+        const systemInstruction = `You are the AI Assistant for Provident Real Estate, a premier Dubai real estate agency using the AURO platform.
+
+YOUR DATA SOURCES (in priority order):
+1. LISTINGS_SEARCH_TOOL - For live, available properties (USE FIRST for property searches)
+2. RAG_QUERY_TOOL - For company info, payment plans, developer details
+3. SEARCH_WEB_TOOL - For market trends, news, and general info
 
 YOUR GOAL:
-Qualify the lead by naturally asking for missing details.
+Qualify the lead by naturally asking for missing details, then help them find matching properties.
 ${leadContext}
 
 REQUIRED DETAILS (Ask only if "Unknown" above):
@@ -317,17 +323,21 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 5. Preferred Location
 6. Timeline
 
-RULES:
-- IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
+PROPERTY SEARCH RULES:
+- WHEN the user mentions interest in properties, locations, or budget, USE 'LISTINGS_SEARCH_TOOL' to show real available listings.
+- PRESENT 2-3 matching properties with key details (location, price, beds, size).
+- AFTER showing listings, ask: "Would you like more details on any of these, or shall I search with different criteria?"
+- If the lead has provided budget AND location, proactively search for matching properties.
+
+GENERAL RULES:
+- IF the user provides any of the required details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
 - IF all "Required Details" are known (none are "Unknown"), STOP asking questions. PROPOSE: "Would you like to schedule a call with one of our specialists to discuss specific units?"
 - IF the user agrees to a call (e.g., "yes", "sure", "call me"), YOU MUST CALL the 'INITIATE_CALL' tool immediately.
-- USE 'SEARCH_WEB_TOOL' if the user asks for current market data, competitor info, or general questions not in your knowledge base.
+- USE 'SEARCH_WEB_TOOL' for market data, competitor info, or general questions not in your knowledge base.
 - DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
-- ALWAYS ground your answers in the RAG data or Web Search results.
-- IF the RAG context contains a property image URL, you should include it in your response text so the user can see it.
-- NEVER invent information.
+- NEVER invent property listings or prices - always use the LISTINGS_SEARCH_TOOL for property data.
 - Maintain a professional, high-value tone suitable for Provident Real Estate clients.
-- Keep responses under 50 words.`;
+- Keep responses under 80 words when showing listings.`;
 
         const tools = [
             {
@@ -377,6 +387,32 @@ RULES:
                             properties: {
                                 reason: { type: "STRING", description: "Reason for the call" }
                             }
+                        }
+                    },
+                    {
+                        name: "LISTINGS_SEARCH_TOOL",
+                        description: "Search Provident Real Estate's live property listings. Use when the user asks about available properties, specific units, or wants property recommendations based on their criteria like budget, location, or bedroom count.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                location: { type: "STRING", description: "Area or community - e.g., Downtown Dubai, Dubai Marina, Palm Jumeirah, Business Bay, JBR" },
+                                property_type: { type: "STRING", description: "Property type - apartment, villa, townhouse, penthouse, studio" },
+                                min_price: { type: "NUMBER", description: "Minimum price in AED" },
+                                max_price: { type: "NUMBER", description: "Maximum price in AED" },
+                                bedrooms: { type: "NUMBER", description: "Number of bedrooms (0 for studio)" },
+                                limit: { type: "NUMBER", description: "Maximum number of results to return, default 3" }
+                            }
+                        }
+                    },
+                    {
+                        name: "GET_LISTING_DETAILS",
+                        description: "Get detailed information about a specific property listing by its ID.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                listing_id: { type: "STRING", description: "The property listing ID" }
+                            },
+                            required: ["listing_id"]
                         }
                     }
                 ]
@@ -455,6 +491,19 @@ RULES:
                     } else {
                         toolResult = "Failed to initiate call.";
                     }
+                } else if (name === 'LISTINGS_SEARCH_TOOL') {
+                    console.log("[Listings] Search called with:", JSON.stringify(args));
+                    toolResult = await searchListings({
+                        location: (args as any).location,
+                        property_type: (args as any).property_type,
+                        min_price: (args as any).min_price,
+                        max_price: (args as any).max_price,
+                        bedrooms: (args as any).bedrooms,
+                        limit: (args as any).limit || 3
+                    });
+                } else if (name === 'GET_LISTING_DETAILS') {
+                    console.log("[Listings] Details called for:", (args as any).listing_id);
+                    toolResult = await getListingDetails((args as any).listing_id);
                 }
 
                 parts.push({

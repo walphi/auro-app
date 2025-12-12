@@ -1,6 +1,7 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, getListingDetails } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -180,6 +181,37 @@ const handler: Handler = async (event) => {
         } catch (err: any) {
           console.error("Log Activity Error:", err);
           return { toolCallId: call.id, result: "Error logging activity." };
+        }
+      }
+
+      // 4. LISTINGS_SEARCH_TOOL - Search live property listings
+      if (name === 'LISTINGS_SEARCH_TOOL') {
+        console.log("[VAPI] Listings search:", JSON.stringify(args));
+        try {
+          const result = await searchListings({
+            location: args.location,
+            property_type: args.property_type,
+            min_price: args.min_price,
+            max_price: args.max_price,
+            bedrooms: args.bedrooms,
+            limit: args.limit || 3
+          });
+          return { toolCallId: call.id, result };
+        } catch (err: any) {
+          console.error("[VAPI] Listings error:", err.message);
+          return { toolCallId: call.id, result: "Error searching listings. Please try again." };
+        }
+      }
+
+      // 5. GET_LISTING_DETAILS - Get specific property details
+      if (name === 'GET_LISTING_DETAILS') {
+        console.log("[VAPI] Listing details:", args.listing_id);
+        try {
+          const result = await getListingDetails(args.listing_id);
+          return { toolCallId: call.id, result };
+        } catch (err: any) {
+          console.error("[VAPI] Listing details error:", err.message);
+          return { toolCallId: call.id, result: "Error fetching listing details." };
         }
       }
 
