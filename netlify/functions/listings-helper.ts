@@ -34,7 +34,7 @@ export interface PropertyListing {
 
 export async function searchListings(filters: SearchFilters): Promise<PropertyListing[]> {
     console.log('[Listings] Searching with filters:', JSON.stringify(filters, null, 2));
-    
+
     try {
         // Try RPC function first
         const { data, error } = await supabase.rpc('search_property_listings', {
@@ -56,7 +56,7 @@ export async function searchListings(filters: SearchFilters): Promise<PropertyLi
 
         console.log(`[Listings] Found ${data?.length || 0} results via RPC`);
         return data || [];
-        
+
     } catch (e: any) {
         console.error('[Listings] Search exception:', e.message);
         return await directSearch(filters);
@@ -65,7 +65,7 @@ export async function searchListings(filters: SearchFilters): Promise<PropertyLi
 
 async function directSearch(filters: SearchFilters): Promise<PropertyListing[]> {
     console.log('[Listings] Falling back to direct query');
-    
+
     try {
         let query = supabase
             .from('property_listings')
@@ -111,12 +111,21 @@ async function directSearch(filters: SearchFilters): Promise<PropertyListing[]> 
     }
 }
 
-export function formatListingsResponse(listings: PropertyListing[]): string {
+export interface ListingsResponse {
+    text: string;
+    images: string[];
+}
+
+export function formatListingsResponse(listings: PropertyListing[]): ListingsResponse {
     if (!listings || listings.length === 0) {
-        return "I couldn't find any properties matching your criteria. Would you like me to broaden the search or try different filters?";
+        return {
+            text: "I couldn't find any properties matching your criteria. Would you like me to broaden the search or try different filters?",
+            images: []
+        };
     }
 
-    let response = `I found ${listings.length} properties that match your criteria:\n\n`;
+    let response = `I found ${listings.length} ${listings.length === 1 ? 'property' : 'properties'} that match your criteria:\n\n`;
+    const images: string[] = [];
 
     listings.forEach((listing, index) => {
         const price = new Intl.NumberFormat('en-AE', {
@@ -125,24 +134,28 @@ export function formatListingsResponse(listings: PropertyListing[]): string {
             maximumFractionDigits: 0
         }).format(listing.price);
 
-        const area = listing.area_sqft 
-            ? `${new Intl.NumberFormat().format(listing.area_sqft)} sqft` 
+        const area = listing.area_sqft
+            ? `${new Intl.NumberFormat().format(listing.area_sqft)} sqft`
             : 'N/A';
 
         response += `${index + 1}. *${listing.title}*\n`;
         response += `   📍 ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}\n`;
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
-        
+
+        // Collect first image from each listing
         if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
-            response += `   🖼️ ${listing.images[0]}\n`;
+            images.push(listing.images[0]);
         }
         response += '\n';
     });
 
     response += "Would you like more details on any of these properties, or should I refine the search?";
-    
-    return response;
+
+    return {
+        text: response,
+        images: images
+    };
 }
 
 // Voice-friendly format for VAPI
@@ -155,12 +168,12 @@ export function formatListingsForVoice(listings: PropertyListing[]): string {
 
     listings.forEach((listing, index) => {
         const priceInMillions = listing.price / 1000000;
-        const priceFormatted = priceInMillions >= 1 
+        const priceFormatted = priceInMillions >= 1
             ? `${priceInMillions.toFixed(1)} million dirhams`
             : `${new Intl.NumberFormat().format(listing.price)} dirhams`;
 
-        const bedroomText = listing.bedrooms === 0 || !listing.bedrooms 
-            ? 'studio' 
+        const bedroomText = listing.bedrooms === 0 || !listing.bedrooms
+            ? 'studio'
             : `${listing.bedrooms} bedroom`;
 
         response += `Property ${index + 1}: A ${bedroomText} ${listing.property_type || 'apartment'} in ${listing.community}`;
@@ -171,6 +184,6 @@ export function formatListingsForVoice(listings: PropertyListing[]): string {
     });
 
     response += "Would you like more details on any of these properties?";
-    
+
     return response;
 }

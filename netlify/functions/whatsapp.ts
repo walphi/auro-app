@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
-import { searchListings, formatListingsResponse, SearchFilters } from "./listings-helper";
+import { searchListings, formatListingsResponse, SearchFilters, ListingsResponse } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -158,6 +158,7 @@ const handler: Handler = async (event) => {
 
         let isVoiceResponse = false;
         let responseText = "";
+        let responseImages: string[] = [];
 
         console.log(`Received message from ${fromNumber}. Media: ${numMedia}, Text: "${userMessage.substring(0, 50)}..."`);
 
@@ -496,7 +497,7 @@ RULES:
                     }
                 } else if (name === 'SEARCH_LISTINGS') {
                     console.log("SEARCH_LISTINGS called with:", JSON.stringify(args));
-                    
+
                     const filters: SearchFilters = {
                         property_type: (args as any).property_type,
                         community: (args as any).community,
@@ -507,11 +508,18 @@ RULES:
                         offering_type: (args as any).offering_type || 'sale',
                         limit: 3
                     };
-                    
+
                     const listings = await searchListings(filters);
                     console.log(`SEARCH_LISTINGS found ${listings.length} results`);
-                    
-                    toolResult = formatListingsResponse(listings);
+
+                    const listingsResponse = formatListingsResponse(listings);
+                    toolResult = listingsResponse.text;
+
+                    // Store images to send in WhatsApp message
+                    if (listingsResponse.images.length > 0) {
+                        responseImages = listingsResponse.images;
+                        console.log(`Will send ${responseImages.length} property images`);
+                    }
                 }
 
                 parts.push({
@@ -577,6 +585,16 @@ RULES:
             const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             twiml += `
     <Media>${ttsUrl}</Media>`;
+        }
+
+        // Add property images if available (max 10 per WhatsApp message)
+        if (responseImages.length > 0) {
+            const imagesToSend = responseImages.slice(0, 10); // WhatsApp limit
+            for (const imageUrl of imagesToSend) {
+                twiml += `
+    <Media>${escapeXml(imageUrl)}</Media>`;
+            }
+            console.log(`Added ${imagesToSend.length} images to TwiML`);
         }
 
         twiml += `
