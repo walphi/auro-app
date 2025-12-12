@@ -1,6 +1,7 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
+import { searchListings, formatListingsSummary, SearchFilters } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -183,6 +184,43 @@ const handler: Handler = async (event) => {
         }
       }
 
+      // 4. SEARCH_LISTINGS - Search available property listings
+      if (name === 'SEARCH_LISTINGS') {
+        console.log("[VAPI] SEARCH_LISTINGS called with:", JSON.stringify(args));
+        try {
+          const filters: SearchFilters = {
+            property_type: args.property_type,
+            min_bedrooms: args.min_bedrooms,
+            max_bedrooms: args.max_bedrooms,
+            min_price: args.min_price,
+            max_price: args.max_price,
+            community: args.community,
+            limit: args.limit || 3
+          };
+          const listings = await searchListings(filters);
+          
+          if (listings.length === 0) {
+            return { toolCallId: call.id, result: "No matching properties found in our current listings. I can take note of your preferences and have our team follow up with suitable options." };
+          }
+          
+          // Format listings concisely for voice
+          const voiceSummary = listings.map((l, i) => {
+            const parts = [];
+            parts.push(`Option ${i + 1}: ${l.property_title}`);
+            if (l.bedrooms) parts.push(`${l.bedrooms} bedrooms`);
+            if (l.price_aed) parts.push(`priced at ${(l.price_aed / 1000000).toFixed(1)} million AED`);
+            if (l.community) parts.push(`in ${l.community}`);
+            return parts.join(', ');
+          }).join('. ');
+          
+          console.log(`[VAPI] SEARCH_LISTINGS found ${listings.length} results`);
+          return { toolCallId: call.id, result: `Found ${listings.length} matching properties. ${voiceSummary}. Would you like more details on any of these, or shall I send the full listings to your WhatsApp?` };
+        } catch (err: any) {
+          console.error("[VAPI] SEARCH_LISTINGS error:", err.message);
+          return { toolCallId: call.id, result: "I'm having trouble searching our listings right now. Let me take note of your requirements and have our team send you suitable options." };
+        }
+      }
+
       // Default / Fallback (Chat)
       const userMessage = args.transcript || args.query || "Hello";
 
@@ -207,8 +245,14 @@ const handler: Handler = async (event) => {
 
       const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base, which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
 
-CRITICAL RULE:
-ALWAYS ground your answers in the RAG data, especially for figures like pricing and payment plans.
+PROPERTY LISTINGS:
+You have access to live property listings via the SEARCH_LISTINGS tool.
+- Proactively suggest listings when lead preferences are known (budget, location, bedrooms, property type).
+- Keep verbal descriptions concise - property type, location, price, one key feature.
+- Offer to send full details via WhatsApp: "I can send you the full details and photos on WhatsApp."
+
+CRITICAL RULES:
+ALWAYS ground your answers in the RAG data or live listings, especially for figures like pricing and payment plans.
 NEVER invent information. If the RAG data does not contain the answer, state professionally: 'That specific detail is currently with our sales team; I will ensure the human agent follows up with the exact information.'
 Maintain a professional, knowledgeable, and polite tone, recognizing the high-value nature of the Dubai real estate market.`;
 
