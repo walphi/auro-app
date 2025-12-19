@@ -201,7 +201,27 @@ const handler: Handler = async (event) => {
           }
 
           const knowledge = results.slice(0, 3).join("\n\n");
-          return { toolCallId: call.id, result: knowledge || "No relevant information found in knowledge base." };
+          if (knowledge) return { toolCallId: call.id, result: knowledge };
+
+          // KEYWORD FALLBACK
+          console.log("[VAPI RAG] Vector search failed, trying keyword fallback...");
+          const keywords = ['Provident', 'Agency', 'Auro', 'Real Estate'];
+          const foundKeyword = keywords.find(k => query.toLowerCase().includes(k.toLowerCase()));
+
+          if (foundKeyword) {
+            const { data: textData } = await supabase
+              .from('knowledge_base')
+              .select('content')
+              .ilike('content', `%${foundKeyword}%`)
+              .limit(2);
+
+            if (textData && textData.length > 0) {
+              console.log(`[VAPI RAG] Found ${textData.length} results via keyword search for: ${foundKeyword}`);
+              return { toolCallId: call.id, result: textData.map(i => i.content).join("\n\n") };
+            }
+          }
+
+          return { toolCallId: call.id, result: "No relevant information found in knowledge base." };
         } catch (err: any) {
           console.error("RAG Error:", err);
           return { toolCallId: call.id, result: "Error retrieving knowledge." };

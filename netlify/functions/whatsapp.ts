@@ -75,6 +75,26 @@ async function queryRAG(query: string): Promise<string> {
             console.log('[RAG] Total results:', results.length);
             return results.slice(0, 3).join("\n\n");  // Max 3 results
         } else {
+            // SECONDARY FALLBACK: Simple text search (fail-safe for demo)
+            console.log('[RAG] Vector search failed, trying keyword fallback...');
+
+            // Extract potential agency name or subject
+            const keywords = ['Provident', 'Agency', 'Auro', 'Real Estate'];
+            const foundKeyword = keywords.find(k => query.toLowerCase().includes(k.toLowerCase()));
+
+            if (foundKeyword) {
+                const { data: textData } = await supabase
+                    .from('knowledge_base')
+                    .select('content')
+                    .ilike('content', `%${foundKeyword}%`)
+                    .limit(2);
+
+                if (textData && textData.length > 0) {
+                    console.log(`[RAG] Found ${textData.length} results via keyword search for: ${foundKeyword}`);
+                    return textData.map(i => i.content).join("\n\n");
+                }
+            }
+
             return "No relevant information found in knowledge base.";
         }
     } catch (e: any) {
