@@ -145,8 +145,8 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
         response += `   💰 ${price}\n`;
 
         // Collect first image from each listing and convert to WhatsApp-compatible format
-        // TEMPORARILY DISABLED: Twilio Error 63019 - Media failed to download
-        // TODO: Fix CloudFront image access permissions
+        // DISABLED FOR DEMO: CloudFront returns Access Denied for .jpg extensions
+        /*
         if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
             // Convert images to JPEG format for WhatsApp compatibility
             const convertedImages = convertImagesToJpeg(listing.images);
@@ -158,6 +158,7 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
                 }
             }
         }
+        */
         response += '\n';
     });
 
