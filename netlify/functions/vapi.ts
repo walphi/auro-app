@@ -79,34 +79,60 @@ const handler: Handler = async (event) => {
       console.log("[VAPI] Missing phone number or Supabase credentials");
     }
 
-    // Handle conversation-update messages to log transcripts
-    if (messageType === 'conversation-update' && leadId) {
-      console.log("[VAPI] Processing conversation-update message");
-      const conversation = body.message?.conversation || [];
+    // Handle different message types from Vapi
+    if (leadId) {
+      if (messageType === 'conversation-update') {
+        console.log("[VAPI] Processing conversation-update message");
+        const conversation = body.message?.conversation || [];
 
-      // Get the last message in the conversation
-      if (conversation.length > 0) {
-        const lastMessage = conversation[conversation.length - 1];
-        const role = lastMessage.role; // 'user' or 'assistant'
-        const content = lastMessage.content;
+        // Get the last message in the conversation
+        if (conversation.length > 0) {
+          const lastMessage = conversation[conversation.length - 1];
+          const role = lastMessage.role; // 'user' or 'assistant'
+          const content = lastMessage.content;
 
-        if (content && role !== 'system') {
-          const sender = role === 'user' ? 'Lead' : 'AURO_AI';
-          console.log(`[VAPI] Logging ${role} message:`, content.substring(0, 50) + '...');
+          if (content && role !== 'system') {
+            const sender = role === 'user' ? 'Lead' : 'AURO_AI';
+            console.log(`[VAPI] Logging ${role} message:`, content.substring(0, 50) + '...');
 
-          const { error: logError } = await supabase.from('messages').insert({
-            lead_id: leadId,
-            type: 'Voice_Transcript',
-            sender: sender,
-            content: content
-          });
-
-          if (logError) {
-            console.error("[VAPI] Error logging conversation message:", logError);
-          } else {
-            console.log("[VAPI] Conversation message logged successfully");
+            await supabase.from('messages').insert({
+              lead_id: leadId,
+              type: 'Voice_Transcript',
+              sender: sender,
+              content: content
+            });
           }
         }
+      } else if (messageType === 'status-update') {
+        const status = body.message?.status;
+        console.log(`[VAPI] Status Update: ${status}`);
+
+        await supabase.from('messages').insert({
+          lead_id: leadId,
+          type: 'System_Note',
+          sender: 'System',
+          content: `Call Status: ${status}`
+        });
+      } else if (messageType === 'error') {
+        const error = body.message?.error;
+        console.error(`[VAPI] Call Error:`, error);
+
+        await supabase.from('messages').insert({
+          lead_id: leadId,
+          type: 'System_Note',
+          sender: 'System',
+          content: `VAPI Error: ${error || 'Unknown error during call'}`
+        });
+      } else if (messageType === 'call-ended') {
+        const summary = body.message?.analysis?.summary || body.message?.transcript;
+        console.log("[VAPI] Call ended. Logging summary/transcript.");
+
+        await supabase.from('messages').insert({
+          lead_id: leadId,
+          type: 'Voice_Transcript',
+          sender: 'System',
+          content: `--- Call Summary ---\n${summary || 'Call ended.'}`
+        });
       }
     }
 
@@ -129,20 +155,52 @@ const handler: Handler = async (event) => {
         if (!query) return { toolCallId: call.id, result: "Error: Missing query" };
 
         try {
-          const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-          const result = await model.embedContent(query);
-          const embedding = result.embedding.values;
+          const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+          const embResult = await embedModel.embedContent(query);
+          const embedding = embResult.embedding.values;
 
-          const { data, error } = await supabase.rpc('match_knowledge', {
+          let results: string[] = [];
+
+          // 1. Search rag_chunks (demo)
+          const { data: ragData } = await supabase.rpc('match_rag_chunks', {
             query_embedding: embedding,
-            match_threshold: 0.5,
-            match_count: 5,
-            filter_project_id: null
+            match_threshold: 0.3,
+            match_count: 3,
+            filter_client_id: 'demo',
+            filter_folder_id: null
           });
+          if (ragData) results.push(...ragData.map((i: any) => i.content));
 
-          if (error) throw error;
+          // 2. Search rag_chunks (global)
+          if (results.length < 2) {
+            const { data: globalData } = await supabase.rpc('match_rag_chunks', {
+              query_embedding: embedding,
+              match_threshold: 0.3,
+              match_count: 3,
+              filter_client_id: null,
+              filter_folder_id: null
+            });
+            if (globalData) results.push(...globalData.map((i: any) => i.content));
+          }
 
-          const knowledge = data.map((item: any) => item.content).join("\n\n");
+          // 3. Search knowledge_base
+          if (results.length < 3) {
+            const { data: kbData } = await supabase.rpc('match_knowledge', {
+              query_embedding: embedding,
+              match_threshold: 0.3,
+              match_count: 3,
+              filter_project_id: null
+            });
+            if (kbData) {
+              kbData.forEach((i: any) => {
+                if (!results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
+                  results.push(i.content);
+                }
+              });
+            }
+          }
+
+          const knowledge = results.slice(0, 3).join("\n\n");
           return { toolCallId: call.id, result: knowledge || "No relevant information found in knowledge base." };
         } catch (err: any) {
           console.error("RAG Error:", err);
@@ -187,7 +245,7 @@ const handler: Handler = async (event) => {
       // 4. SEARCH_LISTINGS
       if (name === 'SEARCH_LISTINGS') {
         console.log("[VAPI] SEARCH_LISTINGS called with:", JSON.stringify(args));
-        
+
         try {
           const filters: SearchFilters = {
             property_type: args.property_type,
@@ -199,10 +257,10 @@ const handler: Handler = async (event) => {
             offering_type: args.offering_type || 'sale',
             limit: 3
           };
-          
+
           const listings = await searchListings(filters);
           console.log(`[VAPI] SEARCH_LISTINGS found ${listings.length} results`);
-          
+
           // Use voice-friendly format for VAPI
           const voiceResponse = formatListingsForVoice(listings);
           return { toolCallId: call.id, result: voiceResponse };
@@ -234,7 +292,7 @@ const handler: Handler = async (event) => {
         console.log("[VAPI] No leadId, skipping user message log");
       }
 
-      const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for a premier Dubai real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base, which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
+      const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for Provident Real Estate, a premier Dubai real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base (Provident Real Estate folders), which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
 
 CRITICAL RULE:
 ALWAYS ground your answers in the RAG data, especially for figures like pricing and payment plans.
@@ -277,8 +335,11 @@ Maintain a professional, knowledgeable, and polite tone, recognizing the high-va
 
     return {
       statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache"
+      },
       body: JSON.stringify({ results }),
-      headers: { "Content-Type": "application/json" }
     };
 
   } catch (error) {

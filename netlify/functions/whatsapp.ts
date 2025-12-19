@@ -23,13 +23,27 @@ async function queryRAG(query: string): Promise<string> {
         let results: string[] = [];
 
         // Primary: Get from rag_chunks (hot topics, recent content)
-        const { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
+        console.log('[RAG] Searching rag_chunks (client: demo)...');
+        let { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
             query_embedding: embedding,
-            match_threshold: 0.5,  // Higher threshold for better relevance
-            match_count: 3,
+            match_threshold: 0.3,  // Lowered for better recall in demo
+            match_count: 5,
             filter_client_id: 'demo',
             filter_folder_id: null
         });
+
+        // Fallback: If nothing in demo, search across all clients (useful if Provident info was uploaded globally)
+        if (!ragData || ragData.length === 0) {
+            console.log('[RAG] No results for client: demo, trying global search...');
+            const { data: globalData, error: globalError } = await supabase.rpc('match_rag_chunks', {
+                query_embedding: embedding,
+                match_threshold: 0.3,
+                match_count: 5,
+                filter_client_id: null,
+                filter_folder_id: null
+            });
+            if (!globalError && globalData) ragData = globalData;
+        }
 
         if (!ragError && ragData && ragData.length > 0) {
             console.log('[RAG] rag_chunks:', ragData.length, 'results');
@@ -37,11 +51,12 @@ async function queryRAG(query: string): Promise<string> {
         }
 
         // Supplement: Get from knowledge_base if needed
-        if (results.length < 2) {
+        if (results.length < 3) {
+            console.log('[RAG] Searching knowledge_base...');
             const { data: kbData, error: kbError } = await supabase.rpc('match_knowledge', {
                 query_embedding: embedding,
-                match_threshold: 0.5,
-                match_count: 3,
+                match_threshold: 0.3, // Lowered for better recall
+                match_count: 5,
                 filter_project_id: null
             });
 
@@ -49,7 +64,7 @@ async function queryRAG(query: string): Promise<string> {
                 console.log('[RAG] knowledge_base:', kbData.length, 'results');
                 // Add only if not already included (avoid duplicates)
                 kbData.forEach((i: any) => {
-                    if (!results.includes(i.content)) {
+                    if (!results.some(existing => existing.substring(0, 100) === i.content.substring(0, 100))) {
                         results.push(i.content);
                     }
                 });
