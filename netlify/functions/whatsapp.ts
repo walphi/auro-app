@@ -359,16 +359,15 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 6. Timeline
 
 RULES:
-- IF the user asks about available properties, listings, or what you have for sale/rent, YOU MUST CALL 'SEARCH_LISTINGS'.
+- IF the user asks about available properties, YOU MUST CALL 'SEARCH_LISTINGS'.
 - IF the user asks for "more details", "an image", "photos", or says "tell me more about this one", YOU MUST CALL 'GET_PROPERTY_DETAILS'. 
-  - DO NOT use SEARCH_LISTINGS or RAG_QUERY_TOOL for specific property images or details if you already have a listing ID.
-  - If "Currently interested in Property ID" (above) is NOT "None", use that ID.
-  - If it IS "None", look for an (ID: ...) in the conversation history.
-- IF the user provides lead details (name, email, etc), YOU MUST CALL 'UPDATE_LEAD'.
+- DO NOT include internal IDs (UUIDs like 023b...) in your messages to the user.
+- DO NOT include external listing URLs (providentestate.com/...) in messages. Describe the property instead; the system will attach images automatically.
+- When you show properties, use a clean "card" format with emojis (📍 location, 🏠 bedrooms, 💰 price).
 - IF all "Required Details" are known, STOP asking questions and PROPOSE a call.
 - IF the user agrees to a call, YOU MUST CALL 'INITIATE_CALL'.
 - ALWAYS ground your answers in the tool results. NEVER invent information.
-- Maintain a professional, high-value tone. Keep responses under 100 words.`;
+- Maintain a professional tone. Keep responses under 100 words.`;
 
         const tools = [
             {
@@ -564,7 +563,14 @@ RULES:
                     console.log(`SEARCH_LISTINGS found ${listings.length} results`);
 
                     const listingsResponse = formatListingsResponse(listings);
-                    toolResult = listingsResponse.text;
+                    let resultText = listingsResponse.text;
+
+                    // Provide IDs to Gemini for internal use only
+                    resultText += "\n\nINTERNAL DATA (DO NOT SHOW TO USER):\n";
+                    listings.forEach((l, i) => {
+                        resultText += `Property ${i + 1} ID: ${l.id}\n`;
+                    });
+                    toolResult = resultText;
 
                     // Store images to send in WhatsApp message
                     if (listingsResponse.images.length > 0) {
@@ -614,7 +620,6 @@ Location: ${listing.community}${listing.sub_community ? ` - ${listing.sub_commun
 Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
 Area: ${listing.area_sqft} sqft
 Description: ${listing.description || 'No detailed description available.'}
-Source: ${listing.source_url}
 `;
                             const imageUrl = getListingImageUrl(listing);
                             if (imageUrl) {

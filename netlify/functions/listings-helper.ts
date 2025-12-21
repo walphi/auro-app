@@ -199,7 +199,6 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
             : 'N/A';
 
         response += `${index + 1}. *${listing.title}*\n`;
-        response += `   (ID: ${listing.id})\n`; // Added ID for AI context
         response += `   📍 ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}\n`;
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
