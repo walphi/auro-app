@@ -30,16 +30,22 @@ const handler: Handler = async (event) => {
             const listing = await getListingById(listingId);
 
             if (listing) {
-                // If index > 0, try to pick from images array
-                if (index > 0 && Array.isArray(listing.images) && listing.images[index]) {
-                    const candidate = listing.images[index]?.url || listing.images[index];
-                    if (typeof candidate === 'string') {
-                        src = candidate;
+                if (index > 0) {
+                    // Gallery images
+                    const images = Array.isArray(listing.images) ? listing.images : [];
+                    if (index < images.length) {
+                        const candidate = images[index]?.url || images[index];
+                        if (typeof candidate === 'string') {
+                            src = candidate;
+                        }
                     }
-                }
 
-                // If not found or index 0, use the primary image helper
-                if (!src) {
+                    if (!src) {
+                        console.log(`[Image Proxy] Index ${index} out of bounds for listing ${listingId}`);
+                        return { statusCode: 404, body: "Image index out of bounds" };
+                    }
+                } else {
+                    // Hero image (Index 0)
                     src = getListingImageUrl(listing) || undefined;
                 }
             }
