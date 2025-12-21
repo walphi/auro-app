@@ -9,8 +9,10 @@ const handler: Handler = async (event) => {
         let indexStr = event.queryStringParameters?.index || "0";
         src = event.queryStringParameters?.src;
 
+        console.log(`[Image Proxy] Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
+
         // Clean up index (remove .jpg if present from redirect)
-        const index = parseInt(indexStr.replace('.jpg', ''));
+        const index = parseInt(indexStr.replace(/\.jpg$/i, '')) || 0;
 
         // If listingId is provided, resolve it from DB
         if (listingId) {

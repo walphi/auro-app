@@ -6,9 +6,10 @@
   directory = "netlify/functions"
 
 [[redirects]]
-  from = "/property-image/:listingId/:index.jpg"
+  from = "/property-image/:listingId/:index"
   to = "/.netlify/functions/image-proxy?listingId=:listingId&index=:index"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/api/agent/*"
