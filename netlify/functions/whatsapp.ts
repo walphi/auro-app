@@ -270,8 +270,9 @@ const handler: Handler = async (event) => {
                 const location = existingLead.location || "Unknown";
                 const timeline = existingLead.timeline || "Unknown";
                 const currentListingId = existingLead.current_listing_id || "None";
+                const lastImageIndex = existingLead.last_image_index || 0;
 
-                console.log(`[Lead Context] Fetched for ${fromNumber}: ID=${leadId}, current_listing_id=${currentListingId}`);
+                console.log(`[Lead Context] Fetched for ${fromNumber}: ID=${leadId}, current_listing_id=${currentListingId}, last_image_index=${lastImageIndex}`);
 
                 leadContext = `
 CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
@@ -282,6 +283,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Property Type: ${existingLead.property_type || "Unknown"}
 - Timeline: ${timeline}
 - Currently interested in Property ID: ${currentListingId}
+- Last image index shown: ${lastImageIndex}
 `;
             } else {
                 console.log("Creating new lead for", fromNumber);
@@ -358,16 +360,16 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 5. Preferred Location
 6. Timeline
 
-RULES:
-- IF the user asks about available properties, YOU MUST CALL 'SEARCH_LISTINGS'.
-- IF the user asks for "more details", "an image", "photos", or says "tell me more about this one", YOU MUST CALL 'GET_PROPERTY_DETAILS'. 
-- DO NOT include internal IDs (UUIDs like 023b...) in your messages to the user.
-- DO NOT include external listing URLs (providentestate.com/...) in messages. Describe the property instead; the system will attach images automatically.
-- When you show properties, use a clean "card" format with emojis (📍 location, 🏠 bedrooms, 💰 price).
-- IF all "Required Details" are known, STOP asking questions and PROPOSE a call.
-- IF the user agrees to a call, YOU MUST CALL 'INITIATE_CALL'.
-- ALWAYS ground your answers in the tool results. NEVER invent information.
-- Maintain a professional tone. Keep responses under 100 words.`;
+RULES & BEHAVIOR:
+- Whenever the user asks about properties in a specific area or says "what do you have", YOU MUST CALL 'SEARCH_LISTINGS'.
+- Whenever the user asks for "more details", "tell me more", or says "an image", "photos", or "show me this one", YOU MUST CALL 'GET_PROPERTY_DETAILS'.
+- Whenever the user asks for "more photos", "another angle", "interior shots", or "next photo", YOU MUST CALL 'GET_PROPERTY_DETAILS' and increment the 'image_index' (e.g., if last shown was 0, ask for 1).
+- EVERY property-centric response should be a card-style message (📍 location, 🏠 beds, 💰 price) and THE SYSTEM WILL AUTOMATICALLY ATTACH THE IMAGE.
+- DO NOT invent information. Ground all property details in the tool results.
+- DO NOT include internal IDs (UUIDs) or external web URLs in user-facing text.
+- Maintain a professional, helpful tone. Keep responses concise (under 100 words).
+- If all Required Details are known, PROPOSE a call using 'INITIATE_CALL'.
+`;
 
         const tools = [
             {
@@ -458,13 +460,17 @@ RULES:
                     },
                     {
                         name: "GET_PROPERTY_DETAILS",
-                        description: "Get detailed information and images for a specific property listing. Use this when the user asks for more details, an image, or follow-up info on a property.",
+                        description: "Get detailed information and images for a specific property listing. Also used to fetch the 'next' photo if a user asks for more images.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
                                 property_id: {
                                     type: "STRING",
-                                    description: "The unique ID of the property listing. If not provided, will attempt to use the current property in context."
+                                    description: "The unique ID of the property. Optional if a property is already in context."
+                                },
+                                image_index: {
+                                    type: "NUMBER",
+                                    description: "The index of the image to show (default: 0). Increment this to show 'more' photos."
                                 }
                             }
                         }
@@ -580,11 +586,16 @@ RULES:
                     // If exactly one result, automatically set it as current property
                     if (listings.length === 1 && leadId) {
                         console.log(`[Listings] Automatically setting current_listing_id to ${listings[0].id} for lead ${leadId}`);
-                        const { error: updateError } = await supabase.from('leads').update({ current_listing_id: listings[0].id }).eq('id', leadId);
+                        // Reset last_image_index to 0 for a new property selection
+                        const { error: updateError } = await supabase.from('leads').update({
+                            current_listing_id: listings[0].id,
+                            last_image_index: 0
+                        }).eq('id', leadId);
+
                         if (updateError) {
                             console.error(`[Listings] Failed to update current_listing_id:`, updateError);
                         } else {
-                            console.log(`[Listings] Successfully updated current_listing_id.`);
+                            console.log(`[Listings] Successfully updated lead context.`);
                         }
                     }
                 } else if (name === 'GET_PROPERTY_DETAILS') {
@@ -605,14 +616,22 @@ RULES:
 
                     if (propertyId) {
                         const listing = await getListingById(propertyId);
+                        const requestedIndex = (args as any).image_index ?? 0;
+
                         if (listing) {
-                            // Update current listing ID in lead profile
+                            // Update lead context (current property and last image index)
                             if (leadId) {
-                                console.log(`[Details] Updating current_listing_id to ${listing.id} for lead ${leadId}`);
-                                await supabase.from('leads').update({ current_listing_id: listing.id }).eq('id', leadId);
+                                console.log(`[Details] Updating lead ${leadId}: listing=${listing.id}, last_image_index=${requestedIndex}`);
+                                await supabase.from('leads').update({
+                                    current_listing_id: listing.id,
+                                    last_image_index: requestedIndex
+                                }).eq('id', leadId);
                             }
 
-                            toolResult = `
+                            if (requestedIndex > 0) {
+                                toolResult = `Showing additional image (Photo #${requestedIndex + 1}) for: ${listing.title}.`;
+                            } else {
+                                toolResult = `
 DETAILS FOR: ${listing.title}
 Property Type: ${listing.property_type}
 Price: AED ${listing.price?.toLocaleString()}
@@ -621,15 +640,24 @@ Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
 Area: ${listing.area_sqft} sqft
 Description: ${listing.description || 'No detailed description available.'}
 `;
-                            const imageUrl = buildProxyImageUrl(listing, 0, host);
-                            if (imageUrl) {
+                            }
+
+                            // Check if this image index exists
+                            const images = Array.isArray(listing.images) ? listing.images : [];
+                            const hasImage = requestedIndex === 0 || requestedIndex < images.length;
+
+                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, host);
+                            if (imageUrl && hasImage) {
                                 responseImages.push(imageUrl);
-                                console.log(`[Details] Attaching proxy image to TwiML: ${imageUrl}`);
+                                console.log(`[Details] Attaching proxy image (index ${requestedIndex}) for: ${listing.id}`);
+                            } else if (requestedIndex > 0) {
+                                toolResult = "I've shown you all the available photos for this property. Would you like to see another listing?";
                             }
                         } else {
                             toolResult = "Property not found.";
                         }
-                    } else {
+                    }
+                    else {
                         toolResult = "Please specify which property you'd like more details about.";
                     }
                 }
