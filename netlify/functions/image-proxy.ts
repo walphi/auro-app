@@ -5,14 +5,24 @@ import { getListingById, getListingImageUrl } from "./listings-helper";
 const handler: Handler = async (event) => {
     let src: string | undefined;
     try {
-        const { listingId } = event.queryStringParameters || {};
-        let indexStr = event.queryStringParameters?.index || "0";
+        let { listingId, index: indexStr } = event.queryStringParameters || {};
         src = event.queryStringParameters?.src;
 
-        console.log(`[Image Proxy] Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
+        // Path-based extraction fallback (for /property-image/ID/INDEX.jpg)
+        // event.path is usually like "/.netlify/functions/image-proxy" 
+        // but if redirect is from "/property-image/*", we might see the rewritten path.
+        // Better yet, just check the original path if available or parse splat.
+        const pathParts = event.path.split('/').filter(p => !!p);
+        // If the path is /property-image/ID/INDEX
+        if (pathParts[0] === 'property-image') {
+            listingId = listingId || pathParts[1];
+            indexStr = indexStr || pathParts[2];
+        }
+
+        console.log(`[Image Proxy] Path: ${event.path} | Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
 
         // Clean up index (remove .jpg if present from redirect)
-        const index = parseInt(indexStr.replace(/\.jpg$/i, '')) || 0;
+        const index = parseInt((indexStr || "0").replace(/\.jpg$/i, '')) || 0;
 
         // If listingId is provided, resolve it from DB
         if (listingId) {
