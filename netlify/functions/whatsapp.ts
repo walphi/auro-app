@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
-import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl } from "./listings-helper";
+import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl, buildProxyImageUrl } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -562,7 +562,7 @@ RULES:
                     const listings = await searchListings(filters);
                     console.log(`SEARCH_LISTINGS found ${listings.length} results`);
 
-                    const listingsResponse = formatListingsResponse(listings);
+                    const listingsResponse = formatListingsResponse(listings, host);
                     let resultText = listingsResponse.text;
 
                     // Provide IDs to Gemini for internal use only
@@ -621,10 +621,10 @@ Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
 Area: ${listing.area_sqft} sqft
 Description: ${listing.description || 'No detailed description available.'}
 `;
-                            const imageUrl = getListingImageUrl(listing);
+                            const imageUrl = buildProxyImageUrl(listing, 0, host);
                             if (imageUrl) {
                                 responseImages.push(imageUrl);
-                                console.log(`Added image for detail response: ${imageUrl}`);
+                                console.log(`[Details] Attaching proxy image to TwiML: ${imageUrl}`);
                             }
                         } else {
                             toolResult = "Property not found.";

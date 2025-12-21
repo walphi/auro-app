@@ -59,7 +59,23 @@ export function getListingImageUrl(listing: any): string | null {
 
     return null;
 }
+/**
+ * Builds a URL that points to our image proxy.
+ * This ensures Twilio can fetch images that are otherwise AccessDenied.
+ */
+export function buildProxyImageUrl(listing: any, index: number = 0, host?: string): string | null {
+    const baseUrl = host ? `https://${host}` : (process.env.URL || "https://auro-app.netlify.app");
 
+    // If we have a DB ID, use the pretty /property-image/ID path
+    if (listing.id) {
+        return `${baseUrl}/property-image/${listing.id}/${index}`;
+    }
+
+    // Fallback: pass the source URL as a param
+    const src = getListingImageUrl(listing);
+    if (!src) return null;
+    return `${baseUrl}/.netlify/functions/image-proxy?src=${encodeURIComponent(src)}`;
+}
 /**
  * Resolves blocked CloudFront URLs to public S3 URLs where possible.
  * Filters for known blocked CDNs if they cannot be resolved.
@@ -197,7 +213,7 @@ export interface ListingsResponse {
     images: string[];
 }
 
-export function formatListingsResponse(listings: PropertyListing[]): ListingsResponse {
+export function formatListingsResponse(listings: PropertyListing[], host?: string): ListingsResponse {
     if (!listings || listings.length === 0) {
         return {
             text: "I couldn't find any properties matching your criteria. Would you like me to broaden the search or try different filters?",
@@ -224,11 +240,11 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
 
-        // Use the public JPEG URL helper for reliable WhatsApp delivery
-        const imageUrl = getListingImageUrl(listing);
+        // Use the image proxy for reliable WhatsApp delivery
+        const imageUrl = buildProxyImageUrl(listing, 0, host);
         if (imageUrl) {
             images.push(imageUrl);
-            console.log(`[Listings] Using public image for WhatsApp: ${imageUrl}`);
+            console.log(`[Listings] Using proxy image for WhatsApp: ${imageUrl}`);
         }
         response += '\n';
     });
