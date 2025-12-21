@@ -574,7 +574,7 @@ RULES:
 
                     // Store images to send in WhatsApp message
                     if (listingsResponse.images.length > 0) {
-                        responseImages = listingsResponse.images;
+                        responseImages.push(...listingsResponse.images);
                     }
 
                     // If exactly one result, automatically set it as current property
