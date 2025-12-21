@@ -25,8 +25,8 @@ async function main() {
     });
 
     console.log('\n--- RECENT LEADS ---');
-    const { data: leads } = await supabase.from('leads').select('name, created_at').order('created_at', { ascending: false }).limit(5);
-    if (leads) leads.forEach(l => console.log(`${l.created_at} | Lead: ${l.name}`));
+    const { data: leads } = await supabase.from('leads').select('name, phone, current_listing_id, created_at').order('created_at', { ascending: false }).limit(10);
+    if (leads) leads.forEach(l => console.log(`${l.created_at} | Lead: ${l.name} | Phone: ${l.phone} | Current Listing: ${l.current_listing_id}`));
 
     console.log('\n--- RECENT RAG CHUNKS ---');
     const { data: rc } = await supabase.from('rag_chunks')

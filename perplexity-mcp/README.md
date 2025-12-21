@@ -39,7 +39,7 @@ Quick search for current information.
 
 ```json
 {
-  "query": "Dubai Marina property prices 2024",
+  "query": "Dubai Marina property prices 2025",
   "focus": "web"  // web, news, or academic
 }
 ```

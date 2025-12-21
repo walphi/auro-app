@@ -19,6 +19,7 @@ export interface SearchFilters {
 export interface PropertyListing {
     id: string;
     title: string;
+    description?: string;
     property_type: string;
     community: string;
     sub_community: string;
@@ -27,10 +28,49 @@ export interface PropertyListing {
     area_sqft: number;
     price: number;
     price_per_sqft: number;
-    images: string[];
+    images: any[]; // Changed to any[] as it contains objects/strings
+    image_url_jpeg?: string;
     agent_name: string;
     agent_phone: string;
     source_url: string;
+}
+
+/**
+ * Pure helper to choose the best available JPEG image for WhatsApp.
+ * Prefer image_url_jpeg, then fallback to first image if it ends in .jpg/.jpeg
+ */
+export function getListingImageUrl(listing: any): string | null {
+    if (listing.image_url_jpeg) return listing.image_url_jpeg;
+
+    const images = Array.isArray(listing.images) ? listing.images : [];
+    if (images.length === 0) return null;
+
+    const first = images[0]?.url || images[0];
+    if (typeof first === 'string' && /\.(jpe?g)$/i.test(first)) {
+        return first;
+    }
+
+    return null;
+}
+
+export async function getListingById(id: string): Promise<PropertyListing | null> {
+    try {
+        const { data, error } = await supabase
+            .from('property_listings')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error(`[Listings] Error fetching listing ${id}:`, error);
+            return null;
+        }
+
+        return data;
+    } catch (e: any) {
+        console.error(`[Listings] Exception fetching listing ${id}:`, e.message);
+        return null;
+    }
 }
 
 export async function searchListings(filters: SearchFilters): Promise<PropertyListing[]> {
@@ -70,7 +110,7 @@ async function directSearch(filters: SearchFilters): Promise<PropertyListing[]> 
     try {
         let query = supabase
             .from('property_listings')
-            .select('id, title, property_type, community, sub_community, bedrooms, bathrooms, area_sqft, price, price_per_sqft, images, agent_name, agent_phone, source_url')
+            .select('id, title, description, property_type, community, sub_community, bedrooms, bathrooms, area_sqft, price, price_per_sqft, images, image_url_jpeg, agent_name, agent_phone, source_url')
             .eq('status', 'active');
 
         if (filters.property_type) {
@@ -140,25 +180,26 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
             : 'N/A';
 
         response += `${index + 1}. *${listing.title}*\n`;
+        response += `   (ID: ${listing.id})\n`; // Added ID for AI context
         response += `   📍 ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}\n`;
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
 
-        // Collect first image from each listing and convert to WhatsApp-compatible format
-        // DISABLED FOR DEMO: CloudFront returns Access Denied for .jpg extensions
-        /*
-        if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
-            // Convert images to JPEG format for WhatsApp compatibility
+        // Use the newly hosted JPEG URL for reliable WhatsApp delivery
+        if (listing.image_url_jpeg) {
+            images.push(listing.image_url_jpeg);
+            console.log(`[Listings] Using hosted JPEG for WhatsApp: ${listing.image_url_jpeg}`);
+        } else if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
+            // Fallback to existing logic if JPEG not yet processed
             const convertedImages = convertImagesToJpeg(listing.images);
             if (convertedImages.length > 0) {
                 const whatsappImage = prepareImageForWhatsApp(convertedImages[0]);
                 if (whatsappImage) {
                     images.push(whatsappImage);
-                    console.log(`[Listings] Converted image for WhatsApp: ${whatsappImage.substring(0, 80)}...`);
+                    console.log(`[Listings] Falling back to converted image: ${whatsappImage.substring(0, 80)}...`);
                 }
             }
         }
-        */
         response += '\n';
     });
 

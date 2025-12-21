@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
 import { convertImagesToJpeg } from './image-format-helper.js';
+import { webpToJpegAndUpload } from './lib/imagePipeline/webpToJpegSupabase.js';
 
 // Load Environment
 const envPath = path.resolve('auro-rag-mcp', '.env');
@@ -284,12 +285,39 @@ async function insertListings(listings) {
                     synced_at: new Date().toISOString()
                 }, {
                     onConflict: 'external_id'
-                });
+                })
+                .select();
 
             if (error) {
                 console.error(`❌ Error inserting "${listing.title}":`, error.message);
             } else {
                 console.log(`✅ Inserted: ${listing.title} - AED ${listing.price?.toLocaleString()}`);
+
+                // New Step: Convert and upload JPEG for WhatsApp
+                const insertedListing = data?.[0];
+                if (insertedListing && listing.images && listing.images.length > 0) {
+                    try {
+                        // The scraper already has some "converted" URLs from image-format-helper.
+                        // We want the ORIGINAL WebP for the best conversion, but for now 
+                        // we'll take the first image which is likely a WebP (or the CDN version).
+                        // If it's already a JPEG but we want to host it ourselves, that's fine too.
+                        const firstImageUrl = listing.images[0];
+                        const jpegUrl = await webpToJpegAndUpload(firstImageUrl, insertedListing.id);
+
+                        // Update the listing with the new JPEG URL
+                        if (jpegUrl) {
+                            await supabase
+                                .from('property_listings')
+                                .update({ image_url_jpeg: jpegUrl })
+                                .eq('id', insertedListing.id);
+
+                            console.log(`  📸 JPEG hosted at: ${jpegUrl}`);
+                        }
+                    } catch (imgError) {
+                        console.error(`  ⚠️ Failed to process image for WhatsApp:`, imgError.message);
+                        // Don't break the whole scrape, just log and continue
+                    }
+                }
             }
         } catch (e) {
             console.error(`❌ Exception inserting listing:`, e.message);

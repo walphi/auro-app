@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
-import { searchListings, formatListingsResponse, SearchFilters, ListingsResponse } from "./listings-helper";
+import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -269,6 +269,9 @@ const handler: Handler = async (event) => {
                 const email = existingLead.email || "Unknown";
                 const location = existingLead.location || "Unknown";
                 const timeline = existingLead.timeline || "Unknown";
+                const currentListingId = existingLead.current_listing_id || "None";
+
+                console.log(`[Lead Context] Fetched for ${fromNumber}: ID=${leadId}, current_listing_id=${currentListingId}`);
 
                 leadContext = `
 CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
@@ -278,6 +281,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Location: ${location}
 - Property Type: ${existingLead.property_type || "Unknown"}
 - Timeline: ${timeline}
+- Currently interested in Property ID: ${currentListingId}
 `;
             } else {
                 console.log("Creating new lead for", fromNumber);
@@ -355,17 +359,16 @@ REQUIRED DETAILS (Ask only if "Unknown" above):
 6. Timeline
 
 RULES:
-- IF the user asks about available properties, listings, or what you have for sale/rent, USE the 'SEARCH_LISTINGS' tool immediately with any filters they mention.
-- IF the user provides any of the above details, YOU MUST CALL the 'UPDATE_LEAD' tool immediately.
-- IF all "Required Details" are known (none are "Unknown"), STOP asking questions. PROPOSE: "Would you like to schedule a call with one of our specialists to discuss specific units?"
-- IF the user agrees to a call (e.g., "yes", "sure", "call me"), YOU MUST CALL the 'INITIATE_CALL' tool immediately.
-- USE 'SEARCH_WEB_TOOL' if the user asks for current market data, competitor info, or general questions not in your knowledge base.
-- DO NOT ask for information that is already listed as known in the CURRENT LEAD PROFILE.
-- ALWAYS ground your answers in the RAG data, Search Listings results, or Web Search results.
-- IF the RAG context contains a property image URL, you should include it in your response text so the user can see it.
-- NEVER invent information.
-- Maintain a professional, high-value tone suitable for Provident Real Estate clients.
-- Keep responses under 100 words when sharing property listings.`;
+- IF the user asks about available properties, listings, or what you have for sale/rent, YOU MUST CALL 'SEARCH_LISTINGS'.
+- IF the user asks for "more details", "an image", "photos", or says "tell me more about this one", YOU MUST CALL 'GET_PROPERTY_DETAILS'. 
+  - DO NOT use SEARCH_LISTINGS or RAG_QUERY_TOOL for specific property images or details if you already have a listing ID.
+  - If "Currently interested in Property ID" (above) is NOT "None", use that ID.
+  - If it IS "None", look for an (ID: ...) in the conversation history.
+- IF the user provides lead details (name, email, etc), YOU MUST CALL 'UPDATE_LEAD'.
+- IF all "Required Details" are known, STOP asking questions and PROPOSE a call.
+- IF the user agrees to a call, YOU MUST CALL 'INITIATE_CALL'.
+- ALWAYS ground your answers in the tool results. NEVER invent information.
+- Maintain a professional, high-value tone. Keep responses under 100 words.`;
 
         const tools = [
             {
@@ -450,6 +453,19 @@ RULES:
                                 offering_type: {
                                     type: "STRING",
                                     description: "sale or rent (default: sale)"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        name: "GET_PROPERTY_DETAILS",
+                        description: "Get detailed information and images for a specific property listing. Use this when the user asks for more details, an image, or follow-up info on a property.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                property_id: {
+                                    type: "STRING",
+                                    description: "The unique ID of the property listing. If not provided, will attempt to use the current property in context."
                                 }
                             }
                         }
@@ -553,7 +569,63 @@ RULES:
                     // Store images to send in WhatsApp message
                     if (listingsResponse.images.length > 0) {
                         responseImages = listingsResponse.images;
-                        console.log(`Will send ${responseImages.length} property images`);
+                    }
+
+                    // If exactly one result, automatically set it as current property
+                    if (listings.length === 1 && leadId) {
+                        console.log(`[Listings] Automatically setting current_listing_id to ${listings[0].id} for lead ${leadId}`);
+                        const { error: updateError } = await supabase.from('leads').update({ current_listing_id: listings[0].id }).eq('id', leadId);
+                        if (updateError) {
+                            console.error(`[Listings] Failed to update current_listing_id:`, updateError);
+                        } else {
+                            console.log(`[Listings] Successfully updated current_listing_id.`);
+                        }
+                    }
+                } else if (name === 'GET_PROPERTY_DETAILS') {
+                    console.log("GET_PROPERTY_DETAILS called with:", JSON.stringify(args));
+
+                    let propertyId = (args as any).property_id;
+
+                    // Fallback to current_listing_id if propertyId is not provided
+                    if (!propertyId && leadId) {
+                        console.log(`[Details] No property_id provided, checking lead ${leadId} for current_listing_id...`);
+                        const { data: lead, error: fetchError } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                        if (fetchError) {
+                            console.error(`[Details] Error fetching lead context:`, fetchError);
+                        }
+                        propertyId = lead?.current_listing_id;
+                        console.log(`[Details] Found current_listing_id: ${propertyId}`);
+                    }
+
+                    if (propertyId) {
+                        const listing = await getListingById(propertyId);
+                        if (listing) {
+                            // Update current listing ID in lead profile
+                            if (leadId) {
+                                console.log(`[Details] Updating current_listing_id to ${listing.id} for lead ${leadId}`);
+                                await supabase.from('leads').update({ current_listing_id: listing.id }).eq('id', leadId);
+                            }
+
+                            toolResult = `
+DETAILS FOR: ${listing.title}
+Property Type: ${listing.property_type}
+Price: AED ${listing.price?.toLocaleString()}
+Location: ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}
+Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
+Area: ${listing.area_sqft} sqft
+Description: ${listing.description || 'No detailed description available.'}
+Source: ${listing.source_url}
+`;
+                            const imageUrl = getListingImageUrl(listing);
+                            if (imageUrl) {
+                                responseImages.push(imageUrl);
+                                console.log(`Added image for detail response: ${imageUrl}`);
+                            }
+                        } else {
+                            toolResult = "Property not found.";
+                        }
+                    } else {
+                        toolResult = "Please specify which property you'd like more details about.";
                     }
                 }
 
