@@ -61,15 +61,42 @@ const handler: Handler = async (event) => {
 
         console.log(`[Image Proxy] Fetching upstream: ${src}`);
 
-        const response = await axios.get(src, {
-            responseType: 'arraybuffer',
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Referer': 'https://providentestate.com/'
+        let response;
+        try {
+            response = await axios.get(src, {
+                responseType: 'arraybuffer',
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                    'Referer': 'https://providentestate.com/'
+                }
+            });
+        } catch (error: any) {
+            // Case sensitivity fallback for S3 (Provident Estate often uses .JPG)
+            if (error.response?.status === 403 && src.includes('s3.eu-west-2.amazonaws.com')) {
+                const altSrc = src.endsWith('.jpg') ? src.replace(/\.jpg$/, '.JPG') :
+                    src.endsWith('.JPG') ? src.replace(/\.JPG$/, '.jpg') : null;
+
+                if (altSrc) {
+                    console.log(`[Image Proxy] 403 on S3, retrying with alternative case: ${altSrc}`);
+                    response = await axios.get(altSrc, {
+                        responseType: 'arraybuffer',
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                            'Referer': 'https://providentestate.com/'
+                        }
+                    });
+                    src = altSrc; // Update src for logging
+                } else {
+                    throw error;
+                }
+            } else {
+                throw error;
             }
-        });
+        }
 
         const contentType = response.headers['content-type'] || 'image/jpeg';
         console.log(`[Image Proxy] Upstream responded with ${response.status}, type ${contentType}`);
