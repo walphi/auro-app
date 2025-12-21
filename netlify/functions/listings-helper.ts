@@ -68,7 +68,7 @@ export function buildProxyImageUrl(listing: any, index: number = 0, host?: strin
 
     // If we have a DB ID, use the pretty /property-image/ID path
     if (listing.id) {
-        return `${baseUrl}/property-image/${listing.id}/${index}`;
+        return `${baseUrl}/property-image/${listing.id}/${index}.jpg`;
     }
 
     // Fallback: pass the source URL as a param
