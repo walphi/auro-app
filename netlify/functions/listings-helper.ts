@@ -67,27 +67,29 @@ export function getListingImageUrl(listing: any): string | null {
 function resolveImageUrl(url: string): string | null {
     if (!url) return null;
 
+    console.log(`[Images] resolveImageUrl testing: ${url}`);
+
     // Pattern: CloudFront "x/" resize paths which are AccessDenied
     if (url.includes('d3h330vgpwpjr8.cloudfront.net/x/')) {
-        console.log(`[Images] Attempting to resolve blocked URL: ${url}`);
+        console.log(`[Images] Matches blocked CloudFront /x/ pattern`);
 
-        // Map to public S3 bucket
-        // Example: https://d3h330vgpwpjr8.cloudfront.net/x/property/PS-03122535/.../696x520/ADU00425.jpg
-        // -> https://ggfx-providentestate.s3.eu-west-2.amazonaws.com/i/property/PS-03122535/.../ADU00425.jpg
         let resolved = url
             .replace('d3h330vgpwpjr8.cloudfront.net/x/', 'ggfx-providentestate.s3.eu-west-2.amazonaws.com/i/')
             .replace(/\/\d+x\d+\//, '/'); // Remove resolution part
 
-        // Ensure extension is .jpg for WhatsApp (sometimes they are .webp or .JPG)
         resolved = resolved.replace(/\.webp$/i, '.jpg');
 
-        console.log(`[Images] Resolved to: ${resolved}`);
+        console.log(`[Images] Resolved successfully to: ${resolved}`);
         return resolved;
     }
 
     // Pattern: Other CloudFront URLs (usually blocked)
-    if (url.includes('cloudfront.net')) return null;
+    if (url.includes('cloudfront.net')) {
+        console.log(`[Images] Matches generic CloudFront pattern (returning null)`);
+        return null;
+    }
 
+    console.log(`[Images] No blocked patterns matched, returning original URL`);
     return url;
 }
 
