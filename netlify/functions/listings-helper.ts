@@ -38,19 +38,38 @@ export interface PropertyListing {
 /**
  * Pure helper to choose the best available JPEG image for WhatsApp.
  * Prefer image_url_jpeg, then fallback to first image if it ends in .jpg/.jpeg
+ * Filters out private CloudFront URLs.
  */
 export function getListingImageUrl(listing: any): string | null {
-    if (listing.image_url_jpeg) return listing.image_url_jpeg;
+    // 1. Prefer image_url_jpeg if present and public
+    if (listing.image_url_jpeg && isPublicUrl(listing.image_url_jpeg)) {
+        return listing.image_url_jpeg;
+    }
 
+    // 2. Fall back to first JPEG in images[] that is not CloudFront "x/" path
     const images = Array.isArray(listing.images) ? listing.images : [];
     if (images.length === 0) return null;
 
     const first = images[0]?.url || images[0];
-    if (typeof first === 'string' && /\.(jpe?g)$/i.test(first)) {
+    if (
+        typeof first === 'string' &&
+        /\.(jpe?g)$/i.test(first) &&
+        isPublicUrl(first)
+    ) {
         return first;
     }
 
     return null;
+}
+
+/**
+ * Filter for known blocked/private CDNs
+ */
+function isPublicUrl(url: string): boolean {
+    if (!url) return false;
+    // Reject CloudFront "x/" resize paths which are often AccessDenied
+    if (url.includes('d3h330vgpwpjr8.cloudfront.net/x/')) return false;
+    return true;
 }
 
 export async function getListingById(id: string): Promise<PropertyListing | null> {
@@ -185,20 +204,11 @@ export function formatListingsResponse(listings: PropertyListing[]): ListingsRes
         response += `   🏠 ${listing.bedrooms || 'Studio'} BR | ${listing.bathrooms || 0} BA | ${area}\n`;
         response += `   💰 ${price}\n`;
 
-        // Use the newly hosted JPEG URL for reliable WhatsApp delivery
-        if (listing.image_url_jpeg) {
-            images.push(listing.image_url_jpeg);
-            console.log(`[Listings] Using hosted JPEG for WhatsApp: ${listing.image_url_jpeg}`);
-        } else if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
-            // Fallback to existing logic if JPEG not yet processed
-            const convertedImages = convertImagesToJpeg(listing.images);
-            if (convertedImages.length > 0) {
-                const whatsappImage = prepareImageForWhatsApp(convertedImages[0]);
-                if (whatsappImage) {
-                    images.push(whatsappImage);
-                    console.log(`[Listings] Falling back to converted image: ${whatsappImage.substring(0, 80)}...`);
-                }
-            }
+        // Use the public JPEG URL helper for reliable WhatsApp delivery
+        const imageUrl = getListingImageUrl(listing);
+        if (imageUrl) {
+            images.push(imageUrl);
+            console.log(`[Listings] Using public image for WhatsApp: ${imageUrl}`);
         }
         response += '\n';
     });
