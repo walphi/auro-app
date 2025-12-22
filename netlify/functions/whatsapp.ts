@@ -142,18 +142,73 @@ async function searchWeb(query: string): Promise<string> {
     }
 }
 
-async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
+async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
     try {
-        const payload = {
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886'; // Default sandbox
+
+        if (!accountSid || !authToken) {
+            console.error("[WhatsApp] Missing Twilio credentials for sending message.");
+            return false;
+        }
+
+        const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        const params = new URLSearchParams();
+        params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
+        params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+        params.append('Body', text);
+
+        console.log(`[WhatsApp] Sending message to ${to}: "${text.substring(0, 50)}..."`);
+
+        const response = await axios.post(
+            `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+            params,
+            {
+                headers: {
+                    'Authorization': `Basic ${auth}`,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
+        );
+
+        return response.status === 201 || response.status === 200;
+    } catch (error: any) {
+        console.error("[WhatsApp] Error sending message:", error.message);
+        if (error.response) console.error("[WhatsApp] Error data:", JSON.stringify(error.response.data));
+        return false;
+    }
+}
+
+async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boolean> {
+    try {
+        const payload: any = {
             phoneNumberId: process.env.VAPI_PHONE_NUMBER,
             assistantId: process.env.VAPI_ASSISTANT_ID,
             customer: {
                 number: phoneNumber,
             },
+            assistantMetadata: {
+                lead_id: context?.lead_id,
+                name: context?.name,
+                budget: context?.budget,
+                location: context?.location,
+                current_listing_id: context?.current_listing_id,
+                property_type: context?.property_type,
+                email: context?.email
+            },
+            // Also pass as variables in case Vapi assistant is configured to use them
+            assistantOverrides: {
+                variableValues: {
+                    lead_id: context?.lead_id || "",
+                    name: context?.name || "",
+                    budget: context?.budget || "",
+                    current_listing_id: context?.current_listing_id || ""
+                }
+            }
         };
 
         console.log("[VAPI CALL] Initiating call with payload:", JSON.stringify(payload, null, 2));
-        console.log("[VAPI CALL] API Key present:", !!process.env.VAPI_API_KEY);
 
         const response = await axios.post(
             'https://api.vapi.ai/call',
@@ -165,16 +220,9 @@ async function initiateVapiCall(phoneNumber: string): Promise<boolean> {
             }
         );
 
-        console.log("[VAPI CALL] Response status:", response.status);
-        console.log("[VAPI CALL] Response data:", JSON.stringify(response.data, null, 2));
-
         return response.status === 201;
     } catch (error: any) {
         console.error("[VAPI CALL] Error initiating VAPI call:", error.message);
-        if (error.response) {
-            console.error("[VAPI CALL] Error response status:", error.response.status);
-            console.error("[VAPI CALL] Error response data:", JSON.stringify(error.response.data, null, 2));
-        }
         return false;
     }
 }
@@ -545,11 +593,17 @@ RULES & BEHAVIOR:
                     }
                 } else if (name === 'INITIATE_CALL') {
                     console.log("INITIATE_CALL called");
-                    const callStarted = await initiateVapiCall(fromNumber);
+                    // Fetch full lead data for context
+                    let context = null;
+                    if (leadId) {
+                        const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
+                        context = { ...data, lead_id: leadId };
+                    }
+                    const callStarted = await initiateVapiCall(fromNumber, context);
                     if (callStarted) {
-                        toolResult = "Call initiated successfully.";
+                        toolResult = "Got it, I'll have our assistant give you a quick call on this number in the next few minutes.";
                     } else {
-                        toolResult = "Failed to initiate call.";
+                        toolResult = "Failed to initiate call. I'll have a human agent reach out to you instead.";
                     }
                 } else if (name === 'SEARCH_LISTINGS') {
                     console.log("SEARCH_LISTINGS called with:", JSON.stringify(args));

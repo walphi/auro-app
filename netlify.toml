@@ -12,6 +12,12 @@
   force = true
 
 [[redirects]]
+  from = "/vapi-llm/*"
+  to = "/.netlify/functions/vapi-llm"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/agent/*"
   to = "/.netlify/functions/:splat"
   status = 200

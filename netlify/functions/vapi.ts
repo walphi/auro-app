@@ -1,7 +1,8 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
-import { searchListings, formatListingsForVoice, SearchFilters } from "./listings-helper";
+import { searchListings, formatListingsForVoice, SearchFilters, getListingById } from "./listings-helper";
+import axios from "axios";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -9,6 +10,32 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+
+    if (!accountSid || !authToken) return false;
+
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
+    params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+    params.append('Body', text);
+
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      params,
+      { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.status === 201 || response.status === 200;
+  } catch (error: any) {
+    console.error("[VAPI WhatsApp Error]:", error.message);
+    return false;
+  }
+}
 
 const handler: Handler = async (event) => {
   try {
@@ -287,6 +314,69 @@ const handler: Handler = async (event) => {
         } catch (err: any) {
           console.error("[VAPI] SEARCH_LISTINGS Error:", err);
           return { toolCallId: call.id, result: "I encountered an error while searching for properties. Would you like me to try again?" };
+        }
+      }
+
+      // 5. BOOK_VIEWING
+      if (name === 'BOOK_VIEWING') {
+        if (!leadId) return { toolCallId: call.id, result: "Error: No Lead ID identified" };
+
+        const { property_id, resolved_datetime, property_name } = args;
+        if (!property_id || !resolved_datetime) {
+          return { toolCallId: call.id, result: "Error: Missing property_id or datetime" };
+        }
+
+        try {
+          // 1. Update Lead with Booking Info
+          const { error: updateError } = await supabase.from('leads').update({
+            viewing_datetime: resolved_datetime,
+            booking_status: 'confirmed',
+            current_listing_id: property_id
+          }).eq('id', leadId);
+
+          if (updateError) throw updateError;
+
+          // 2. Fetch Property Details for Message
+          let listingTitle = property_name;
+          if (!listingTitle) {
+            const listing = await getListingById(property_id);
+            listingTitle = listing?.title || "Property";
+          }
+
+          // 3. Format Date for Dubai
+          const dateObj = new Date(resolved_datetime);
+          const formattedDate = dateObj.toLocaleString('en-US', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Dubai'
+          }) + " Dubai time";
+
+          // 4. Send WhatsApp Confirmation
+          const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+          const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
+
+          await sendWhatsAppMessage(phoneNumber, messageText);
+
+          // 5. Log as Message
+          await supabase.from('messages').insert({
+            lead_id: leadId,
+            type: 'System_Note',
+            sender: 'System',
+            content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
+          });
+
+          return {
+            toolCallId: call.id,
+            result: `Successfully booked viewing for ${listingTitle} on ${formattedDate}. I've sent a confirmation message to your WhatsApp.`
+          };
+
+        } catch (err: any) {
+          console.error("Booking Error:", err);
+          return { toolCallId: call.id, result: "I'm sorry, I encountered an error while scheduling the booking. Please try again or I can have an agent call you." };
         }
       }
 

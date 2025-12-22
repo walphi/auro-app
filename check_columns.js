@@ -17,8 +17,11 @@ async function main() {
     const { data, error } = await supabase.from('leads').select('*').limit(1);
     if (error) {
         console.error('Error selecting from leads:', error);
+    } else if (data && data.length > 0) {
+        console.log('Columns in leads table:');
+        Object.keys(data[0]).forEach(col => console.log(` - ${col}`));
     } else {
-        console.log('Columns in leads table:', Object.keys(data[0] || {}));
+        console.log('No data in leads table to check columns.');
     }
 }
 main();
