@@ -222,7 +222,14 @@ async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boo
 
         return response.status === 201;
     } catch (error: any) {
-        console.error("[VAPI CALL] Error initiating VAPI call:", error.message);
+        console.error("[VAPI CALL] Error initiating VAPI call details:");
+        if (error.response) {
+            console.error("- Status:", error.response.status);
+            console.error("- Data:", JSON.stringify(error.response.data, null, 2));
+            console.error("- Headers:", JSON.stringify(error.response.headers));
+        } else {
+            console.error("- Message:", error.message);
+        }
         return false;
     }
 }
