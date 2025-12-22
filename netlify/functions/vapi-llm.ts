@@ -156,40 +156,38 @@ RULES:
         const functionCalls = response.functionCalls();
 
         // 4. Handle Tool Calls & Format for Vapi
-        // Vapi expects OpenAI format: choices[].message.tool_calls
-        const tool_calls = functionCalls?.map((call, index) => ({
-            id: `call_${Date.now()}_${index}`,
-            type: "function",
-            function: {
-                name: call.name,
-                arguments: JSON.stringify(call.args)
-            }
-        }));
+        // DEBUG: Force a simple working response first
+        // const finalText = text || "I heard you, but I'm just debug mode right now."; 
+        const finalText = "Hi Phillip, thanks for taking the call. How are you today?";
 
-        const openaiResponse = {
-            id: `chatcmpl-${Date.now()}`,
+        const responsePayload = {
+            id: "chatcmpl-" + (body.call?.id ?? Date.now()),
             object: "chat.completion",
             created: Math.floor(Date.now() / 1000),
-            model: "gemini-2.0-flash",
+            model: body.model ?? "gpt-4.1-mini",
             choices: [
                 {
                     index: 0,
                     message: {
                         role: "assistant",
-                        content: text || null,
-                        tool_calls: tool_calls || undefined
+                        content: finalText,
                     },
-                    finish_reason: tool_calls ? "tool_calls" : "stop"
-                }
-            ]
+                    finish_reason: "stop",
+                },
+            ],
+            usage: {
+                prompt_tokens: 0,
+                completion_tokens: finalText.split(/\s+/).length,
+                total_tokens: finalText.split(/\s+/).length,
+            },
         };
 
-        console.log("[VAPI-LLM] Sent response:", text ? "Text response" : "Tool call");
+        console.log("[VAPI-LLM] Sent response:", JSON.stringify(responsePayload));
 
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(openaiResponse)
+            body: JSON.stringify(responsePayload)
         };
 
     } catch (error: any) {
