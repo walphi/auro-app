@@ -188,22 +188,16 @@ async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boo
             customer: {
                 number: phoneNumber,
             },
-            assistantMetadata: {
-                lead_id: context?.lead_id,
-                name: context?.name,
-                budget: context?.budget,
-                location: context?.location,
-                current_listing_id: context?.current_listing_id,
-                property_type: context?.property_type,
-                email: context?.email
-            },
-            // Also pass as variables in case Vapi assistant is configured to use them
+            // Pass context variables via assistantOverrides
             assistantOverrides: {
                 variableValues: {
                     lead_id: context?.lead_id || "",
                     name: context?.name || "",
                     budget: context?.budget || "",
-                    current_listing_id: context?.current_listing_id || ""
+                    location: context?.location || "",
+                    current_listing_id: context?.current_listing_id || "",
+                    property_type: context?.property_type || "",
+                    email: context?.email || ""
                 }
             }
         };
