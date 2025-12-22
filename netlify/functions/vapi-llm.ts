@@ -1,38 +1,30 @@
 import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
-import axios from "axios";
-import { searchListings, formatListingsForVoice, SearchFilters } from "./listings-helper";
+import { getListingById } from "./listings-helper";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
-// Initialize Supabase Client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
-
+const supabase = createClient(
+    process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ""
+);
 const VAPI_SECRET = process.env.VAPI_SECRET;
 
 const handler: Handler = async (event) => {
     try {
-        if (event.httpMethod !== "POST") {
-            return { statusCode: 405, body: "Method Not Allowed" };
-        }
+        if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
-        // Security Check
         const secret = event.headers["x-vapi-secret"];
         if (VAPI_SECRET && secret !== VAPI_SECRET) {
-            console.error("[VAPI-LLM] Unauthorized: Invalid X-VAPI-SECRET");
+            console.error("[VAPI-LLM] Unauthorized");
             return { statusCode: 401, body: "Unauthorized" };
         }
 
         const body = JSON.parse(event.body || "{}");
         const { messages, call } = body;
+        console.log(`[VAPI-LLM] Request for SID: ${call?.id}`);
 
-        console.log(`[VAPI-LLM] Received request on path: ${event.path} (Method: ${event.httpMethod})`);
-        console.log("[VAPI-LLM] Received request for call SID:", call?.id);
-
-        // 1. Extract Lead Context
+        // 1. Context Loading
         let phoneNumber = call?.customer?.number;
         let leadId = call?.extra?.lead_id || call?.metadata?.lead_id;
         let leadData: any = null;
@@ -49,139 +41,80 @@ const handler: Handler = async (event) => {
             const { data } = await supabase.from('leads').select('*').eq('phone', phoneNumber).single();
             leadData = data;
         }
-
         leadId = leadData?.id;
 
-        // 2. Prepare System Prompt with Context
         const contextString = leadData ? `
 CURRENT LEAD PROFILE:
-- id: ${leadId}
 - Name: ${leadData.name || "Unknown"}
-- Phone: ${leadData.phone}
-- Email: ${leadData.email || "Unknown"}
 - Budget: ${leadData.budget || "Unknown"}
-- Preferred Location/Communities: ${leadData.location || "Unknown"}
+- Location: ${leadData.location || "Unknown"}
 - Property Type: ${leadData.property_type || "Unknown"}
-- Timeline/Move-in Date: ${leadData.timeline || "Unknown"}
-- Currently interested in Property ID: ${leadData.current_listing_id || "None"}
-- Last Image Index Shown on WhatsApp: ${leadData.last_image_index || 0}
-- Booking Status: ${leadData.booking_status || "none"}
-- Existing Booking: ${leadData.viewing_datetime || "None"}
-` : "NEW LEAD - No existing context.";
+- Timeline: ${leadData.timeline || "Unknown"}
+- Interest: ${leadData.current_listing_id || "None"}
+- Booking: ${leadData.viewing_datetime || "None"}
+` : "NEW LEAD - No context.";
 
-        const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for Provident Real Estate in Dubai.
-Goal: Qualify the lead and book a viewing for their preferred property.
-
+        const systemInstruction = `You are Morgan, a Lead Qualification Agent for Provident Real Estate Dubai.
+Goal: Qualify lead and book a viewing.
 ${contextString}
-
 RULES:
-1. Be professional, concise, and helpful. Focus on high-value Dubai real estate.
-2. Use 'SEARCH_LISTINGS' to find properties if user requirements are clear or if they ask what's available.
-3. Use 'UPDATE_LEAD' to save details (name, email, budget, etc.).
-4. Use 'BOOK_VIEWING' once they are interested in a specific property.
-5. TIMEZONE: All bookings are in Asia/Dubai (UTC+4).
-6. DATE HANDLING: If the user says "tomorrow at 4", resolve it to an ISO 8601 string (e.g., 2025-12-23T16:00:00+04:00) before calling 'BOOK_VIEWING'.
-7. AMBIGUITY: If the user is vague (e.g., "let's do next week" or "on Tuesday" without a time), YOU MUST clarify and get a specific day and time before calling 'BOOK_VIEWING'.
-8. Always confirm the booking details clearly: Day, Date, Time, and "Dubai time".
-9. DO NOT invent information. Use RAG (context) or tool results.
+1. Be professional, concise.
+2. Use 'SEARCH_LISTINGS' if asked for properties.
+3. Use 'BOOK_VIEWING' for specific interest.
+4. TIMEZONE: Asia/Dubai (UTC+4). Resolve "tomorrow at 4" to ISO8601 (e.g. 2025-12-23T16:00:00+04:00).
+5. Confirm booking details clearly.
 `;
 
-        // 3. Call Gemini
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
-            systemInstruction: systemInstruction,
-            tools: [
-                {
-                    functionDeclarations: [
-                        {
-                            name: "SEARCH_LISTINGS",
-                            description: "Search for available property listings in Dubai.",
-                            parameters: {
-                                type: "OBJECT",
-                                properties: {
-                                    property_type: { type: "STRING" },
-                                    community: { type: "STRING" },
-                                    min_price: { type: "NUMBER" },
-                                    max_price: { type: "NUMBER" },
-                                    min_bedrooms: { type: "NUMBER" }
-                                }
-                            }
-                        },
-                        {
-                            name: "UPDATE_LEAD",
-                            description: "Update lead profile with qualification details.",
-                            parameters: {
-                                type: "OBJECT",
-                                properties: {
-                                    name: { type: "STRING" },
-                                    email: { type: "STRING" },
-                                    budget: { type: "STRING" },
-                                    location: { type: "STRING" },
-                                    property_type: { type: "STRING" },
-                                    timeline: { type: "STRING" }
-                                }
-                            }
-                        },
-                        {
-                            name: "BOOK_VIEWING",
-                            description: "Book a property viewing appointment. Requires a resolved ISO 8601 datetime.",
-                            parameters: {
-                                type: "OBJECT",
-                                properties: {
-                                    property_id: { type: "STRING" },
-                                    resolved_datetime: { type: "STRING", description: "ISO 8601 string with timezone offset, e.g., 2025-12-23T16:00:00+04:00" },
-                                    property_name: { type: "STRING" }
-                                },
-                                required: ["resolved_datetime", "property_id"]
-                            }
-                        }
-                    ]
-                }
-            ] as any
-        });
-
+        // 2. Call Gemini
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction });
         const chat = model.startChat({
-            history: messages.map((m: any) => ({
+            history: messages.slice(0, -1).map((m: any) => ({
                 role: m.role === "assistant" ? "model" : "user",
                 parts: [{ text: m.content || "" }]
             }))
         });
 
-        // The last message is the prompt
         const lastMsg = messages[messages.length - 1]?.content || "Hello";
         const result = await chat.sendMessage(lastMsg);
         const response = await result.response;
 
+        // 3. Process Response
         const text = response.text();
         const functionCalls = response.functionCalls();
 
-        // 4. Handle Tool Calls & Format for Vapi
-        // DEBUG: Force a simple working response first
-        // const finalText = text || "I heard you, but I'm just debug mode right now."; 
-        const finalText = "Hi Phillip, thanks for taking the call. How are you today?";
+        // Handle Tool Calls Logic for Vapi (simplified: we just perform side effects, Vapi expects text back usually)
+        if (functionCalls && functionCalls.length > 0) {
+            for (const call of functionCalls) {
+                if (call.name === 'BOOK_VIEWING') {
+                    const { property_id, resolved_datetime, property_name } = call.args as any;
+                    if (property_id && resolved_datetime && leadId) {
+                        await supabase.from('leads').update({
+                            viewing_datetime: resolved_datetime,
+                            booking_status: 'confirmed',
+                            current_listing_id: property_id
+                        }).eq('id', leadId);
+                        // We could restart loop here if we wanted deeper agent logic, 
+                        // but for V2 MVP we trust the model's text confirmation.
+                    }
+                }
+            }
+        }
 
-        // Streaming SSE Response for Vapi
+        // 4. Stream Response
         const createdTimestamp = Math.floor(Date.now() / 1000);
         const chunk = {
             id: "chatcmpl-" + (body.call?.id ?? Date.now()),
             object: "chat.completion.chunk",
             created: createdTimestamp,
             model: "gpt-4.1-mini",
-            choices: [
-                {
-                    index: 0,
-                    delta: {
-                        role: "assistant",
-                        content: finalText
-                    },
-                    finish_reason: null
-                }
-            ]
+            choices: [{
+                index: 0,
+                delta: { role: "assistant", content: text || "I'm listening." },
+                finish_reason: null
+            }]
         };
 
         const sseBody = `data: ${JSON.stringify(chunk)}\n\ndata: [DONE]\n\n`;
-
-        console.log("[VAPI-LLM] Sent SSE response:", sseBody);
 
         return {
             statusCode: 200,
@@ -195,12 +128,16 @@ RULES:
 
     } catch (error: any) {
         console.error("[VAPI-LLM] Error:", error.message);
+        const fallbackChunk = {
+            id: "err-" + Date.now(),
+            object: "chat.completion.chunk",
+            created: Math.floor(Date.now() / 1000),
+            choices: [{ delta: { content: "Sorry, I can't process that right now." }, finish_reason: null }]
+        };
         return {
-            statusCode: 200, // Return 200 with error message to avoid Vapi hanging
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                choices: [{ message: { role: "assistant", content: "I'm sorry, I'm having trouble processing that right now." } }]
-            })
+            statusCode: 200,
+            headers: { "Content-Type": "text/event-stream" },
+            body: `data: ${JSON.stringify(fallbackChunk)}\n\ndata: [DONE]\n\n`
         };
     }
 };
