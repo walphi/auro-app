@@ -2,6 +2,33 @@ import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { getListingById } from "./listings-helper";
+import axios from "axios";
+
+async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
+    try {
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+
+        if (!accountSid || !authToken) return false;
+
+        const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        const params = new URLSearchParams();
+        params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
+        params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+        params.append('Body', text);
+
+        const response = await axios.post(
+            `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+            params,
+            { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+        return response.status === 201 || response.status === 200;
+    } catch (error: any) {
+        console.error("[VAPI WhatsApp Error]:", error.message);
+        return false;
+    }
+}
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const supabase = createClient(
@@ -66,7 +93,58 @@ RULES:
 `;
 
         // 2. Call Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction });
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash",
+            systemInstruction: systemInstruction,
+            tools: [
+                {
+                    functionDeclarations: [
+                        {
+                            name: "SEARCH_LISTINGS",
+                            description: "Search for available property listings in Dubai.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    property_type: { type: "STRING" },
+                                    community: { type: "STRING" },
+                                    min_price: { type: "NUMBER" },
+                                    max_price: { type: "NUMBER" },
+                                    min_bedrooms: { type: "NUMBER" }
+                                }
+                            }
+                        },
+                        {
+                            name: "UPDATE_LEAD",
+                            description: "Update lead profile with qualification details.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    name: { type: "STRING" },
+                                    email: { type: "STRING" },
+                                    budget: { type: "STRING" },
+                                    location: { type: "STRING" },
+                                    property_type: { type: "STRING" },
+                                    timeline: { type: "STRING" }
+                                }
+                            }
+                        },
+                        {
+                            name: "BOOK_VIEWING",
+                            description: "Book a property viewing appointment. Requires a resolved ISO 8601 datetime.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    property_id: { type: "STRING" },
+                                    resolved_datetime: { type: "STRING", description: "ISO 8601 string with timezone offset, e.g., 2025-12-23T16:00:00+04:00" },
+                                    property_name: { type: "STRING" }
+                                },
+                                required: ["resolved_datetime", "property_id"]
+                            }
+                        }
+                    ]
+                }
+            ] as any
+        });
         const chat = model.startChat({
             history: messages.slice(0, -1).map((m: any) => ({
                 role: m.role === "assistant" ? "model" : "user",
@@ -93,8 +171,35 @@ RULES:
                             booking_status: 'confirmed',
                             current_listing_id: property_id
                         }).eq('id', leadId);
-                        // We could restart loop here if we wanted deeper agent logic, 
-                        // but for V2 MVP we trust the model's text confirmation.
+
+                        // Fetch property details for confirmation
+                        let listingTitle = property_name || "Property";
+                        if (!property_name && property_id) {
+                            const listing = await getListingById(property_id);
+                            if (listing) listingTitle = listing.title;
+                        }
+
+                        // Format Date for Dubai
+                        const dateObj = new Date(resolved_datetime);
+                        const formattedDate = dateObj.toLocaleString('en-US', {
+                            weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai'
+                        }) + " Dubai time";
+
+                        // Send WhatsApp Confirmation
+                        const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+                        const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
+
+                        if (phoneNumber) {
+                            await sendWhatsAppMessage(phoneNumber, messageText);
+                        }
+
+                        // Log message
+                        await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'System_Note',
+                            sender: 'System',
+                            content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
+                        });
                     }
                 }
             }
