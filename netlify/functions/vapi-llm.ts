@@ -88,8 +88,10 @@ RULES:
 1. Be professional, concise.
 2. Use 'SEARCH_LISTINGS' if asked for properties.
 3. Use 'BOOK_VIEWING' for specific interest.
-4. TIMEZONE: Asia/Dubai (UTC+4). Resolve "tomorrow at 4" to ISO8601 (e.g. 2025-12-23T16:00:00+04:00).
-5. Confirm booking details clearly.
+4. TIMEZONE: Asia/Dubai (UTC+4).
+5. CURRENT DATE: ${new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+6. Resolve "tomorrow at 4pm" relative to the CURRENT DATE.
+7. Confirm booking details clearly.
 `;
 
         // 2. Call Gemini
@@ -241,7 +243,11 @@ RULES:
         };
         return {
             statusCode: 200,
-            headers: { "Content-Type": "text/event-stream" },
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            },
             body: `data: ${JSON.stringify(fallbackChunk)}\n\ndata: [DONE]\n\n`
         };
     }
