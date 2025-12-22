@@ -160,34 +160,37 @@ RULES:
         // const finalText = text || "I heard you, but I'm just debug mode right now."; 
         const finalText = "Hi Phillip, thanks for taking the call. How are you today?";
 
-        const responsePayload = {
+        // Streaming SSE Response for Vapi
+        const createdTimestamp = Math.floor(Date.now() / 1000);
+        const chunk = {
             id: "chatcmpl-" + (body.call?.id ?? Date.now()),
-            object: "chat.completion",
-            created: Math.floor(Date.now() / 1000),
-            model: body.model ?? "gpt-4.1-mini",
+            object: "chat.completion.chunk",
+            created: createdTimestamp,
+            model: "gpt-4.1-mini",
             choices: [
                 {
                     index: 0,
-                    message: {
+                    delta: {
                         role: "assistant",
-                        content: finalText,
+                        content: finalText
                     },
-                    finish_reason: "stop",
-                },
-            ],
-            usage: {
-                prompt_tokens: 0,
-                completion_tokens: finalText.split(/\s+/).length,
-                total_tokens: finalText.split(/\s+/).length,
-            },
+                    finish_reason: null
+                }
+            ]
         };
 
-        console.log("[VAPI-LLM] Sent response:", JSON.stringify(responsePayload));
+        const sseBody = `data: ${JSON.stringify(chunk)}\n\ndata: [DONE]\n\n`;
+
+        console.log("[VAPI-LLM] Sent SSE response:", sseBody);
 
         return {
             statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(responsePayload)
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            },
+            body: sseBody
         };
 
     } catch (error: any) {
