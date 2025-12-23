@@ -427,7 +427,7 @@ RULES & BEHAVIOR:
 3. CONTEXTUAL ANSWERS:
    - Community/Project: Use the 'community' and 'sub_community' fields. "Yes, that is in Creek Beach - Breeze..."
    - Broker Identity: Use 'agent_name', 'agent_phone', and 'agent_company' fields. "This listing is with Provident. Your agent is [Name]..."
-   - Investment/Yields: If rental data is missing, provide transparent *estimates* based on Dubai market knowledge for that area/type. Always label as "estimated gross yield".
+   - Investment/Yields: YOU MUST USE 'RAG_QUERY_TOOL' to find data. Do NOT guess. If data is strictly missing after a tool call, provide a generic market estimate for the *specifically discussed area* (e.g. "Similar units in [Community] typically yield X%").
      - Follow up with: "Are you focused on yield or personal use?"
 
 4. ALTERNATIVES & PORTFOLIO:
@@ -607,7 +607,9 @@ RULES & BEHAVIOR:
                     let query = (args as any).query;
 
                     // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
-                    if (query.toLowerCase().includes('yield') || query.toLowerCase().includes('investment') || query.toLowerCase().includes('rent')) {
+                    // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
+                    const lowerQuery = query.toLowerCase();
+                    if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
                         // Check if we have a current listing context
                         let currentListing: PropertyListing | null = null;
 
