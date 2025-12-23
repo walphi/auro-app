@@ -30,9 +30,10 @@ export interface PropertyListing {
     price_per_sqft: number;
     images: any[]; // Changed to any[] as it contains objects/strings
     image_url_jpeg?: string;
-    agent_name: string;
-    agent_phone: string;
-    source_url: string;
+    agent_name?: string;
+    agent_phone?: string;
+    agent_company?: string;
+    source_url?: string;
 }
 
 /**

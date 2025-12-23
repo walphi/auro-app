@@ -444,6 +444,7 @@ RULES & BEHAVIOR:
 6. TONE & STRUCTURE:
    - Be concise, friendly, and professional.
    - Use short paragraphs or bullets.
+   - NEVER include internal IDs (like 023b... or PS-...) or external URLs in your messages. Use human-readable titles/locations only.
    - END EVERY MESSAGE with a clear next step:
      - "Would you like to see more options in [Area]?"
      - "Should I connect you to [Agent Name]?"
@@ -603,7 +604,35 @@ RULES & BEHAVIOR:
                 let toolResult = "";
 
                 if (name === 'RAG_QUERY_TOOL') {
-                    toolResult = await queryRAG((args as any).query);
+                    let query = (args as any).query;
+
+                    // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
+                    if (query.toLowerCase().includes('yield') || query.toLowerCase().includes('investment') || query.toLowerCase().includes('rent')) {
+                        // Check if we have a current listing context
+                        let currentListing: PropertyListing | null = null;
+
+                        // Try to get from lead DB state
+                        if (leadId) {
+                            const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                            if (lead?.current_listing_id) {
+                                currentListing = await getListingById(lead.current_listing_id);
+                            }
+                        }
+
+                        if (currentListing) {
+                            const locationStr = `${currentListing.community || ''} ${currentListing.sub_community || ''}, Dubai`.trim();
+                            const newQuery = `rental yields for apartments in ${locationStr}`;
+                            console.log(`[RAG] Enhanced query from "${query}" to "${newQuery}" based on current listing ${currentListing.id}`);
+                            query = newQuery;
+                        } else {
+                            // Fallback if no specific listing is active but query is vague
+                            if (!query.toLowerCase().includes('dubai')) {
+                                query += " in Dubai";
+                            }
+                        }
+                    }
+
+                    toolResult = await queryRAG(query);
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
                 } else if (name === 'UPDATE_LEAD') {
@@ -725,6 +754,11 @@ Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
 Area: ${listing.area_sqft} sqft
 Description: ${listing.description || 'No detailed description available.'}
 `;
+                                // 2. Broker Details Injection (Deterministic)
+                                if (listing.agent_name) {
+                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}, reachable at ${listing.agent_phone || "the office"}.`;
+                                    toolResult += brokerInfo;
+                                }
                             }
 
                             // Check if this image index exists
