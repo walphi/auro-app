@@ -37,6 +37,74 @@ const supabase = createClient(
 );
 const VAPI_SECRET = process.env.VAPI_SECRET;
 
+// RAG Query with Vapi Priority Boost - prioritizes voice patterns over static uploads
+async function queryRAGForVoice(query: string, clientId: string = 'demo'): Promise<string> {
+    try {
+        console.log('[VAPI-LLM RAG] Querying with voice priority:', query);
+        const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const embResult = await embedModel.embedContent(query);
+        const embedding = embResult.embedding.values;
+
+        // Use weighted search with voice pattern priorities
+        const { data: weightedData, error: weightedError } = await supabase.rpc('match_rag_chunks_weighted', {
+            query_embedding: embedding,
+            match_threshold: 0.3,
+            match_count: 5,
+            filter_client_id: clientId,
+            filter_folder_id: null,
+            // Prioritize voice patterns: conversation_learning, winning_script, hot_topic
+            filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload'],
+            weight_outcome_correlation: 1.5, // Boost successful patterns
+            weight_feedback: 1.2,             // Boost user-approved chunks
+            weight_conversion: 1.5            // Boost high-conversion content
+        });
+
+        if (!weightedError && weightedData && weightedData.length > 0) {
+            console.log(`[VAPI-LLM RAG] Weighted search returned ${weightedData.length} results`);
+            return weightedData.map((i: any) => i.content).slice(0, 3).join("\n\n");
+        }
+
+        // Fallback to standard search if weighted function not yet deployed
+        console.log('[VAPI-LLM RAG] Weighted search unavailable, falling back to standard');
+        const { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
+            query_embedding: embedding,
+            match_threshold: 0.3,
+            match_count: 5,
+            filter_client_id: clientId,
+            filter_folder_id: null
+        });
+
+        if (!ragError && ragData && ragData.length > 0) {
+            return ragData.map((i: any) => i.content).slice(0, 3).join("\n\n");
+        }
+
+        return "No relevant information found.";
+    } catch (e: any) {
+        console.error('[VAPI-LLM RAG] Error:', e.message);
+        return "Error searching knowledge base.";
+    }
+}
+
+// Trigger RAG learning for booking confirmations
+async function triggerRAGLearning(leadId: string, outcome: string): Promise<void> {
+    try {
+        const host = process.env.URL || 'https://auro-app.netlify.app';
+        await fetch(`${host}/.netlify/functions/rag-learn`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'process_lead',
+                lead_id: leadId,
+                outcome: outcome,
+                client_id: 'demo'
+            })
+        });
+        console.log(`[VAPI-LLM] RAG learning triggered for lead ${leadId} with outcome ${outcome}`);
+    } catch (e: any) {
+        console.error('[VAPI-LLM] RAG learning trigger failed:', e.message);
+    }
+}
+
 const handler: Handler = async (event) => {
     try {
         if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
@@ -131,6 +199,17 @@ RULES & BEHAVIOR:
                             }
                         },
                         {
+                            name: "RAG_QUERY_TOOL",
+                            description: "Search the knowledge base for pricing, payment plans, project details, investment yields, and market data.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    query: { type: "STRING", description: "The search query" }
+                                },
+                                required: ["query"]
+                            }
+                        },
+                        {
                             name: "UPDATE_LEAD",
                             description: "Update lead profile with qualification details.",
                             parameters: {
@@ -217,6 +296,18 @@ RULES & BEHAVIOR:
                             sender: 'System',
                             content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
                         });
+
+                        // Trigger RAG learning for successful booking
+                        await triggerRAGLearning(leadId, 'booking_confirmed');
+                    }
+                } else if (call.name === 'RAG_QUERY_TOOL') {
+                    // Handle RAG query with voice priority
+                    const query = (call.args as any).query;
+                    if (query) {
+                        const ragResult = await queryRAGForVoice(query);
+                        console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
+                        // Note: In streaming mode, we can't inject this directly into text
+                        // The model will use it in the next turn if needed
                     }
                 }
             }

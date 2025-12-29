@@ -152,14 +152,38 @@ const handler: Handler = async (event) => {
         });
       } else if (messageType === 'call-ended') {
         const summary = body.message?.analysis?.summary || body.message?.transcript;
-        console.log("[VAPI] Call ended. Logging summary/transcript.");
+        const outcome = body.message?.analysis?.outcome || 'unknown';
+        const bookingMade = body.message?.analysis?.bookingMade || false;
+        console.log(`[VAPI] Call ended. outcome=${outcome}, bookingMade=${bookingMade}`);
 
         await supabase.from('messages').insert({
           lead_id: leadId,
           type: 'Voice_Transcript',
           sender: 'System',
-          content: `--- Call Summary ---\n${summary || 'Call ended.'}`
+          content: `--- Call Summary ---\n${summary || 'Call ended.'}`,
+          meta: JSON.stringify({ outcome, bookingMade })
         });
+
+        // Trigger RAG learning for completed calls
+        const learningOutcome = bookingMade ? 'booking_confirmed' :
+          outcome === 'qualified' ? 'qualified' : 'unknown';
+        console.log(`[VAPI] Triggering RAG learning with outcome: ${learningOutcome}`);
+
+        try {
+          const host = process.env.URL || 'https://auro-app.netlify.app';
+          await fetch(`${host}/.netlify/functions/rag-learn`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'process_lead',
+              lead_id: leadId,
+              outcome: learningOutcome,
+              client_id: 'demo'
+            })
+          });
+        } catch (learnError: any) {
+          console.error('[VAPI] RAG learning trigger failed:', learnError.message);
+        }
       }
     }
 
