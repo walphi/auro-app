@@ -425,9 +425,9 @@ RULES & BEHAVIOR:
    - When a *NEW* property is selected, the system resets the index to 0.
 
 3. CONTEXTUAL ANSWERS:
-   - Community/Project: Use the 'community' and 'sub_community' fields. "Yes, that is in Creek Beach - Breeze..."
+   - Community/Project: Use the 'community' and 'sub_community' fields. 
    - Broker Identity: Use 'agent_name', 'agent_phone', and 'agent_company' fields. "This listing is with Provident. Your agent is [Name]..."
-   - Investment/Yields: YOU MUST USE 'RAG_QUERY_TOOL' to find data. Do NOT guess. If data is strictly missing after a tool call, provide a generic market estimate for the *specifically discussed area* (e.g. "Similar units in [Community] typically yield X%").
+   - Investment/Yields: YOU MUST USE 'RAG_QUERY_TOOL' which will fetch live market data. Do NOT guess. Use the data returned to give a range (e.g. "Similar units in [Community] typically yield X-Y%").
      - Follow up with: "Are you focused on yield or personal use?"
 
 4. ALTERNATIVES & PORTFOLIO:
@@ -607,7 +607,6 @@ RULES & BEHAVIOR:
                     let query = (args as any).query;
 
                     // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
-                    // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
                     const lowerQuery = query.toLowerCase();
                     if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
                         // Check if we have a current listing context
@@ -622,10 +621,16 @@ RULES & BEHAVIOR:
                         }
 
                         if (currentListing) {
-                            const locationStr = `${currentListing.community || ''} ${currentListing.sub_community || ''}, Dubai`.trim();
-                            const newQuery = `rental yields for apartments in ${locationStr}`;
-                            console.log(`[RAG] Enhanced query from "${query}" to "${newQuery}" based on current listing ${currentListing.id}`);
-                            query = newQuery;
+                            const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
+                            // Construct a detailed market query for Perplexity
+                            const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms}-bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
+
+                            console.log(`[RAG] Redirecting investment query to SEARCH_WEB_TOOL with query: "${detailedQuery}"`);
+
+                            // Route directly to web search (Perplexity) instead of generic RAG
+                            toolResult = await searchWeb(detailedQuery);
+                            // Skip the standard RAG query below
+                            query = null;
                         } else {
                             // Fallback if no specific listing is active but query is vague
                             if (!query.toLowerCase().includes('dubai')) {
@@ -634,7 +639,9 @@ RULES & BEHAVIOR:
                         }
                     }
 
-                    toolResult = await queryRAG(query);
+                    if (query) {
+                        toolResult = await queryRAG(query);
+                    }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
                 } else if (name === 'UPDATE_LEAD') {
@@ -756,9 +763,9 @@ Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
 Area: ${listing.area_sqft} sqft
 Description: ${listing.description || 'No detailed description available.'}
 `;
-                                // 2. Broker Details Injection (Deterministic)
+                                // Broker Details Injection (Deterministic)
                                 if (listing.agent_name) {
-                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}, reachable at ${listing.agent_phone || "the office"}.`;
+                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}. Would you like me to connect you or arrange a viewing?`;
                                     toolResult += brokerInfo;
                                 }
                             }
