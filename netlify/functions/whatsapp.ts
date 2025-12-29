@@ -571,6 +571,35 @@ RULES & BEHAVIOR:
                                 }
                             }
                         }
+                    },
+                    {
+                        name: "OFFPLAN_BOOKING",
+                        description: "For OFFPLAN properties (with payment_plan or handover_date). Offers 3 options: Sales Centre visit, Video Call, or Voice Calendar booking. Detect offplan by payment_plan or future handover_date in listing.",
+                        parameters: {
+                            type: "OBJECT",
+                            properties: {
+                                property_id: {
+                                    type: "STRING",
+                                    description: "The offplan property ID"
+                                },
+                                property_name: {
+                                    type: "STRING",
+                                    description: "Property/project name"
+                                },
+                                developer: {
+                                    type: "STRING",
+                                    description: "Developer name (Emaar, Damac, Nakheel, etc.)"
+                                },
+                                community: {
+                                    type: "STRING",
+                                    description: "Community/area name"
+                                },
+                                preferred_option: {
+                                    type: "STRING",
+                                    description: "User's preference if stated: 'sales_centre', 'video_call', or 'voice_call'"
+                                }
+                            }
+                        }
                     }
                 ]
             }
@@ -834,6 +863,65 @@ Description: ${listing.description || 'No detailed description available.'}
                             type: 'System_Note',
                             sender: 'System',
                             content: `Booking intent detected for: ${listingTitle}. Offered Vapi call escalation.`
+                        });
+                    }
+                } else if (name === 'OFFPLAN_BOOKING') {
+                    console.log("OFFPLAN_BOOKING called with:", JSON.stringify(args));
+
+                    const propertyId = (args as any).property_id;
+                    const propertyName = (args as any).property_name || "this offplan project";
+                    const community = (args as any).community;
+                    const developer = (args as any).developer;
+                    const preferredOption = (args as any).preferred_option;
+
+                    // Country Detection
+                    const isInternational = fromNumber.startsWith('+44') || fromNumber.startsWith('+91');
+                    const countryName = fromNumber.startsWith('+44') ? 'the UK' : fromNumber.startsWith('+91') ? 'India' : 'overseas';
+
+                    let suggestion = "";
+                    if (isInternational) {
+                        suggestion = `Since you're reaching out from ${countryName}, I highly recommend a **Video Call** so we can walk you through the project digitally.`;
+                    } else {
+                        suggestion = `I'd recommend visiting the **Sales Centre** here in Dubai to see the physical model and materials.`;
+                    }
+
+                    // Agent Rotation for Sales Centre (Side Effect)
+                    let agentInfo = "";
+                    try {
+                        const { data: agent, error: agentError } = await supabase.rpc('get_next_sales_agent', {
+                            filter_community: community,
+                            filter_developer: developer
+                        });
+
+                        if (!agentError && agent && agent.length > 0) {
+                            const a = agent[0];
+                            agentInfo = `Your specialist for this project is **${a.agent_name}**. `;
+                        }
+                    } catch (e) {
+                        console.error("[Offplan] Agent rotation error:", e);
+                    }
+
+                    if (preferredOption === 'sales_centre') {
+                        toolResult = `Excellent! ${agentInfo}I'll arrange your visit to the **${developer || 'developer'} Sales Centre** for ${propertyName}. \n\nWhat day and time works best for you to visit?`;
+                    } else if (preferredOption === 'video_call') {
+                        toolResult = `Great choice! A **Video Call** is perfect for viewing the ${propertyName} presentation. \n\nShould I send you a link to book a time that suits you, or would you like me to have an agent call you to set it up?`;
+                    } else if (preferredOption === 'voice_call') {
+                        toolResult = `I'll have our assistant call you right now to discuss the ${propertyName} payment plans and availability. \n\nIs now a good time? 📞`;
+                    } else {
+                        // Default 3-Path Offer
+                        toolResult = `For ${propertyName}, we have 3 ways to proceed:\n\n` +
+                            `1. **Sales Centre Visit**: See the model and finishes in person. ${agentInfo}\n` +
+                            `2. **Video Call**: A detailed digital walkthrough (highly recommended for investors in ${countryName}).\n` +
+                            `3. **Voice Call**: A quick 2-minute chat with our assistant to check availability.\n\n` +
+                            `${suggestion} Which would you prefer?`;
+                    }
+
+                    if (leadId) {
+                        await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'System_Note',
+                            sender: 'System',
+                            content: `Offplan flow triggered for ${propertyName}. Country detected: ${isInternational ? 'International' : 'Local'}. Option: ${preferredOption || 'Offer 3-paths'}`
                         });
                     }
                 }

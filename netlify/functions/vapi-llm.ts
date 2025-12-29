@@ -165,11 +165,14 @@ RULES & BEHAVIOR:
 
 3. CONTEXTUAL ANSWERS:
    - Project: "Yes, that's in [Community], [Sub-community]. It's a great location."
+   - Offplan Detection: If you see 'payment_plan' or 'handover_date' in the listing, treat it as OFFPLAN.
    - Investment: If asked about returns, provide *estimates* based on Dubai market data. "Typically, units like this in [Area] yield around [X]% gross. Are you looking for investment or personal use?"
 
-4. APPOINTMENTS:
-   - If asked to book: Use 'BOOK_VIEWING'.
-   - If asked to change/cancel: "I'll pass that note to our team to reschedule. What time works better?"
+4. OFFPLAN FLOW (3-Path Options):
+   - Use 'OFFPLAN_BOOKING' for offplan projects.
+   - Detect Lead Country: If number starts with +44(UK) or +91(India), prioritize offering a **Video Call**.
+   - If Local (+971), prioritize **Sales Centre Visit**.
+   - ALWAYS offer the 3-path option: 1. Sales Centre Visit, 2. Video Call, 3. Quick Voice Booking.
 
 5. TONE:
    - Warm, professional, conversational.
@@ -235,6 +238,20 @@ RULES & BEHAVIOR:
                                     property_name: { type: "STRING" }
                                 },
                                 required: ["resolved_datetime", "property_id"]
+                            }
+                        },
+                        {
+                            name: "OFFPLAN_BOOKING",
+                            description: "Trigger the offplan booking flow with 3-path options.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    property_id: { type: "STRING" },
+                                    property_name: { type: "STRING" },
+                                    community: { type: "STRING" },
+                                    developer: { type: "STRING" },
+                                    preferred_option: { type: "STRING", enum: ["sales_centre", "video_call", "voice_call"] }
+                                }
                             }
                         }
                     ]
@@ -306,8 +323,27 @@ RULES & BEHAVIOR:
                     if (query) {
                         const ragResult = await queryRAGForVoice(query);
                         console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
-                        // Note: In streaming mode, we can't inject this directly into text
-                        // The model will use it in the next turn if needed
+                    }
+                } else if (call.name === 'OFFPLAN_BOOKING') {
+                    const { property_id, property_name, community, developer, preferred_option } = call.args as any;
+
+                    // Logic to handle assignment/logging (similar to WhatsApp but for voice)
+                    if (leadId) {
+                        let agentInfo = "";
+                        try {
+                            const { data: agent } = await supabase.rpc('get_next_sales_agent', {
+                                filter_community: community,
+                                filter_developer: developer
+                            });
+                            if (agent && agent.length > 0) agentInfo = `Assigned agent: ${agent[0].agent_name}`;
+                        } catch (e) { }
+
+                        await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'System_Note',
+                            sender: 'System',
+                            content: `OFFPLAN flow in Voice: ${preferred_option || 'Interests'}. ${agentInfo}`
+                        });
                     }
                 }
             }
