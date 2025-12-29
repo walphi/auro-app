@@ -557,7 +557,7 @@ RULES & BEHAVIOR:
                     },
                     {
                         name: "BOOK_VIEWING",
-                        description: "Book a property viewing appointment. Use when the user wants to schedule a visit. Resolve relative times like 'tomorrow 3pm' to ISO 8601 format with Dubai timezone (+04:00).",
+                        description: "When user wants to book a viewing or visit sales center. This will offer to call them via voice agent which has calendar access to confirm the appointment.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
@@ -565,16 +565,11 @@ RULES & BEHAVIOR:
                                     type: "STRING",
                                     description: "The property ID to book a viewing for. Use current_listing_id from context if not specified."
                                 },
-                                resolved_datetime: {
-                                    type: "STRING",
-                                    description: "ISO 8601 datetime with timezone, e.g., 2025-12-30T15:00:00+04:00. Today is " + new Date().toISOString().split('T')[0]
-                                },
                                 property_name: {
                                     type: "STRING",
-                                    description: "Human-readable property name for confirmation message"
+                                    description: "Human-readable property name for the offer message"
                                 }
-                            },
-                            required: ["resolved_datetime"]
+                            }
                         }
                     }
                 ]
@@ -811,10 +806,9 @@ Description: ${listing.description || 'No detailed description available.'}
                         toolResult = "Please specify which property you'd like more details about.";
                     }
                 } else if (name === 'BOOK_VIEWING') {
-                    console.log("BOOK_VIEWING called with:", JSON.stringify(args));
+                    console.log("BOOK_VIEWING called - escalating to Vapi call");
 
                     let propertyId = (args as any).property_id;
-                    const resolvedDatetime = (args as any).resolved_datetime;
                     const propertyName = (args as any).property_name;
 
                     // Fallback to current_listing_id if not provided
@@ -823,68 +817,24 @@ Description: ${listing.description || 'No detailed description available.'}
                         propertyId = lead?.current_listing_id;
                     }
 
-                    if (!resolvedDatetime) {
-                        toolResult = "I'd love to book that viewing for you! Could you please confirm the date and time you'd prefer?";
-                    } else if (leadId) {
-                        try {
-                            // Update lead with booking info
-                            await supabase.from('leads').update({
-                                viewing_datetime: resolvedDatetime,
-                                booking_status: 'confirmed',
-                                current_listing_id: propertyId
-                            }).eq('id', leadId);
+                    // Get property title for context
+                    let listingTitle = propertyName || "the property";
+                    if (!propertyName && propertyId) {
+                        const listing = await getListingById(propertyId);
+                        if (listing) listingTitle = listing.title;
+                    }
 
-                            // Get property title
-                            let listingTitle = propertyName || "Property";
-                            if (!propertyName && propertyId) {
-                                const listing = await getListingById(propertyId);
-                                if (listing) listingTitle = listing.title;
-                            }
+                    // Offer to call for booking (Vapi has Google Calendar integration)
+                    toolResult = `Great choice! To book a viewing for ${listingTitle}, I can have our assistant call you right now to check availability and confirm the appointment. The call takes just 2 minutes.\n\nWould you like me to call you now? 📞`;
 
-                            // Format date for Dubai
-                            const dateObj = new Date(resolvedDatetime);
-                            const formattedDate = dateObj.toLocaleString('en-US', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'long',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true,
-                                timeZone: 'Asia/Dubai'
-                            }) + " Dubai time";
-
-                            // Log booking
-                            await supabase.from('messages').insert({
-                                lead_id: leadId,
-                                type: 'System_Note',
-                                sender: 'System',
-                                content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
-                            });
-
-                            toolResult = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. Is there anything else you'd like to know about the property before the viewing?`;
-
-                            // Trigger RAG learning for successful booking
-                            console.log('[WhatsApp] Triggering RAG learning for booking confirmation');
-                            try {
-                                await fetch(`https://${host}/.netlify/functions/rag-learn`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        action: 'process_lead',
-                                        lead_id: leadId,
-                                        outcome: 'booking_confirmed',
-                                        client_id: 'demo'
-                                    })
-                                });
-                            } catch (learnErr: any) {
-                                console.error('[WhatsApp] RAG learning trigger failed:', learnErr.message);
-                            }
-                        } catch (bookErr: any) {
-                            console.error('BOOK_VIEWING error:', bookErr);
-                            toolResult = "I encountered an issue booking the viewing. Let me have an agent follow up with you directly.";
-                        }
-                    } else {
-                        toolResult = "I couldn't find your profile. Could you share your contact details so we can book the viewing?";
+                    // Log the booking intent
+                    if (leadId) {
+                        await supabase.from('messages').insert({
+                            lead_id: leadId,
+                            type: 'System_Note',
+                            sender: 'System',
+                            content: `Booking intent detected for: ${listingTitle}. Offered Vapi call escalation.`
+                        });
                     }
                 }
 

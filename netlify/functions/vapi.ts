@@ -379,11 +379,28 @@ const handler: Handler = async (event) => {
             timeZone: 'Asia/Dubai'
           }) + " Dubai time";
 
-          // 4. Send WhatsApp Confirmation
-          const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
-          const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
-
-          await sendWhatsAppMessage(phoneNumber, messageText);
+          // 4. Send notifications via booking-notify function (Email + WhatsApp)
+          const host = process.env.URL || 'https://auro-app.netlify.app';
+          try {
+            await fetch(`${host}/.netlify/functions/booking-notify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                lead_id: leadId,
+                property_id: property_id,
+                property_title: listingTitle,
+                viewing_datetime: resolved_datetime,
+                formatted_date: formattedDate
+              })
+            });
+            console.log('[VAPI] Booking notifications triggered');
+          } catch (notifyErr: any) {
+            console.error('[VAPI] Notification trigger failed:', notifyErr.message);
+            // Fallback: send WhatsApp directly
+            const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+            const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
+            await sendWhatsAppMessage(phoneNumber, messageText);
+          }
 
           // 5. Log as Message
           await supabase.from('messages').insert({
@@ -393,9 +410,25 @@ const handler: Handler = async (event) => {
             content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
           });
 
+          // 6. Trigger RAG learning
+          try {
+            await fetch(`${host}/.netlify/functions/rag-learn`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'process_lead',
+                lead_id: leadId,
+                outcome: 'booking_confirmed',
+                client_id: 'demo'
+              })
+            });
+          } catch (learnErr: any) {
+            console.error('[VAPI] RAG learning trigger failed:', learnErr.message);
+          }
+
           return {
             toolCallId: call.id,
-            result: `Successfully booked viewing for ${listingTitle} on ${formattedDate}. I've sent a confirmation message to your WhatsApp.`
+            result: `Successfully booked viewing for ${listingTitle} on ${formattedDate}. I've sent confirmation to your WhatsApp and email.`
           };
 
         } catch (err: any) {
