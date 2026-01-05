@@ -30,10 +30,9 @@ export class FirecrawlClient {
                     formats: [
                         {
                             type: "json",
-                            prompt, // Firecrawl chooses the JSON structure
+                            prompt, // our extraction instructions
                         },
                     ],
-                    only_main_content: false,
                     timeout: 120000,
                 }),
                 signal: controller.signal,
