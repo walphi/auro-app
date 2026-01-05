@@ -1,0 +1,10 @@
+.home-placeholder {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  color: #1a365d;
+  font-family: sans-serif;
+}

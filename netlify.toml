@@ -33,6 +33,12 @@
   status = 200
 
 [[redirects]]
+  from = "/sites/*"
+  to = "/sites/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
