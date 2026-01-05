@@ -1,25 +1,30 @@
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../lib/supabase';
-import { RtrvrClient } from '../../lib/rtrvrClient';
+import { FirecrawlClient } from "../../lib/firecrawlClient";
 import { ScrapedListingDraft, PortalSource } from '../../shared/agent-sites-types';
 
-const LISTING_SCRAPE_COMMAND = (url: string) => `
-Go to ${url} and extract the property listing details.
-Return a JSON object with these exact fields:
-{
-  "title": "property title/name",
-  "towerOrCommunity": "building or community name",
-  "type": "rent" or "sale" or "offplan",
-  "price": number (no commas, just digits),
-  "currency": "AED" or "USD",
-  "beds": number of bedrooms (0 for studio),
-  "baths": number of bathrooms,
-  "sizeSqft": size in square feet (number),
-  "features": ["feature1", "feature2", ...],
-  "photos": ["url1", "url2", ...],
-  "description": "full property description text"
-}
-Only return the JSON object, no other text.
+const LISTING_SCRAPE_PROMPT = (url: string) => `
+You are a real estate listing extractor.
+
+Go to this URL: ${url}
+
+Extract and return a single JSON object with exactly these fields:
+
+- "title": string, the property title/name.
+- "towerOrCommunity": string, building or community name.
+- "type": string, one of "rent", "sale", or "offplan".
+- "price": number, numeric price without commas.
+- "currency": string, e.g. "AED" or "USD".
+- "beds": number, bedrooms (0 for studio).
+- "baths": number, bathrooms.
+- "sizeSqft": number, size in square feet.
+- "features": string, a comma-separated list of key features.
+- "photos": string[], array of photo URLs.
+- "description": string, full property description text.
+
+Important rules:
+- Only return the JSON object as the "json" field, no prose.
+- If a field is missing on the page, still include it with a null or sensible default.
 `;
 
 function inferSource(url: string): PortalSource {
@@ -28,6 +33,12 @@ function inferSource(url: string): PortalSource {
     if (url.includes('dubizzle')) return 'dubizzle';
     return 'other';
 }
+
+const firecrawl = new FirecrawlClient({
+    apiKey: process.env.FIRECRAWL_API_KEY!,
+    baseUrl: "https://api.firecrawl.dev/v1",
+    timeoutMs: 60000,
+});
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -60,42 +71,54 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        // 2. Scrape via rtrvr.ai
-        const rtrvrApiKey = process.env.RTRVR_API_KEY;
-        if (!rtrvrApiKey) {
-            console.error('[scrape-listing] RTRVR_API_KEY missing');
+        // 2. Scrape via Firecrawl
+        if (!process.env.FIRECRAWL_API_KEY) {
+            console.error('[scrape-listing] FIRECRAWL_API_KEY missing');
             return {
                 statusCode: 500,
                 body: JSON.stringify({ ok: false, error: 'Scraping service not configured (missing API key)' })
             };
         }
 
-        const client = new RtrvrClient({
-            apiKey: rtrvrApiKey,
-            baseUrl: 'https://api.rtrvr.ai',
-            timeout: 60000
-        });
+        console.log("[scrape-listing] Calling Firecrawl for URL:", url);
+        const result = await firecrawl.scrapeJson(
+            url,
+            LISTING_SCRAPE_PROMPT(url)
+        );
 
-        const prompt = LISTING_SCRAPE_COMMAND(url);
-        const result = await client.createTask(prompt);
-
-        if (!result.success) {
-            console.error(`[scrape-listing] rtrvr.ai reported failure for ${url}: ${result.error || 'Unknown error'}`);
+        if (!result.success || !result.data?.json) {
+            console.error("[scrape-listing] Firecrawl error:", result.error);
             return {
                 statusCode: 422,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ok: false, error: result.error || 'Scraping failed' })
+                body: JSON.stringify({
+                    ok: false,
+                    error: "SCRAPE_FAILED",
+                    details: result.error,
+                }),
             };
         }
 
-        // Normalize output
-        const rawData = result.data;
+        const json = result.data.json;
+
+        // Map into ScrapedListingDraft shape
         const draft: ScrapedListingDraft = {
-            ...rawData,
             sourceUrl: url,
             source: inferSource(url),
+            title: json.title ?? null,
+            towerOrCommunity: json.towerOrCommunity ?? null,
+            type: json.type ?? null,
+            price: json.price ?? null,
+            currency: json.currency ?? null,
+            beds: json.beds ?? null,
+            baths: json.baths ?? null,
+            sizeSqft: json.sizeSqft ?? null,
+            features: json.features ?? null,
+            photos: json.photos ?? [],
+            description: json.description ?? null,
+            agentName: json.agentName ?? null,
             scrapedAt: new Date().toISOString(),
-            confidence: 0.9
+            confidence: 0.9,
         };
 
         // 3. Cache Result
@@ -115,11 +138,11 @@ export const handler: Handler = async (event) => {
         };
 
     } catch (error: any) {
-        console.error(`[scrape-listing] Error during scrape for URL ${event.body ? JSON.parse(event.body).url : 'unknown'}: ${error.message}`);
+        console.error(`[scrape-listing] Unexpected error: ${error.message}`);
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ok: false, error: error.message })
+            body: JSON.stringify({ ok: false, error: "INTERNAL_ERROR", message: error.message })
         };
     }
 };

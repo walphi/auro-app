@@ -1,21 +1,30 @@
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../lib/supabase';
-import { RtrvrClient } from '../../lib/rtrvrClient';
+import { FirecrawlClient } from "../../lib/firecrawlClient";
 import { SiteStyleProfile } from '../../shared/agent-sites-types';
 
-const STYLE_SCRAPE_COMMAND = (url: string) => `
-Go to ${url} and analyze the website's visual design and copywriting style.
-Return a JSON object with these exact fields:
-{
-  "primaryColor": "hex color code of the main brand color",
-  "secondaryColor": "hex color code of the accent color",
-  "fontHints": ["list of font style descriptions like serif, modern, elegant"],
-  "layoutHints": ["list of layout patterns like hero-full-width, card-grid, minimal-nav"],
-  "toneHints": ["list of tone descriptors like luxury, professional, family-friendly"],
-  "examplePhrases": ["3-5 example headlines or phrases that capture the site's voice"]
-}
-Only return the JSON object, no other text.
+const STYLE_SCRAPE_PROMPT = (url: string) => `
+You are a website style analyzer.
+
+Go to this URL: ${url}
+
+Return a JSON object with these fields describing the site's visual and copy style:
+
+- "primaryColor": string, main brand color hex like "#1a365d" if you can infer it.
+- "secondaryColor": string, secondary accent color hex.
+- "fontHints": string[], a few words like ["serif", "elegant"].
+- "layoutHints": string[], e.g. ["hero-full-width", "card-grid", "minimal-nav"].
+- "toneHints": string[], e.g. ["luxury", "professional"].
+- "examplePhrases": string[], 2-4 short phrase examples of the copy style.
+
+Only return the JSON object as the "json" field, no prose.
 `;
+
+const firecrawl = new FirecrawlClient({
+    apiKey: process.env.FIRECRAWL_API_KEY!,
+    baseUrl: "https://api.firecrawl.dev/v1",
+    timeoutMs: 60000,
+});
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -48,39 +57,44 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        // 2. Scrape via rtrvr.ai
-        const rtrvrApiKey = process.env.RTRVR_API_KEY;
-        if (!rtrvrApiKey) {
-            console.error('[scrape-site-style] RTRVR_API_KEY missing');
+        // 2. Scrape via Firecrawl
+        if (!process.env.FIRECRAWL_API_KEY) {
+            console.error('[scrape-site-style] FIRECRAWL_API_KEY missing');
             return {
                 statusCode: 500,
                 body: JSON.stringify({ ok: false, error: 'Scraping service not configured (missing API key)' })
             };
         }
 
-        const client = new RtrvrClient({
-            apiKey: rtrvrApiKey,
-            baseUrl: 'https://api.rtrvr.ai',
-            timeout: 60000
-        });
+        console.log("[scrape-site-style] Calling Firecrawl for URL:", url);
+        const result = await firecrawl.scrapeJson(
+            url,
+            STYLE_SCRAPE_PROMPT(url)
+        );
 
-        const prompt = STYLE_SCRAPE_COMMAND(url);
-        const result = await client.createTask(prompt);
-
-        if (!result.success) {
-            console.error(`[scrape-site-style] rtrvr.ai reported failure for ${url}: ${result.error || 'Unknown error'}`);
+        if (!result.success || !result.data?.json) {
+            console.error("[scrape-site-style] Firecrawl error:", result.error);
             return {
                 statusCode: 422,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ok: false, error: result.error || 'Analysis failed' })
+                body: JSON.stringify({
+                    ok: false,
+                    error: "SCRAPE_FAILED",
+                    details: result.error,
+                }),
             };
         }
 
-        // Normalize output
-        const rawData = result.data;
+        const json = result.data.json;
+
         const profile: SiteStyleProfile = {
-            ...rawData,
-            sourceUrl: url
+            sourceUrl: url,
+            primaryColor: json.primaryColor ?? null,
+            secondaryColor: json.secondaryColor ?? null,
+            fontHints: json.fontHints ?? [],
+            layoutHints: json.layoutHints ?? [],
+            toneHints: json.toneHints ?? [],
+            examplePhrases: json.examplePhrases ?? [],
         };
 
         // 3. Cache Result
@@ -100,11 +114,11 @@ export const handler: Handler = async (event) => {
         };
 
     } catch (error: any) {
-        console.error(`[scrape-site-style] Error during style analysis for URL ${event.body ? JSON.parse(event.body).url : 'unknown'}: ${error.message}`);
+        console.error(`[scrape-site-style] Unexpected error: ${error.message}`);
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ok: false, error: error.message })
+            body: JSON.stringify({ ok: false, error: "INTERNAL_ERROR", message: error.message })
         };
     }
 };
