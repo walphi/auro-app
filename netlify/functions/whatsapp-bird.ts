@@ -165,11 +165,14 @@ export const handler: Handler = async (event) => {
         }
 
         // Identify the agent (sender)
-        const from = message.sender?.contacts?.[0]?.identifierValue;
-        const incomingChannelId = message.channelId;
+        const from = message.sender?.contacts?.[0]?.identifierValue ||
+            payload.sender?.contact?.identifierValue ||
+            message.sender?.identifierValue;
+
+        const incomingChannelId = message.channelId || payload.channelId;
 
         if (!from) {
-            console.error('Could not identify sender from Bird payload');
+            console.error('Could not identify sender from Bird payload. Payload structure:', JSON.stringify(payload, null, 2));
             return { statusCode: 200, body: 'No sender identified' };
         }
 
@@ -182,14 +185,19 @@ export const handler: Handler = async (event) => {
             : defaultBird;
 
         // 1. Find or Create Agent
+        console.log(`Searching for agent with phone: ${from}`);
         let { data: agent, error: agentError } = await supabase
             .from('agents')
             .select('*')
             .eq('phone', from)
             .single();
 
+        if (agentError && agentError.code !== 'PGRST116') {
+            console.error('Database error searching for agent:', agentError);
+        }
+
         if (!agent) {
-            // Create new agent
+            console.log(`Agent not found for ${from}, creating new record.`);
             const { data: newAgent, error: createError } = await supabase
                 .from('agents')
                 .insert({
@@ -199,18 +207,28 @@ export const handler: Handler = async (event) => {
                 .select()
                 .single();
 
-            if (createError) throw createError;
+            if (createError) {
+                console.error('Failed to create agent:', createError);
+                throw createError;
+            }
             agent = newAgent;
         }
+        console.log(`Agent resolved: ${agent.id}`);
 
         // 2. Get or Create Conversation State
+        console.log(`Getting conversation for agent ${agent.id}`);
         let { data: conversation, error: convError } = await supabase
             .from('site_conversations')
             .select('*')
             .eq('agent_id', agent.id)
             .single();
 
+        if (convError && convError.code !== 'PGRST116') {
+            console.error('Database error searching for conversation:', convError);
+        }
+
         if (!conversation) {
+            console.log(`Conversation not found for agent ${agent.id}, creating first state.`);
             const { data: newConv, error: createConvError } = await supabase
                 .from('site_conversations')
                 .insert({
@@ -221,13 +239,17 @@ export const handler: Handler = async (event) => {
                 .select()
                 .single();
 
-            if (createConvError) throw createConvError;
+            if (createConvError) {
+                console.error('Failed to create conversation:', createConvError);
+                throw createConvError;
+            }
             conversation = newConv;
         }
+        console.log(`Conversation resolved: ${conversation.id} (State: ${conversation.current_state})`);
 
         // 3. Process State Machine
         console.log(`Processing state machine for agent ${agent.id} in state ${conversation.current_state}`);
-        await processStateMachine(agent, conversation, text, requestBird);
+        await processStateMachine(agent, conversation, text, requestBird, incomingChannelId);
 
         return {
             statusCode: 200,
@@ -242,7 +264,7 @@ export const handler: Handler = async (event) => {
     }
 };
 
-async function processStateMachine(agent: any, conversation: any, text: string, birdClient: BirdClient) {
+async function processStateMachine(agent: any, conversation: any, text: string, birdClient: BirdClient, incomingChannelId: string) {
     const currentState = conversation.current_state;
     let nextState = currentState;
     let replyText = '';
@@ -675,11 +697,13 @@ async function processStateMachine(agent: any, conversation: any, text: string, 
         // For MVP, let's sync basic info once we have it
     }
 
-    console.log(`REPLYING to ${agent.phone} with: "${replyText}"`);
+    console.log(`REPLYING to ${agent.phone} on channel ${incomingChannelId} with: "${replyText}"`);
     try {
-        await birdClient.sendTextMessage(agent.phone, replyText);
+        const sendResult = await birdClient.sendTextMessage(agent.phone, replyText);
+        console.log("SEND RESULT:", JSON.stringify(sendResult, null, 2));
         console.log("Bird reply sent successfully.");
     } catch (e: any) {
-        console.error("FAILED TO SEND BIRD REPLY:", e.message);
+        console.error("ERROR sending via Bird:", e.message);
+        if (e.stack) console.error(e.stack);
     }
 }
