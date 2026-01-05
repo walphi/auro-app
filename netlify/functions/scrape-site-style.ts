@@ -64,19 +64,20 @@ export const handler: Handler = async (event) => {
             timeout: 60000
         });
 
-        const result = await client.browse(STYLE_SCRAPE_COMMAND(url));
+        const prompt = STYLE_SCRAPE_COMMAND(url);
+        const result = await client.createTask(prompt);
 
         if (!result.success) {
-            console.error(`[scrape-site-style] Style analysis failed for ${url}: ${result.error}`);
+            console.error(`[scrape-site-style] rtrvr.ai reported failure for ${url}: ${result.error || 'Unknown error'}`);
             return {
                 statusCode: 422,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ok: false, error: result.error })
+                body: JSON.stringify({ ok: false, error: result.error || 'Analysis failed' })
             };
         }
 
         // Normalize output
-        const rawData = result.data.data;
+        const rawData = result.data;
         const profile: SiteStyleProfile = {
             ...rawData,
             sourceUrl: url
@@ -99,7 +100,7 @@ export const handler: Handler = async (event) => {
         };
 
     } catch (error: any) {
-        console.error(`[scrape-site-style] Internal error: ${error.message}`);
+        console.error(`[scrape-site-style] Error during style analysis for URL ${event.body ? JSON.parse(event.body).url : 'unknown'}: ${error.message}`);
         return {
             statusCode: 500,
             headers: { 'Content-Type': 'application/json' },
