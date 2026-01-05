@@ -3,7 +3,7 @@
         "target": "es2020",
         "module": "commonjs",
         "outDir": "./dist",
-        "rootDir": "./netlify",
+        "rootDir": "./",
         "strict": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -14,7 +14,9 @@
         "declaration": true
     },
     "include": [
-        "netlify/functions/**/*"
+        "netlify/functions/**/*",
+        "lib/**/*",
+        "shared/**/*"
     ],
     "exclude": [
         "node_modules",
