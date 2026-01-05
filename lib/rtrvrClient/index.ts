@@ -20,7 +20,7 @@ export class RtrvrClient {
     }
 
     async createTask(prompt: string): Promise<any> {
-        const response = await fetch(`${this.config.baseUrl}/tasks`, {
+        const response = await fetch(`${this.config.baseUrl}/v1/tasks`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${this.config.apiKey}`,

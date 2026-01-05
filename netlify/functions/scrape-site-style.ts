@@ -60,7 +60,7 @@ export const handler: Handler = async (event) => {
 
         const client = new RtrvrClient({
             apiKey: rtrvrApiKey,
-            baseUrl: 'https://api.rtrvr.ai/v1',
+            baseUrl: 'https://api.rtrvr.ai',
             timeout: 60000
         });
 
