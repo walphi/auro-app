@@ -44,6 +44,18 @@ function detectUrlType(message: string): { hasUrl: boolean; url?: string; type?:
 }
 
 /**
+ * Intent Detection Helper
+ */
+function detectIntent(text: string): "preview" | "publish" | "restart" | "help" | "none" {
+    const t = text.toLowerCase().trim();
+    if (t === 'publish') return 'publish';
+    if (t === 'restart' || t === 'start again') return 'restart';
+    if (t === 'help') return 'help';
+    if (t.includes('preview')) return 'preview';
+    return 'none';
+}
+
+/**
  * Quota Management
  */
 async function checkAndIncrementQuota(agentId: string): Promise<boolean> {
@@ -193,18 +205,43 @@ export async function processAgentSitesMessage(
         .single();
 
     if (!config && currentState !== 'IDENTIFY_AGENT') {
-        const { data: newConfig } = await supabase
+        const defaultSlug = agent.phone.replace('+', '');
+        console.log(`[processAgentSitesMessage] Creating missing AgentConfig for agent ${agent.id} (Slug: ${defaultSlug})`);
+        const { data: newConfig, error: createConfigError } = await supabase
             .from('agent_configs')
             .insert({
                 agent_id: agent.id,
-                slug: agent.phone.replace('+', ''),
+                slug: defaultSlug,
                 status: 'draft',
-                name: stateData.name || '',
+                name: stateData.name || 'Agent',
                 needs_site_rebuild: true
             })
             .select()
             .single();
-        config = newConfig;
+
+        if (createConfigError) {
+            console.error(`[processAgentSitesMessage] Failed to create AgentConfig:`, createConfigError);
+        } else {
+            config = newConfig;
+        }
+    }
+
+    // Global Intent Handling
+    const intent = detectIntent(text);
+    if (intent === 'preview' && (stateData.slug || config?.slug)) {
+        const slug = stateData.slug || config?.slug;
+        const previewUrl = `https://auroapp.com/sites/${slug}`;
+        return {
+            text: `Here’s your site preview:\n${previewUrl}\n\nOpen this link to view your website. If everything looks good, type 'publish' to make it live, or 'edit' to change details.`
+        };
+    }
+
+    if (intent === 'restart') {
+        await supabase.from('site_conversations').update({
+            current_state: 'IDENTIFY_AGENT',
+            state_data: {}
+        }).eq('id', conversation.id);
+        return { text: "Starting over! 🏠 What is your full name?" };
     }
 
     switch (currentState) {
@@ -504,26 +541,57 @@ export async function processAgentSitesMessage(
 
         case 'COLLECT_SLUG':
             stateData.slug = text.toLowerCase().replace(/\s+/g, '-');
+            if (config) {
+                console.log(`[processAgentSitesMessage] Finalizing AgentConfig for publish:`, {
+                    id: config.id,
+                    slug: stateData.slug,
+                    name: stateData.name
+                });
+                await supabase.from('agent_configs').update({
+                    slug: stateData.slug,
+                    name: stateData.name,
+                    company: stateData.company,
+                    designation: stateData.designation,
+                    bio: stateData.bio,
+                    profile_photo_url: stateData.profilePhotoUrl,
+                    logo_url: stateData.logoUrl,
+                    areas: stateData.areas,
+                    property_types: stateData.propertyTypes,
+                    developers: stateData.developers,
+                    services: stateData.services,
+                    phone: agent.phone
+                }).eq('id', config.id);
+            }
             replyText = `Preview your site details:\n\nName: ${stateData.name}\nCompany: ${stateData.company}\nSlug: ${stateData.slug}\n\nType 'publish' to generate your site! 🚀`;
             nextState = 'PREVIEW_SUMMARY';
-            if (config) await supabase.from('agent_configs').update({ slug: stateData.slug }).eq('id', config.id);
             break;
 
         case 'PREVIEW_SUMMARY':
             if (text.toLowerCase() === 'publish') {
-                replyText = "Building your site with Claude... 🤖 This takes about 30 seconds. I'll message you once it's live!";
-                if (proactiveSender) await proactiveSender(replyText);
-
-                const res = await callBuildSite(agent.id);
-                if (res.success) {
-                    replyText = `Done! Your site is live at: ${res.siteUrl} 🚀`;
-                    nextState = 'CMS_MODE';
+                if (!config) {
+                    console.error(`[processAgentSitesMessage] publish_failed_missing_agent_config`, {
+                        waId: from,
+                        agentId: agent.id,
+                        state: currentState
+                    });
+                    replyText = "I couldn't find your setup. Please type 'restart' to start again, or send a listing URL to begin.";
+                    nextState = 'LISTINGS_LOOP';
                 } else {
-                    replyText = `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'publish' again or send a listing to update.`;
-                    nextState = 'PREVIEW_SUMMARY';
+                    replyText = "Building your site with Claude... 🤖 This takes about 30 seconds. I'll message you once it's live!";
+                    if (proactiveSender) await proactiveSender(replyText);
+
+                    const res = await callBuildSite(agent.id);
+                    if (res.success) {
+                        const liveUrl = `https://auroapp.com/sites/${stateData.slug || config.slug}`;
+                        replyText = `Your site is live! 🎉\n\nPublic link: ${liveUrl}\n\nSave or share this link with your clients. You can type 'HELP' to see how to update your listings.`;
+                        nextState = 'CMS_MODE';
+                    } else {
+                        replyText = `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'publish' again or send a listing to update.`;
+                        nextState = 'PREVIEW_SUMMARY';
+                    }
                 }
             } else {
-                replyText = "Type 'publish' when you're ready!";
+                replyText = "Type 'publish' when you're ready, or 'preview' to see it first!";
             }
             break;
 

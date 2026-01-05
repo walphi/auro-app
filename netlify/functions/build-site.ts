@@ -135,7 +135,7 @@ export const handler: Handler = async (event) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 success: true,
-                siteUrl: `https://sites.auroapp.com/${agentConfig.slug}`,
+                siteUrl: `https://auroapp.com/sites/${agentConfig.slug}`,
                 version: nextVersion
             })
         };
