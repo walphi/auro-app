@@ -147,42 +147,61 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-        const payload = JSON.parse(event.body || '{}');
-        console.log("FULL BIRD PAYLOAD:", JSON.stringify(payload, null, 2));
+        const fullBody = JSON.parse(event.body || '{}');
+        console.log("FULL BIRD PAYLOAD:", JSON.stringify(fullBody, null, 2));
 
-        // Bird sends message events in a specific format
-        // Ref: https://docs.bird.com/api/messages-v2/webhook-events
-        if (payload.event !== 'message.created' && payload.type !== 'message.created') {
-            // Some Bird webhooks use 'type' or have different event names
-            // For 'message.created' usually it's message.created
-            if (!payload.message) return { statusCode: 200, body: 'Ignoring non-message event' };
+        // 1. Identify "message" object (Bird has multiple formats)
+        // Format A: { event: 'whatsapp.inbound', payload: { ... } }
+        // Format B: { event: 'message.created', message: { ... } }
+        const eventType = fullBody.event || fullBody.type;
+        const message = fullBody.payload || fullBody.message || fullBody.data;
+
+        if (!message) {
+            console.log("No payload/message/data found in Bird event, ignoring.");
+            return { statusCode: 200, body: 'No message data' };
         }
 
-        const message = payload.message || payload.data;
-        if (!message || message.direction !== 'received') {
-            console.log("Non-inbound or missing message, ignoring.");
-            return { statusCode: 200, body: 'Not an incoming message' };
-        }
-
-        // Identify the agent (sender)
-        const from = message.sender?.contacts?.[0]?.identifierValue ||
-            payload.sender?.contact?.identifierValue ||
+        // 2. Extract key fields
+        const from = message.sender?.contact?.identifierValue ||
+            message.sender?.contacts?.[0]?.identifierValue ||
             message.sender?.identifierValue;
 
-        const incomingChannelId = message.channelId || payload.channelId;
+        const incomingChannelId = message.channelId || fullBody.channelId;
+        const text = message.body?.text?.text || '';
 
         if (!from) {
-            console.error('Could not identify sender from Bird payload. Payload structure:', JSON.stringify(payload, null, 2));
+            console.error('Could not identify sender (from) from Bird payload');
             return { statusCode: 200, body: 'No sender identified' };
         }
 
-        const text = message.body.text?.text || '';
         console.log(`Incoming message from ${from} on channel ${incomingChannelId}: "${text}"`);
 
-        // Use the incoming channelId if available
+        // 3. Setup Bird Client for this request
         const requestBird = incomingChannelId
             ? new BirdClient(BIRD_API_KEY || '', BIRD_WORKSPACE_ID || '', incomingChannelId)
             : defaultBird;
+
+        // 4. FALLBACK REPLY (Unconditional for testing)
+        // If it's a text message, send a quick greeting immediately
+        if (message.body?.type === "text" || text) {
+            const fallbackReply = "Welcome! Let's build your Auro site. What's your full name?";
+            console.log(`REPLYING (fallback) to ${from} on channel ${incomingChannelId} with: "${fallbackReply}"`);
+            try {
+                const result = await requestBird.sendTextMessage(from, fallbackReply);
+                console.log("SEND RESULT (fallback):", JSON.stringify(result));
+            } catch (err: any) {
+                console.error("ERROR sending fallback reply via Bird:", err.message);
+            }
+            // For now, we continue into the state machine, or we could return early.
+            // The user said: "Place this before the state machine logic, so even if the state machine fails, I still get a reply."
+            // And "I will expect to see... A WhatsApp reply with that greeting".
+            // If I continue, the state machine will ALSO send a reply. 
+            // The instructions say "Treat any inbound WhatsApp message as a trigger to at least send a greeting".
+            // Let's return early if we're just testing the "Hi" trigger.
+            if (text.toLowerCase() === 'hi' || text.toLowerCase() === 'hi there') {
+                return { statusCode: 200, body: "ok" };
+            }
+        }
 
         // 1. Find or Create Agent
         console.log(`Searching for agent with phone: ${from}`);
