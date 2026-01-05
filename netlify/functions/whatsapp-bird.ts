@@ -14,7 +14,8 @@ if (!BIRD_API_KEY || !BIRD_WORKSPACE_ID || !BIRD_WHATSAPP_CHANNEL_ID) {
     console.warn('⚠️ Missing Bird environment variables. WhatsApp functionality may fail.');
 }
 
-const bird = new BirdClient(
+// Global client using env ID, but we can override per request if needed
+const defaultBird = new BirdClient(
     BIRD_API_KEY || '',
     BIRD_WORKSPACE_ID || '',
     BIRD_WHATSAPP_CHANNEL_ID || ''
@@ -138,12 +139,16 @@ async function callBuildSite(agentId: string) {
 }
 
 export const handler: Handler = async (event) => {
+    // Signature validation placeholder
+    console.warn("Skipping signature validation in dev");
+
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     try {
         const payload = JSON.parse(event.body || '{}');
+        console.log("FULL BIRD PAYLOAD:", JSON.stringify(payload, null, 2));
 
         // Bird sends message events in a specific format
         // Ref: https://docs.bird.com/api/messages-v2/webhook-events
@@ -155,17 +160,26 @@ export const handler: Handler = async (event) => {
 
         const message = payload.message || payload.data;
         if (!message || message.direction !== 'received') {
+            console.log("Non-inbound or missing message, ignoring.");
             return { statusCode: 200, body: 'Not an incoming message' };
         }
 
         // Identify the agent (sender)
         const from = message.sender?.contacts?.[0]?.identifierValue;
+        const incomingChannelId = message.channelId;
+
         if (!from) {
-            console.error('Could not identify sender from Bird payload', JSON.stringify(message, null, 2));
+            console.error('Could not identify sender from Bird payload');
             return { statusCode: 200, body: 'No sender identified' };
         }
 
         const text = message.body.text?.text || '';
+        console.log(`Incoming message from ${from} on channel ${incomingChannelId}: "${text}"`);
+
+        // Use the incoming channelId if available
+        const requestBird = incomingChannelId
+            ? new BirdClient(BIRD_API_KEY || '', BIRD_WORKSPACE_ID || '', incomingChannelId)
+            : defaultBird;
 
         // 1. Find or Create Agent
         let { data: agent, error: agentError } = await supabase
@@ -212,7 +226,8 @@ export const handler: Handler = async (event) => {
         }
 
         // 3. Process State Machine
-        await processStateMachine(agent, conversation, text);
+        console.log(`Processing state machine for agent ${agent.id} in state ${conversation.current_state}`);
+        await processStateMachine(agent, conversation, text, requestBird);
 
         return {
             statusCode: 200,
@@ -227,7 +242,7 @@ export const handler: Handler = async (event) => {
     }
 };
 
-async function processStateMachine(agent: any, conversation: any, text: string) {
+async function processStateMachine(agent: any, conversation: any, text: string, birdClient: BirdClient) {
     const currentState = conversation.current_state;
     let nextState = currentState;
     let replyText = '';
@@ -369,7 +384,7 @@ async function processStateMachine(agent: any, conversation: any, text: string) 
                     stateData.pendingUrl = urlInfo.url;
                     if (urlInfo.type === 'listing') {
                         replyText = "I see a listing URL! Fetching details... ⏳";
-                        await bird.sendTextMessage(agent.phone, replyText); // Send immediate feedback
+                        await birdClient.sendTextMessage(agent.phone, replyText); // Send immediate feedback
 
                         const res = await callScrapeListing(urlInfo.url!, agent.id);
                         if (res.ok) {
@@ -415,7 +430,7 @@ async function processStateMachine(agent: any, conversation: any, text: string) 
         case 'CONFIRM_STYLE_ACTION':
             if (text.toLowerCase() === 'style') {
                 replyText = "Analyzing site style... 🎨";
-                await bird.sendTextMessage(agent.phone, replyText);
+                await birdClient.sendTextMessage(agent.phone, replyText);
 
                 const res = await callScrapeStyle(stateData.pendingUrl, agent.id);
                 if (res.ok) {
@@ -564,14 +579,14 @@ async function processStateMachine(agent: any, conversation: any, text: string) 
         case 'PREVIEW_SUMMARY':
             if (text.toLowerCase() === 'publish') {
                 replyText = "Building your site with Claude... 🤖 This takes about 30 seconds. I'll message you once it's live!";
-                await bird.sendTextMessage(agent.phone, replyText);
+                await birdClient.sendTextMessage(agent.phone, replyText);
 
                 const res = await callBuildSite(agent.id);
                 if (res.success) {
-                    await bird.sendTextMessage(agent.phone, `Done! Your site is live at: ${res.siteUrl} 🚀`);
+                    await birdClient.sendTextMessage(agent.phone, `Done! Your site is live at: ${res.siteUrl} 🚀`);
                     nextState = 'CMS_MODE';
                 } else {
-                    await bird.sendTextMessage(agent.phone, `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'publish' again or send a listing to update.`);
+                    await birdClient.sendTextMessage(agent.phone, `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'publish' again or send a listing to update.`);
                     nextState = 'PREVIEW_SUMMARY';
                 }
             } else {
@@ -638,6 +653,12 @@ async function processStateMachine(agent: any, conversation: any, text: string) 
             replyText = "I'm not sure what to do next. Type 'help' to see what I can do.";
     }
 
+    // ENSURE GREETING: If this was the first message and IDENTIFY_AGENT was triggered, 
+    // the replyText should already be set to the welcome message.
+    if (!replyText) {
+        replyText = "Hi! I'm your Auro assistant. Type 'start' to begin building your site.";
+    }
+
     // Update DB
     await supabase
         .from('site_conversations')
@@ -654,5 +675,11 @@ async function processStateMachine(agent: any, conversation: any, text: string) 
         // For MVP, let's sync basic info once we have it
     }
 
-    await bird.sendTextMessage(agent.phone, replyText);
+    console.log(`REPLYING to ${agent.phone} with: "${replyText}"`);
+    try {
+        await birdClient.sendTextMessage(agent.phone, replyText);
+        console.log("Bird reply sent successfully.");
+    } catch (e: any) {
+        console.error("FAILED TO SEND BIRD REPLY:", e.message);
+    }
 }
