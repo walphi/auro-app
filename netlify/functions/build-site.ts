@@ -18,12 +18,13 @@ export const handler: Handler = async (event) => {
 
         // 1. Fetch Agent Config
         const { data: configRow, error: configError } = await supabase
-            .from('agent_configs')
+            .from('agentconfigs')
             .select('*')
             .eq('agent_id', agentId)
             .single();
 
         if (configError || !configRow) {
+            console.error(`[build-site] publish_failed_missing_agent_config`, { agentId, error: configError });
             return { statusCode: 404, body: JSON.stringify({ error: 'Agent config not found' }) };
         }
 
@@ -106,7 +107,7 @@ export const handler: Handler = async (event) => {
 
         // 5. Update Agent Config
         await supabase
-            .from('agent_configs')
+            .from('agentconfigs')
             .update({
                 status: 'published',
                 published_at: new Date().toISOString(),
@@ -128,7 +129,11 @@ export const handler: Handler = async (event) => {
                 success: true
             });
 
-        console.log(`[build-site] Site generated successfully for ${agentId}. Version: ${nextVersion}`);
+        console.log(`[build-site] site_build_success`, {
+            slug: agentConfig.slug,
+            agentId,
+            version: nextVersion
+        });
 
         return {
             statusCode: 200,
@@ -147,6 +152,10 @@ export const handler: Handler = async (event) => {
         if (event.body) {
             const { agentId } = JSON.parse(event.body);
             if (agentId) {
+                console.log(`[build-site] site_build_failed`, {
+                    agentId,
+                    reason: error.message
+                });
                 await supabase.from('ai_usage_logs').insert({
                     agent_id: agentId,
                     operation: 'build_site',

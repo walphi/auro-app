@@ -33,7 +33,7 @@ const AgentSite: React.FC = () => {
                         root.style.setProperty('--secondary-color', data.styleProfile.secondaryColor);
                     }
                 } else if (data.primaryColor) {
-                    // Fallback to agent_configs columns
+                    // Fallback to agentconfigs columns
                     const root = document.documentElement;
                     root.style.setProperty('--primary-color', data.primaryColor);
                     root.style.setProperty('--secondary-color', data.secondaryColor || '#c9a227');
@@ -61,8 +61,8 @@ const AgentSite: React.FC = () => {
     if (error || !config) {
         return (
             <div className="error-container">
-                <h1>Property Haven Not Found</h1>
-                <p>{error || "We couldn't find the agent site you're looking for."}</p>
+                <h1>{error === 'Not published yet' ? 'Coming Soon' : 'Property Haven Not Found'}</h1>
+                <p>{error === 'Not published yet' ? "This agent site is not published yet. Please contact the broker for the correct link." : (error || "We couldn't find the agent site you're looking for.")}</p>
                 <a href="/" className="cta-button">Back Home</a>
             </div>
         );

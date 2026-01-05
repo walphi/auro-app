@@ -59,6 +59,9 @@ export async function getAgentSite(slug: string): Promise<AgentConfig> {
         if (response.status === 404) {
             throw new Error('Agent site not found');
         }
+        if (response.status === 403) {
+            throw new Error('Not published yet');
+        }
         throw new Error('Failed to fetch agent site');
     }
 

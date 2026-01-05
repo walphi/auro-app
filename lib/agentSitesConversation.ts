@@ -1,6 +1,6 @@
-
 import { supabase } from './supabase';
 import { Agent, AgentConfig, SiteConversation } from '../shared/agent-sites-types';
+import { getAgentConfigByAgentId, createOrUpdateAgentConfig } from './db/agentConfigs';
 
 export interface AgentSitesInboundMessage {
     from: string;          // E.164 phone, e.g. +971507150121
@@ -198,26 +198,17 @@ export async function processAgentSitesMessage(
     let stateData = conversation.state_data || {};
 
     // Find or create agent_config
-    let { data: config } = await supabase
-        .from('agent_configs')
-        .select('*')
-        .eq('agent_id', agent.id)
-        .single();
+    let { data: config } = await getAgentConfigByAgentId(agent.id);
 
     if (!config && currentState !== 'IDENTIFY_AGENT') {
         const defaultSlug = agent.phone.replace('+', '');
         console.log(`[processAgentSitesMessage] Creating missing AgentConfig for agent ${agent.id} (Slug: ${defaultSlug})`);
-        const { data: newConfig, error: createConfigError } = await supabase
-            .from('agent_configs')
-            .insert({
-                agent_id: agent.id,
-                slug: defaultSlug,
-                status: 'draft',
-                name: stateData.name || 'Agent',
-                needs_site_rebuild: true
-            })
-            .select()
-            .single();
+        const { data: newConfig, error: createConfigError } = await createOrUpdateAgentConfig(agent.id, {
+            slug: defaultSlug,
+            status: 'draft',
+            name: stateData.name || 'Agent',
+            needs_site_rebuild: true
+        });
 
         if (createConfigError) {
             console.error(`[processAgentSitesMessage] Failed to create AgentConfig:`, createConfigError);
@@ -254,49 +245,49 @@ export async function processAgentSitesMessage(
             stateData.name = text;
             replyText = `Nice to meet you, ${text}. What is your RERA/BRN number? (or type "skip")`;
             nextState = 'COLLECT_RERA';
-            if (config) await supabase.from('agent_configs').update({ name: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { name: text });
             break;
 
         case 'COLLECT_RERA':
             stateData.reraNumber = text;
             replyText = "Which brokerage or company are you with?";
             nextState = 'COLLECT_COMPANY';
-            if (config) await supabase.from('agent_configs').update({ rera_number: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { rera_number: text });
             break;
 
         case 'COLLECT_COMPANY':
             stateData.company = text;
             replyText = "What is your designation? (e.g., Senior Property Consultant, Broker)";
             nextState = 'COLLECT_DESIG';
-            if (config) await supabase.from('agent_configs').update({ company: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { company: text });
             break;
 
         case 'COLLECT_DESIG':
             stateData.designation = text;
             replyText = "Perfect. Now, tell me a bit about yourself (a short bio). This will appear on your 'About' section.";
             nextState = 'COLLECT_BIO';
-            if (config) await supabase.from('agent_configs').update({ designation: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { designation: text });
             break;
 
         case 'COLLECT_BIO':
             stateData.bio = text;
             replyText = "Great story! 📸 Now, please send me your professional profile photo (attach it as an image or send a URL).";
             nextState = 'COLLECT_PHOTO';
-            if (config) await supabase.from('agent_configs').update({ bio: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { bio: text });
             break;
 
         case 'COLLECT_PHOTO':
             stateData.profilePhotoUrl = text;
             replyText = "Photo received! Do you have a company logo? Send it now, or type 'skip'.";
             nextState = 'COLLECT_LOGO';
-            if (config) await supabase.from('agent_configs').update({ profile_photo_url: text }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { profile_photo_url: text });
             break;
 
         case 'COLLECT_LOGO':
             stateData.logoUrl = text === 'skip' ? null : text;
             replyText = "What colors represent your brand? Send two hex codes (e.g., #1a365d, #c9a227) or describe them (e.g. 'Gold and Black').";
             nextState = 'COLLECT_COLORS';
-            if (config && text !== 'skip') await supabase.from('agent_configs').update({ logo_url: text }).eq('id', config.id);
+            if (config && text !== 'skip') await createOrUpdateAgentConfig(agent.id, { logo_url: text });
             break;
 
         case 'COLLECT_COLORS':
@@ -310,7 +301,7 @@ export async function processAgentSitesMessage(
             stateData.areas = areas;
             replyText = "Got it. What types of properties do you focus on? (e.g., Apartments, Villas, Penthouses).";
             nextState = 'COLLECT_TYPES';
-            if (config) await supabase.from('agent_configs').update({ areas }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { areas });
             break;
 
         case 'COLLECT_TYPES':
@@ -318,7 +309,7 @@ export async function processAgentSitesMessage(
             stateData.propertyTypes = types;
             replyText = "Any specific developers you work with? (e.g., Emaar, Damac, Nakheel) or type 'skip'.";
             nextState = 'COLLECT_DEVS';
-            if (config) await supabase.from('agent_configs').update({ property_types: types }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { property_types: types });
             break;
 
         case 'COLLECT_DEVS':
@@ -326,7 +317,7 @@ export async function processAgentSitesMessage(
             stateData.developers = devs;
             replyText = "What services do you offer? (e.g., Buying, Selling, Renting, Advisory).";
             nextState = 'COLLECT_SERVICES';
-            if (config) await supabase.from('agent_configs').update({ developers: devs }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { developers: devs });
             break;
 
         case 'COLLECT_SERVICES':
@@ -334,7 +325,7 @@ export async function processAgentSitesMessage(
             stateData.services = services;
             replyText = "Excellent! Time to add your listings. 🏘️\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
             nextState = 'LISTINGS_LOOP';
-            if (config) await supabase.from('agent_configs').update({ services }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { services });
             break;
 
         case 'LISTINGS_LOOP':
@@ -388,7 +379,7 @@ export async function processAgentSitesMessage(
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     });
-                    await supabase.from('agent_configs').update({ listings, needs_site_rebuild: true }).eq('id', config.id);
+                    await createOrUpdateAgentConfig(agent.id, { listings, needs_site_rebuild: true });
                 }
                 replyText = "Listing added! Send another URL, type 'manual', or 'done'.";
             } else {
@@ -421,12 +412,12 @@ export async function processAgentSitesMessage(
         case 'CONFIRM_STYLE':
             if (text.toLowerCase() === 'apply') {
                 if (config) {
-                    await supabase.from('agent_configs').update({
+                    await createOrUpdateAgentConfig(agent.id, {
                         style_profile: stateData.pendingStyle,
                         primary_color: stateData.pendingStyle.primaryColor,
                         secondary_color: stateData.pendingStyle.secondaryColor,
                         needs_site_rebuild: true
-                    }).eq('id', config.id);
+                    });
                 }
                 replyText = "Style applied! 🎨 Send a listing URL, 'manual', or 'done'.";
             } else {
@@ -456,7 +447,7 @@ export async function processAgentSitesMessage(
                     primary: text
                 }
             };
-            if (config) await supabase.from('agent_configs').update({ lead_config: leadConfig }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { lead_config: leadConfig });
             replyText = "Got it. Which languages should your site support? (EN, AR, or BOTH)";
             nextState = 'COLLECT_LANGUAGES';
             break;
@@ -467,7 +458,7 @@ export async function processAgentSitesMessage(
             else if (text.toLowerCase() === 'both') langs = ['en', 'ar'];
 
             stateData.languages = langs;
-            if (config) await supabase.from('agent_configs').update({ languages: langs, needs_site_rebuild: true }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { languages: langs, needs_site_rebuild: true });
             replyText = "Nearly finished! Choose a URL slug for your site (e.g., sarah-ahmed)";
             nextState = 'COLLECT_SLUG';
             break;
@@ -527,7 +518,7 @@ export async function processAgentSitesMessage(
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     });
-                    await supabase.from('agent_configs').update({ listings }).eq('id', config.id);
+                    await createOrUpdateAgentConfig(agent.id, { listings });
                 }
                 stateData.currentListing = null;
                 replyText = "Listing saved! 🏆 Add another? Send a URL, type 'manual', or type 'done' to finish.";
@@ -547,7 +538,7 @@ export async function processAgentSitesMessage(
                     slug: stateData.slug,
                     name: stateData.name
                 });
-                await supabase.from('agent_configs').update({
+                await createOrUpdateAgentConfig(agent.id, {
                     slug: stateData.slug,
                     name: stateData.name,
                     company: stateData.company,
@@ -560,7 +551,7 @@ export async function processAgentSitesMessage(
                     developers: stateData.developers,
                     services: stateData.services,
                     phone: agent.phone
-                }).eq('id', config.id);
+                });
             }
             replyText = `Preview your site details:\n\nName: ${stateData.name}\nCompany: ${stateData.company}\nSlug: ${stateData.slug}\n\nType 'publish' to generate your site! 🚀`;
             nextState = 'PREVIEW_SUMMARY';
@@ -617,18 +608,18 @@ export async function processAgentSitesMessage(
             break;
 
         case 'CMS_UPDATE_BIO':
-            if (config) await supabase.from('agent_configs').update({ bio: text, needs_site_rebuild: true }).eq('id', config.id);
+            if (config) await createOrUpdateAgentConfig(agent.id, { bio: text, needs_site_rebuild: true });
             replyText = "Bio updated! Site rebuild triggered. ✅";
             nextState = 'CMS_MODE';
             break;
 
         case 'CMS_CHANGE_COLORS':
             const colors = text.split(',').map(c => c.trim());
-            if (config) await supabase.from('agent_configs').update({
+            if (config) await createOrUpdateAgentConfig(agent.id, {
                 primary_color: colors[0],
                 secondary_color: colors[1] || colors[0],
                 needs_site_rebuild: true
-            }).eq('id', config.id);
+            });
             replyText = "Colors updated! Site rebuild triggered. ✅";
             nextState = 'CMS_MODE';
             break;
@@ -641,7 +632,7 @@ export async function processAgentSitesMessage(
                 const updatedListings = config.listings.map((l: any) =>
                     l.title.toLowerCase().includes(title.toLowerCase()) ? { ...l, price: newPrice } : l
                 );
-                await supabase.from('agent_configs').update({ listings: updatedListings, needs_site_rebuild: true }).eq('id', config.id);
+                await createOrUpdateAgentConfig(agent.id, { listings: updatedListings, needs_site_rebuild: true });
                 replyText = `Price for "${title}" updated to ${newPrice}! Site rebuild triggered. ✅`;
             } else {
                 replyText = "Could not find that listing.";

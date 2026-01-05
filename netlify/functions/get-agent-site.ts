@@ -32,7 +32,7 @@ export const handler: Handler = async (event) => {
         console.log(`[get-agent-site] Fetching data for slug: ${slug}`);
 
         const { data: config, error } = await supabase
-            .from('agent_configs')
+            .from('agentconfigs')
             .select('*')
             .eq('slug', slug)
             .single();
@@ -43,6 +43,17 @@ export const handler: Handler = async (event) => {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({ error: 'Agent site not found' }),
+            };
+        }
+
+        if (config.status !== 'published') {
+            return {
+                statusCode: 403,
+                headers,
+                body: JSON.stringify({
+                    error: 'Not published yet',
+                    message: "This agent site is not published yet. Please contact the broker for the correct link."
+                }),
             };
         }
 

@@ -299,7 +299,7 @@ export interface Section<T extends SectionContent = SectionContent> {
 export interface AgentSiteDocument {
     id: string;                     // UUID
     agentId: string;
-    configId: string;               // FK to agent_configs.id
+    configId: string;               // FK to agentconfigs.id
     slug: string;
     version: number;
     languageCodes: LanguageCode[];
