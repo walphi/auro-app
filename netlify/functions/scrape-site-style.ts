@@ -4,21 +4,22 @@ import { FirecrawlClient } from "../../lib/firecrawlClient";
 import { SiteStyleProfile } from '../../shared/agent-sites-types';
 
 const STYLE_SCRAPE_PROMPT = (url: string) => `
-You are a website style analyzer.
-
-Go to this URL: ${url}
-
-Return a JSON object with these fields describing the site's visual and copy style:
-
-- "primaryColor": string, main brand color hex like "#1a365d" if you can infer it.
-- "secondaryColor": string, secondary accent color hex.
-- "fontHints": string[], a few words like ["serif", "elegant"].
-- "layoutHints": string[], e.g. ["hero-full-width", "card-grid", "minimal-nav"].
-- "toneHints": string[], e.g. ["luxury", "professional"].
-- "examplePhrases": string[], 2-4 short phrase examples of the copy style.
-
-Only return the JSON object as the "json" field, no prose.
+You are a website style analyzer. 
+Analyze this URL: ${url}
+Return details about the site's visual design (colors, fonts, layout) and copywriting tone.
 `;
+
+const STYLE_SCHEMA = {
+    type: "object",
+    properties: {
+        primaryColor: { type: "string" },
+        secondaryColor: { type: "string" },
+        fontHints: { type: "array", items: { type: "string" } },
+        layoutHints: { type: "array", items: { type: "string" } },
+        toneHints: { type: "array", items: { type: "string" } },
+        examplePhrases: { type: "array", items: { type: "string" } }
+    }
+};
 
 const firecrawl = new FirecrawlClient({
     apiKey: process.env.FIRECRAWL_API_KEY!,
@@ -66,14 +67,15 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        console.log("[scrape-site-style] Calling Firecrawl for URL:", url);
+        console.log("[scrape-site-style] Calling Firecrawl v2 for URL:", url);
         const result = await firecrawl.scrapeJson(
             url,
-            STYLE_SCRAPE_PROMPT(url)
+            STYLE_SCRAPE_PROMPT(url),
+            STYLE_SCHEMA
         );
 
         if (!result.success || !result.data?.json) {
-            console.error("[scrape-site-style] Firecrawl error:", result.error);
+            console.error("[scrape-site-style] Firecrawl error:", JSON.stringify(result.error));
             return {
                 statusCode: 422,
                 headers: { 'Content-Type': 'application/json' },

@@ -14,12 +14,14 @@ export interface FirecrawlScrapeResult {
 export class FirecrawlClient {
     constructor(private config: FirecrawlConfig) { }
 
-    async scrapeJson(url: string, prompt: string): Promise<FirecrawlScrapeResult> {
+    async scrapeJson(url: string, prompt: string, schema: any): Promise<FirecrawlScrapeResult> {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs ?? 60000);
 
         try {
-            const response = await fetch(`${this.config.baseUrl}/scrape`, {
+            // Use v2 endpoint
+            const baseUrl = this.config.baseUrl.replace('/v1', '/v2');
+            const response = await fetch(`${baseUrl}/scrape`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${this.config.apiKey}`,
@@ -30,7 +32,8 @@ export class FirecrawlClient {
                     formats: [
                         {
                             type: "json",
-                            prompt, // our extraction instructions
+                            schema,
+                            prompt,
                         },
                     ],
                     timeout: 120000,
@@ -43,7 +46,7 @@ export class FirecrawlClient {
             try {
                 json = text ? JSON.parse(text) : {};
             } catch {
-                // leave json empty; will be reported in error
+                // leave json empty
             }
 
             if (!response.ok || !json.success) {
@@ -58,7 +61,7 @@ export class FirecrawlClient {
 
             return {
                 success: true,
-                data: json.data, // will contain json + metadata
+                data: json.data, // contains { json: { ... } }
             };
         } catch (err: any) {
             return {

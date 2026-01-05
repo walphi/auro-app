@@ -8,24 +8,27 @@ You are a real estate listing extractor.
 
 Go to this URL: ${url}
 
-Extract and return a single JSON object with exactly these fields:
-
-- "title": string, the property title/name.
-- "towerOrCommunity": string, building or community name.
-- "type": string, one of "rent", "sale", or "offplan".
-- "price": number, numeric price without commas.
-- "currency": string, e.g. "AED" or "USD".
-- "beds": number, bedrooms (0 for studio).
-- "baths": number, bathrooms.
-- "sizeSqft": number, size in square feet.
-- "features": string, a comma-separated list of key features.
-- "photos": string[], array of photo URLs.
-- "description": string, full property description text.
-
-Important rules:
-- Only return the JSON object as the "json" field, no prose.
-- If a field is missing on the page, still include it with a null or sensible default.
+Extract clean, marketing-ready listing data for a Dubai property website, including title, price, community/tower, bedrooms, bathrooms, area, features, and image URLs.
 `;
+
+const LISTING_SCHEMA = {
+    type: "object",
+    properties: {
+        title: { type: "string" },
+        towerOrCommunity: { type: "string" },
+        type: { type: "string", enum: ["rent", "sale", "offplan"] },
+        price: { type: "number" },
+        currency: { type: "string" },
+        beds: { type: "integer" },
+        baths: { type: "integer" },
+        sizeSqft: { type: "number" },
+        features: { type: "array", items: { type: "string" } },
+        photos: { type: "array", items: { type: "string" } },
+        description: { type: "string" },
+        agentName: { type: "string" }
+    },
+    required: ["title", "price"]
+};
 
 function inferSource(url: string): PortalSource {
     if (url.includes('bayut.com')) return 'bayut';
@@ -80,14 +83,15 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        console.log("[scrape-listing] Calling Firecrawl for URL:", url);
+        console.log("[scrape-listing] Calling Firecrawl v2 for URL:", url);
         const result = await firecrawl.scrapeJson(
             url,
-            LISTING_SCRAPE_PROMPT(url)
+            LISTING_SCRAPE_PROMPT(url),
+            LISTING_SCHEMA
         );
 
         if (!result.success || !result.data?.json) {
-            console.error("[scrape-listing] Firecrawl error:", result.error);
+            console.error("[scrape-listing] Firecrawl error:", JSON.stringify(result.error));
             return {
                 statusCode: 422,
                 headers: { 'Content-Type': 'application/json' },
@@ -109,11 +113,11 @@ export const handler: Handler = async (event) => {
             towerOrCommunity: json.towerOrCommunity ?? null,
             type: json.type ?? null,
             price: json.price ?? null,
-            currency: json.currency ?? null,
+            currency: json.currency ?? 'AED',
             beds: json.beds ?? null,
             baths: json.baths ?? null,
             sizeSqft: json.sizeSqft ?? null,
-            features: json.features ?? null,
+            features: json.features ?? [],
             photos: json.photos ?? [],
             description: json.description ?? null,
             agentName: json.agentName ?? null,
