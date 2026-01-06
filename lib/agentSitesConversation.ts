@@ -148,6 +148,12 @@ export async function processAgentSitesMessage(
 ): Promise<AgentSitesReply | null> {
     const { from, text, mediaUrls, platform } = msg;
 
+    console.log("[AgentSites] Processing message", {
+        from,
+        text: text.slice(0, 100),
+        platform
+    });
+
     // 1. Find or Create Agent
     let { data: agent, error: agentError } = await supabase
         .from('agents')
@@ -219,6 +225,9 @@ export async function processAgentSitesMessage(
 
     // Global Intent Handling
     const intent = detectIntent(text);
+    if (intent !== 'none') {
+        console.log("[AgentSites] Intent detected", { intent, from, agentId: agent.id });
+    }
     if (intent === 'preview' && (stateData.slug || config?.slug)) {
         const slug = stateData.slug || config?.slug;
         const previewUrl = `https://auroapp.com/sites/${slug}`;
@@ -649,6 +658,13 @@ export async function processAgentSitesMessage(
     }
 
     // Update DB
+    console.log("[AgentSites] Updating conversation state", {
+        agentId: agent.id,
+        fromState: currentState,
+        toState: nextState,
+        intent
+    });
+
     await supabase
         .from('site_conversations')
         .update({
@@ -657,6 +673,11 @@ export async function processAgentSitesMessage(
             last_message_at: new Date().toISOString()
         })
         .eq('id', conversation.id);
+
+    console.log("[AgentSites] Conversation outcome", {
+        agentId: agent.id,
+        replyPreview: replyText.slice(0, 100)
+    });
 
     return { text: replyText };
 }
