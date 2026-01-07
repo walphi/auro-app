@@ -136,20 +136,6 @@ export const handler: Handler = async (event) => {
             version: nextVersion
         });
 
-        // 7. Send WhatsApp confirmation
-        if (agentConfig.phone) {
-            const twilioClient = new TwilioWhatsAppClient();
-            const liveUrl = `https://auroapp.com/sites/${agentConfig.slug}`;
-            const message = `Your site is live! 🎉\n\nPublic link: ${liveUrl}\n\nSave or share this link with your clients. You can type 'HELP' to see how to update your listings.`;
-
-            try {
-                await twilioClient.sendTextMessage(agentConfig.phone, message);
-                console.log(`[build-site] WhatsApp confirmation sent to ${agentConfig.phone}`);
-            } catch (twError: any) {
-                console.error(`[build-site] Failed to send WhatsApp confirmation:`, twError.message);
-            }
-        }
-
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },

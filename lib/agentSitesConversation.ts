@@ -567,7 +567,11 @@ export async function processAgentSitesMessage(
             break;
 
         case 'PREVIEW_SUMMARY':
-            if (text.toLowerCase() === 'publish') {
+            if (intent === 'preview') {
+                const slug = stateData.slug || config?.slug;
+                replyText = `Here’s your site preview:\nhttps://auroapp.com/sites/${slug}\n\nOpen this link to view your website. If everything looks good, type 'approve' to make it live, or 'edit' to change something.`;
+                nextState = 'PREVIEW_SUMMARY';
+            } else if (intent === 'publish') {
                 if (!config) {
                     console.error(`[processAgentSitesMessage] publish_failed_missing_agent_config`, {
                         waId: from,
@@ -577,31 +581,29 @@ export async function processAgentSitesMessage(
                     replyText = "I couldn't find your setup. Please type 'restart' to start again, or send a listing URL to begin.";
                     nextState = 'LISTINGS_LOOP';
                 } else {
-                    replyText = "🚀 Creating your website now... This takes about 30 seconds. I’ll send your preview link here on WhatsApp.";
+                    const slug = stateData.slug || config.slug;
+                    replyText = `🚀 Creating your website now...\nYour preview will be available at: https://auroapp.com/sites/${slug}\nCheck this link in about 30–60 seconds.`;
 
-                    // Trigger build. We await here but if it timeouts, the builder will still send the WhatsApp message on success.
-                    const res = await callBuildSite(agent.id);
+                    // Trigger build - fire and forget or await briefly
+                    // We don't await the full 30s here to avoid webhook timeout
+                    callBuildSite(agent.id).catch(err => console.error("[AgentSites] Build trigger failed:", err));
 
-                    if (res.success) {
-                        const liveUrl = `https://auroapp.com/sites/${stateData.slug || config.slug}`;
-                        // We don't set replyText here because the builder already sent a WhatsApp message.
-                        // But we return a generic success for the TwiML if we are still within time.
-                        replyText = `Your site is live! 🎉\n\nPublic link: ${liveUrl}\n\nSave or share this link with your clients. You can type 'HELP' to see how to update your listings.`;
-                        nextState = 'CMS_MODE';
-                    } else {
-                        // If it fails immediately
-                        replyText = `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'approve' again or send a listing to update.`;
-                        nextState = 'PREVIEW_SUMMARY';
-                    }
+                    nextState = 'READY_FOR_UPDATES';
                 }
             } else {
                 replyText = "Type 'approve' when you're ready, or 'preview' to see it first!";
+                nextState = 'PREVIEW_SUMMARY';
             }
             break;
 
-        case 'CMS_MODE':
+        case 'READY_FOR_UPDATES':
+        case 'CMS_MODE': // Allow both for backward compatibility during transition
             const cmd = text.toUpperCase();
-            if (cmd.startsWith('ADD LISTING')) {
+            if (intent === 'publish') {
+                const slug = config?.slug;
+                replyText = `Your site is already live at https://auroapp.com/sites/${slug}. Type 'update' to modify your listings or profile.`;
+                nextState = 'READY_FOR_UPDATES';
+            } else if (cmd.startsWith('ADD LISTING') || cmd.includes('UPDATE')) {
                 replyText = "Sure! Send a listing URL or type 'manual'.";
                 nextState = 'LISTINGS_LOOP';
             } else if (cmd.startsWith('UPDATE PRICE')) {
@@ -615,8 +617,10 @@ export async function processAgentSitesMessage(
                 nextState = 'CMS_CHANGE_COLORS';
             } else if (cmd.startsWith('HELP')) {
                 replyText = "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE";
+                nextState = 'READY_FOR_UPDATES';
             } else {
                 replyText = "I didn't recognize that command. Type 'HELP' for a list of commands.";
+                nextState = 'READY_FOR_UPDATES';
             }
             break;
 
