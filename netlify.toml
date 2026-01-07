@@ -36,7 +36,6 @@
   from = "/sites/*"
   to = "/sites/index.html"
   status = 200
-  force = true
 
 [[redirects]]
   from = "/*"
