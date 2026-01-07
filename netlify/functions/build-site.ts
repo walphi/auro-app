@@ -98,8 +98,8 @@ export const handler: Handler = async (event) => {
         console.info(`[build-site] Starting background persistence (fire-and-forget) for slug: ${agentConfig.slug}`);
 
         // 4. Update Agent Config (Critical - Fast)
-        console.info(`[build-site] Setting status to 'live' for agentId: ${agentId}`);
-        const { error: updateError } = await supabase
+        console.info(`[build-site] Attempting to update status to live for agentId: ${agentId}, ID: ${agentConfig.id}`);
+        const { error: updateError, data: updateData } = await supabase
             .from('agentconfigs')
             .update({
                 status: 'live',
@@ -107,12 +107,20 @@ export const handler: Handler = async (event) => {
                 last_built_at: new Date().toISOString(),
                 needs_site_rebuild: false
             })
-            .eq('id', agentConfig.id);
+            .eq('id', agentConfig.id)
+            .select();
 
         if (updateError) {
-            console.error('[build-site] Config update error:', updateError);
+            console.error('[build-site] Supabase update error:', {
+                code: updateError.code,
+                message: updateError.message,
+                details: updateError.details,
+                hint: updateError.hint
+            });
             throw new Error(`Failed to update agent status: ${updateError.message}`);
         }
+
+        console.info(`[build-site] Successfully updated status to live. Rows affected: ${updateData?.length}`, updateData);
 
         console.info(`[build-site] Marked agent as LIVE for slug: ${agentConfig.slug}`);
 
