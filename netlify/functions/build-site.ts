@@ -60,7 +60,11 @@ export const handler: Handler = async (event) => {
             services: configRow.services,
             differentiators: configRow.differentiators,
             listings: configRow.listings,
-            leadConfig: configRow.lead_config,
+            leadConfig: configRow.lead_config || {
+                primaryChannel: 'whatsapp',
+                whatsappNumber: configRow.phone,
+                ctaTexts: { primary: 'Chat with me on WhatsApp' }
+            },
             styleProfile: configRow.style_profile,
             needsSiteRebuild: configRow.needs_site_rebuild,
             lastBuiltAt: configRow.last_built_at,
