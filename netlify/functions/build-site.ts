@@ -2,6 +2,7 @@ import { Handler } from '@netlify/functions';
 import { supabase } from '../../lib/supabase';
 import { buildSite } from '../../lib/aiBuilder';
 import { AgentConfig, SiteStyleProfile, AgentSiteDocument } from '../../shared/agent-sites-types';
+import { TwilioWhatsAppClient } from '../../lib/twilioWhatsAppClient';
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -134,6 +135,20 @@ export const handler: Handler = async (event) => {
             agentId,
             version: nextVersion
         });
+
+        // 7. Send WhatsApp confirmation
+        if (agentConfig.phone) {
+            const twilioClient = new TwilioWhatsAppClient();
+            const liveUrl = `https://auroapp.com/sites/${agentConfig.slug}`;
+            const message = `Your site is live! 🎉\n\nPublic link: ${liveUrl}\n\nSave or share this link with your clients. You can type 'HELP' to see how to update your listings.`;
+
+            try {
+                await twilioClient.sendTextMessage(agentConfig.phone, message);
+                console.log(`[build-site] WhatsApp confirmation sent to ${agentConfig.phone}`);
+            } catch (twError: any) {
+                console.error(`[build-site] Failed to send WhatsApp confirmation:`, twError.message);
+            }
+        }
 
         return {
             statusCode: 200,

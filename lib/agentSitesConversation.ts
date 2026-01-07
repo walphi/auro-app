@@ -48,7 +48,7 @@ function detectUrlType(message: string): { hasUrl: boolean; url?: string; type?:
  */
 function detectIntent(text: string): "preview" | "publish" | "restart" | "help" | "none" {
     const t = text.toLowerCase().trim();
-    if (t === 'publish') return 'publish';
+    if (t === 'publish' || t === 'approve') return 'publish';
     if (t === 'restart' || t === 'start again') return 'restart';
     if (t === 'help') return 'help';
     if (t.includes('preview')) return 'preview';
@@ -562,7 +562,7 @@ export async function processAgentSitesMessage(
                     phone: agent.phone
                 });
             }
-            replyText = `Preview your site details:\n\nName: ${stateData.name}\nCompany: ${stateData.company}\nSlug: ${stateData.slug}\n\nType 'publish' to generate your site! 🚀`;
+            replyText = `Preview your site details:\n\nName: ${stateData.name}\nCompany: ${stateData.company}\nSlug: ${stateData.slug}\n\nType 'approve' to create your site! 🚀`;
             nextState = 'PREVIEW_SUMMARY';
             break;
 
@@ -577,21 +577,25 @@ export async function processAgentSitesMessage(
                     replyText = "I couldn't find your setup. Please type 'restart' to start again, or send a listing URL to begin.";
                     nextState = 'LISTINGS_LOOP';
                 } else {
-                    replyText = "Building your site with Claude... 🤖 This takes about 30 seconds. I'll message you once it's live!";
-                    if (proactiveSender) await proactiveSender(replyText);
+                    replyText = "🚀 Creating your website now... This takes about 30 seconds. I’ll send your preview link here on WhatsApp.";
 
+                    // Trigger build. We await here but if it timeouts, the builder will still send the WhatsApp message on success.
                     const res = await callBuildSite(agent.id);
+
                     if (res.success) {
                         const liveUrl = `https://auroapp.com/sites/${stateData.slug || config.slug}`;
+                        // We don't set replyText here because the builder already sent a WhatsApp message.
+                        // But we return a generic success for the TwiML if we are still within time.
                         replyText = `Your site is live! 🎉\n\nPublic link: ${liveUrl}\n\nSave or share this link with your clients. You can type 'HELP' to see how to update your listings.`;
                         nextState = 'CMS_MODE';
                     } else {
-                        replyText = `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'publish' again or send a listing to update.`;
+                        // If it fails immediately
+                        replyText = `Site build failed: ${res.error || 'Unknown error'}. You can try typing 'approve' again or send a listing to update.`;
                         nextState = 'PREVIEW_SUMMARY';
                     }
                 }
             } else {
-                replyText = "Type 'publish' when you're ready, or 'preview' to see it first!";
+                replyText = "Type 'approve' when you're ready, or 'preview' to see it first!";
             }
             break;
 
