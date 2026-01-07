@@ -94,52 +94,51 @@ export const handler: Handler = async (event) => {
         doc.version = nextVersion;
         doc.listings = agentConfig.listings; // Ensure runtime listings are attached
 
-        console.info(`[build-site] Writing/persisting AgentSiteDocument for slug: ${agentConfig.slug}`);
-        const { error: docError } = await supabase
-            .from('agent_site_documents')
-            .insert({
-                agent_id: agentId,
-                config_id: agentConfig.id,
-                slug: agentConfig.slug,
-                version: nextVersion,
-                language_codes: doc.languageCodes,
-                meta: doc.meta,
-                theme: doc.theme,
-                sections: doc.sections,
-                listings: doc.listings,
-                generated_at: new Date().toISOString(),
-                generated_by: buildResult.model,
-                token_usage: buildResult.tokenUsage
-            });
+        // 4, 5 & 6. Store Document, Update Config, Log Usage (Parallel)
+        console.info(`[build-site] Starting parallel persistence for slug: ${agentConfig.slug}`);
 
-        if (docError) throw docError;
+        const docPromise = supabase.from('agent_site_documents').insert({
+            agent_id: agentId,
+            config_id: agentConfig.id,
+            slug: agentConfig.slug,
+            version: nextVersion,
+            language_codes: doc.languageCodes,
+            meta: doc.meta,
+            theme: doc.theme,
+            sections: doc.sections,
+            listings: doc.listings,
+            generated_at: new Date().toISOString(),
+            generated_by: buildResult.model,
+            token_usage: buildResult.tokenUsage
+        });
 
-        // 5. Update Agent Config
-        console.info(`[build-site] Setting status to 'live' for agentId: ${agentId}`);
-        await supabase
-            .from('agentconfigs')
-            .update({
+        const configPromise = (async () => {
+            console.log(`[build-site] About to update Supabase with status=live for slug: ${agentConfig.slug}`);
+            return supabase.from('agentconfigs').update({
                 status: 'live',
                 published_at: new Date().toISOString(),
                 last_built_at: new Date().toISOString(),
                 needs_site_rebuild: false
-            })
-            .eq('id', agentConfig.id);
+            }).eq('id', agentConfig.id);
+        })();
 
-        console.info(`[build-site] Marked agent as LIVE for slug: ${agentConfig.slug}`);
+        const logPromise = supabase.from('ai_usage_logs').insert({
+            agent_id: agentId,
+            operation: 'build_site',
+            model: buildResult.model,
+            input_tokens: buildResult.tokenUsage.input,
+            output_tokens: buildResult.tokenUsage.output,
+            latency_ms: buildResult.latencyMs,
+            success: true
+        });
 
-        // 6. Log usage
-        await supabase
-            .from('ai_usage_logs')
-            .insert({
-                agent_id: agentId,
-                operation: 'build_site',
-                model: buildResult.model,
-                input_tokens: buildResult.tokenUsage.input,
-                output_tokens: buildResult.tokenUsage.output,
-                latency_ms: buildResult.latencyMs,
-                success: true
-            });
+        const [docRes, configRes, logRes] = await Promise.all([docPromise, configPromise, logPromise]);
+
+        if (docRes.error) console.error('[build-site] Document persistence error:', docRes.error);
+        if (configRes.error) console.error('[build-site] Config update error:', configRes.error);
+        if (logRes.error) console.error('[build-site] Usage log error:', logRes.error);
+
+        console.log('[build-site] Successfully updated Supabase and marked as LIVE');
 
         console.info(`[build-site] Build complete for slug: ${agentConfig.slug}`, {
             agentId,
