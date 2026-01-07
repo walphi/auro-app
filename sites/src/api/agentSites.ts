@@ -49,6 +49,8 @@ export interface AgentConfig {
     styleProfile?: SiteStyleProfile;
     primaryColor: string;
     secondaryColor: string;
+    status: string;
+    agentId: string;
 }
 
 export async function getAgentSite(slug: string): Promise<AgentConfig> {
@@ -83,7 +85,9 @@ export async function getAgentSite(slug: string): Promise<AgentConfig> {
         leadConfig: raw.lead_config || {},
         styleProfile: raw.style_profile,
         primaryColor: raw.primary_color,
-        secondaryColor: raw.secondary_color
+        secondaryColor: raw.secondary_color,
+        status: raw.status,
+        agentId: raw.agent_id
     };
 }
 

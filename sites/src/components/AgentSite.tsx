@@ -18,6 +18,12 @@ const AgentSite: React.FC = () => {
             try {
                 setLoading(true);
                 const data = await getAgentSite(slug);
+                console.log('[AgentSite] Successfully fetched config:', {
+                    name: data.name,
+                    slug: data.slug,
+                    listingsCount: data.listings?.length || 0,
+                    status: (data as any).status
+                });
                 setConfig(data);
 
                 // Track page view
