@@ -152,25 +152,25 @@ const AgentSite: React.FC = () => {
                                 </div>
                                 <div className="listing-details">
                                     <div className="listing-price">
-                                        {listing.currency} {Number(listing.price).toLocaleString()}
+                                        {listing.currency} {listing.price ? Number(listing.price).toLocaleString() : 'POA'}
                                     </div>
-                                    <h3 className="listing-title">{listing.title}</h3>
+                                    <h3 className="listing-title">{listing.title || 'Exclusive Property'}</h3>
                                     <div className="listing-location">
                                         <MapPin size={16} />
-                                        {listing.towerOrCommunity}
+                                        {listing.towerOrCommunity || 'Dubai'}
                                     </div>
                                     <div className="listing-specs">
                                         <div className="spec-item">
                                             <BedDouble size={18} />
-                                            {listing.beds} Beds
+                                            {listing.beds || 0} Beds
                                         </div>
                                         <div className="spec-item">
                                             <Bath size={18} />
-                                            {listing.baths} Baths
+                                            {listing.baths || 0} Baths
                                         </div>
                                         <div className="spec-item">
                                             <Maximize size={18} />
-                                            {listing.sizeSqft.toLocaleString()} sqft
+                                            {listing.sizeSqft ? listing.sizeSqft.toLocaleString() : 'N/A'} sqft
                                         </div>
                                     </div>
                                 </div>

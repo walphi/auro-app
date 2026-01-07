@@ -58,6 +58,12 @@ export const handler: Handler = async (event) => {
         }
 
         // Return the config
+        console.log(`[get-agent-site] Returning config for ${slug}`, {
+            status: config.status,
+            agentId: config.agent_id,
+            listingsCount: config.listings?.length || 0
+        });
+
         return {
             statusCode: 200,
             headers,

@@ -15,9 +15,9 @@ export const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'agentId is required' }) };
         }
 
-        console.log(`[build-site] Starting build for agent: ${agentId}`);
+        console.info(`[build-site] Starting build for agentId: ${agentId}`);
 
-        // 1. Fetch Agent Config
+        console.info(`[build-site] Fetching AgentConfig for agentId: ${agentId}`);
         const { data: configRow, error: configError } = await supabase
             .from('agentconfigs')
             .select('*')
@@ -86,7 +86,7 @@ export const handler: Handler = async (event) => {
         doc.version = nextVersion;
         doc.listings = agentConfig.listings; // Ensure runtime listings are attached
 
-        // 4. Store Agent Site Document
+        console.info(`[build-site] Writing/persisting AgentSiteDocument for slug: ${agentConfig.slug}`);
         const { error: docError } = await supabase
             .from('agent_site_documents')
             .insert({
@@ -130,8 +130,7 @@ export const handler: Handler = async (event) => {
                 success: true
             });
 
-        console.log(`[build-site] site_build_success`, {
-            slug: agentConfig.slug,
+        console.info(`[build-site] Build complete for slug: ${agentConfig.slug}`, {
             agentId,
             version: nextVersion
         });
