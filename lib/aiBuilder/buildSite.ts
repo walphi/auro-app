@@ -1,6 +1,7 @@
 import { BuildSiteInput, BuildSiteOutput } from './types';
 import { SYSTEM_PROMPT, buildUserPrompt } from './prompts';
 import { validateAndRetry } from './validation';
+import crypto from 'crypto';
 
 export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSiteOutput> {
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -99,11 +100,29 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
         return retryText;
     };
 
-    const validatedDoc = await validateAndRetry(initialResponseText, input, retryFn);
+    const validatedOutput = await validateAndRetry(initialResponseText, input, retryFn);
+
+    // Construct the full document merging Config + AI Output
+    const fullDocument: any = {
+        id: crypto.randomUUID(),
+        agentId: input.agentConfig.agentId,
+        configId: input.agentConfig.id,
+        slug: input.agentConfig.slug,
+        version: 1, // Will be overwritten by caller
+        languageCodes: ["en"], // Default
+        site: validatedOutput.site,
+        nav: validatedOutput.nav,
+        pages: validatedOutput.pages,
+        listings: input.agentConfig.listings, // Inject runtime listings
+        generatedAt: new Date().toISOString(),
+        generatedBy: usedModel,
+        tokenUsage: finalTokenUsage
+    };
+
     const endTime = Date.now();
 
     return {
-        document: validatedDoc,
+        document: fullDocument, // Cast to any or correct type effectively
         tokenUsage: finalTokenUsage,
         model: usedModel,
         latencyMs: endTime - startTime

@@ -98,15 +98,19 @@ export const handler: Handler = async (event) => {
         console.info(`[build-site-background] Starting full persistence for slug: ${agentConfig.slug}`);
 
         // Restore full document persistence
+        // Mapping new multi-page structure to existing DB columns for now:
+        // meta -> doc.site (contains brand, designSystem, meta)
+        // theme -> doc.site.designSystem (redundant but keeps column populated)
+        // sections -> doc.pages (renaming concept)
         const docPromise = supabase.from('agent_site_documents').insert({
             agent_id: agentId,
             config_id: agentConfig.id,
             slug: agentConfig.slug,
             version: nextVersion,
             language_codes: doc.languageCodes,
-            meta: doc.meta,
-            theme: doc.theme,
-            sections: doc.sections,
+            meta: doc.site, // Store the whole site config in meta
+            theme: doc.site.designSystem,
+            sections: doc.pages, // Storing pages in the 'sections' column
             listings: doc.listings,
             generated_at: new Date().toISOString(),
             generated_by: buildResult.model,
