@@ -130,18 +130,22 @@ async function callScrapeStyle(url: string, agentId: string) {
 }
 
 async function callBuildSite(agentId: string) {
-    const apiBase = process.env.URL || process.env.VITE_API_BASE_URL || 'https://auroapp.com';
+    let apiBase = (process.env.URL || process.env.VITE_API_BASE_URL || 'https://auroapp.com').trim();
+    if (apiBase.endsWith('/')) apiBase = apiBase.slice(0, -1);
+
     const buildUrl = `${apiBase}/.netlify/functions/build-site`;
 
-    console.log(`[AgentSites] Triggering build-site`, { agentId, buildUrl });
+    console.info(`[AgentSites] Triggering build-site`, { agentId, buildUrl });
 
     try {
         const response = await axios.post(buildUrl, { agentId }, {
             timeout: 5000,
             headers: { 'Content-Type': 'application/json' }
         });
+        console.info(`[AgentSites] Build-site trigger response:`, response.data);
         return { success: true, data: response.data };
     } catch (e: any) {
+        // If it's a timeout, it might still be building, so we don't necessarily treat it as a hard failure
         console.error(`[AgentSites] build-site trigger error:`, e.response?.data || e.message);
         return { success: false, error: e.message };
     }
@@ -589,9 +593,13 @@ export async function processAgentSitesMessage(
                     const slug = stateData.slug || config.slug;
                     replyText = `🚀 Creating your website now...\nYour preview will be available at: https://auroapp.com/sites/${slug}\nCheck this link in about 30–60 seconds.`;
 
+                    console.info(`[AgentSites] Entering build-site transition`, { agentId: agent.id, state: currentState });
+
                     // Trigger build - fire and forget or await briefly
                     // We don't await the full 30s here to avoid webhook timeout
-                    callBuildSite(agent.id).catch(err => console.error("[AgentSites] Build trigger failed:", err));
+                    callBuildSite(agent.id).catch(err => {
+                        console.error("[AgentSites] Build trigger fire-and-forget error:", err.message);
+                    });
 
                     nextState = 'READY_FOR_UPDATES';
                 }
