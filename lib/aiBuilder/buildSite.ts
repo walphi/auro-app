@@ -10,9 +10,9 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
     if (!googleKey) console.warn("[buildSite] GOOGLE_API_KEY missing");
 
     const modelOptions = [
-        'claude-opus-4-1-20250805',      // Claude Opus 4.5 (primary)
-        'claude-sonnet-4-20250514',      // Claude Sonnet 4.5 (fallback 1)
-        'claude-haiku-4-20250305'        // Claude Haiku 4.5 (fallback 2)
+        'claude-sonnet-4-5-20250929',    // Claude Sonnet 4.5
+        'claude-haiku-4-5-20251001',     // Claude Haiku 4.5
+        'gemini-2.0-flash'               // Google Gemini 2.0 Flash
     ];
 
     const startTime = Date.now();
