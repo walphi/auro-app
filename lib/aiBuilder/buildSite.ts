@@ -10,9 +10,9 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
     if (!googleKey) console.warn("[buildSite] GOOGLE_API_KEY missing");
 
     const modelOptions = [
-        'claude-3-5-sonnet-20241022',
-        'claude-3-7-sonnet-20250219',
-        'gemini-2.0-flash'
+        'claude-opus-4-1-20250805',      // Claude Opus 4.5 (primary)
+        'claude-sonnet-4-20250514',      // Claude Sonnet 4.5 (fallback 1)
+        'claude-haiku-4-20250305'        // Claude Haiku 4.5 (fallback 2)
     ];
 
     const startTime = Date.now();
@@ -26,7 +26,7 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
     // 1. Initial Generation Loop
     for (const model of modelOptions) {
         try {
-            console.info(`[build-site] Using model: ${model}`);
+            console.info(`[build-site] Attempting model: ${model}`);
 
             if (model.startsWith('claude')) {
                 if (!anthropicKey) throw new Error("Missing ANTHROPIC_API_KEY");
@@ -47,9 +47,10 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
             }
 
             usedModel = model;
+            console.info(`[build-site] Successfully built site with model: ${model}`);
             break; // Success!
         } catch (err: any) {
-            console.warn(`[build-site] Model ${model} failed, trying next. Error: ${err.message}`);
+            console.warn(`[build-site] Model ${model} failed. Error: ${err.message}. Trying next model...`);
             lastError = err;
             continue;
         }
