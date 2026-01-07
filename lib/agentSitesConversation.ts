@@ -133,7 +133,7 @@ async function callBuildSite(agentId: string) {
     let apiBase = (process.env.URL || process.env.VITE_API_BASE_URL || 'https://auroapp.com').trim();
     if (apiBase.endsWith('/')) apiBase = apiBase.slice(0, -1);
 
-    const buildUrl = `${apiBase}/.netlify/functions/build-site`;
+    const buildUrl = `${apiBase}/.netlify/functions/build-site-background`;
 
     console.info(`[AgentSites] Triggering build-site`, { agentId, buildUrl });
 
