@@ -94,8 +94,8 @@ export const handler: Handler = async (event) => {
         doc.version = nextVersion;
         doc.listings = agentConfig.listings; // Ensure runtime listings are attached
 
-        // 4, 5 & 6. Store Document, Update Config, Log Usage (Parallel)
-        console.info(`[build-site] Starting parallel persistence for slug: ${agentConfig.slug}`);
+        // 4, 5 & 6. Store Document, Update Config, Log Usage (Fire & Forget)
+        console.info(`[build-site] Starting background persistence (fire-and-forget) for slug: ${agentConfig.slug}`);
 
         const docPromise = supabase.from('agent_site_documents').insert({
             agent_id: agentId,
@@ -132,18 +132,17 @@ export const handler: Handler = async (event) => {
             success: true
         });
 
-        const [docRes, configRes, logRes] = await Promise.all([docPromise, configPromise, logPromise]);
+        // Do not await! Let this run in the background (dependent on runtime environment)
+        Promise.all([docPromise, configPromise, logPromise])
+            .then(([docRes, configRes, logRes]) => {
+                if (docRes.error) console.error('[build-site] Document persistence error:', docRes.error);
+                if (configRes.error) console.error('[build-site] Config update error:', configRes.error);
+                if (logRes.error) console.error('[build-site] Usage log error:', logRes.error);
+                console.log('[build-site] Successfully updated Supabase and marked as LIVE');
+            })
+            .catch(err => console.error('[build-site] Background persistence fatal error:', err));
 
-        if (docRes.error) console.error('[build-site] Document persistence error:', docRes.error);
-        if (configRes.error) console.error('[build-site] Config update error:', configRes.error);
-        if (logRes.error) console.error('[build-site] Usage log error:', logRes.error);
-
-        console.log('[build-site] Successfully updated Supabase and marked as LIVE');
-
-        console.info(`[build-site] Build complete for slug: ${agentConfig.slug}`, {
-            agentId,
-            version: nextVersion
-        });
+        console.info(`[build-site] Build generation complete. Returning response before persistence settles.`);
 
         return {
             statusCode: 200,
