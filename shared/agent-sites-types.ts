@@ -22,7 +22,7 @@ export interface Agent {
     lastActiveAt: string;
 }
 
-export type ConfigStatus = "draft" | "ready" | "published";
+export type ConfigStatus = "draft" | "ready" | "published" | "live";
 export type ListingType = "rent" | "sale" | "offplan";
 export type ListingStatus = "available" | "sold" | "reserved" | "rented";
 export type ListingSource = "manual" | "portal" | "mixed";

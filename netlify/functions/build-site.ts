@@ -107,15 +107,18 @@ export const handler: Handler = async (event) => {
         if (docError) throw docError;
 
         // 5. Update Agent Config
+        console.info(`[build-site] Setting status to 'live' for agentId: ${agentId}`);
         await supabase
             .from('agentconfigs')
             .update({
-                status: 'published',
+                status: 'live',
                 published_at: new Date().toISOString(),
                 last_built_at: new Date().toISOString(),
                 needs_site_rebuild: false
             })
             .eq('id', agentConfig.id);
+
+        console.info(`[build-site] Marked agent as LIVE for slug: ${agentConfig.slug}`);
 
         // 6. Log usage
         await supabase

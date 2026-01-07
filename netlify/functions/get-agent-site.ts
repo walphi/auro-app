@@ -46,7 +46,7 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        if (config.status !== 'published') {
+        if (config.status !== 'live' && config.status !== 'published') {
             return {
                 statusCode: 403,
                 headers,
