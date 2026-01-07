@@ -94,39 +94,35 @@ export const handler: Handler = async (event) => {
         doc.version = nextVersion;
         doc.listings = agentConfig.listings; // Ensure runtime listings are attached
 
-        // 4, 5 & 6. Store Document, Update Config, Log Usage (Fire & Forget)
-        console.info(`[build-site] Starting background persistence (fire-and-forget) for slug: ${agentConfig.slug}`);
+        // 4, 5 & 6. Store Document, Update Config, Log Usage (Sequential/Parallel within 15min window)
+        console.info(`[build-site-background] Starting full persistence for slug: ${agentConfig.slug}`);
 
-        // 4. Update Agent Config (Critical - Fast)
-        console.info(`[build-site] Attempting to update status to live for agentId: ${agentId}, ID: ${agentConfig.id}`);
-        const { error: updateError, data: updateData } = await supabase
-            .from('agentconfigs')
-            .update({
-                status: 'live',
-                published_at: new Date().toISOString(),
-                last_built_at: new Date().toISOString(),
-                needs_site_rebuild: false
-            })
-            .eq('id', agentConfig.id)
-            .select();
+        // Restore full document persistence
+        const docPromise = supabase.from('agent_site_documents').insert({
+            agent_id: agentId,
+            config_id: agentConfig.id,
+            slug: agentConfig.slug,
+            version: nextVersion,
+            language_codes: doc.languageCodes,
+            meta: doc.meta,
+            theme: doc.theme,
+            sections: doc.sections,
+            listings: doc.listings,
+            generated_at: new Date().toISOString(),
+            generated_by: buildResult.model,
+            token_usage: buildResult.tokenUsage
+        });
 
-        if (updateError) {
-            console.error('[build-site] Supabase update error:', {
-                code: updateError.code,
-                message: updateError.message,
-                details: updateError.details,
-                hint: updateError.hint
-            });
-            throw new Error(`Failed to update agent status: ${updateError.message}`);
-        }
+        // Config update
+        const configPromise = supabase.from('agentconfigs').update({
+            status: 'live',
+            published_at: new Date().toISOString(),
+            last_built_at: new Date().toISOString(),
+            needs_site_rebuild: false
+        }).eq('id', agentConfig.id);
 
-        console.info(`[build-site] Successfully updated status to live. Rows affected: ${updateData?.length}`, updateData);
-
-        console.info(`[build-site] Marked agent as LIVE for slug: ${agentConfig.slug}`);
-
-        // 5. Log usage (Non-blocking / Optional check)
-        // We'll fire this but not strictly wait for it to block success if it's slow
-        supabase.from('ai_usage_logs').insert({
+        // Usage log
+        const logPromise = supabase.from('ai_usage_logs').insert({
             agent_id: agentId,
             operation: 'build_site',
             model: buildResult.model,
@@ -134,25 +130,18 @@ export const handler: Handler = async (event) => {
             output_tokens: buildResult.tokenUsage.output,
             latency_ms: buildResult.latencyMs,
             success: true
-        }).then(({ error }) => {
-            if (error) console.error('[build-site] Usage log error:', error);
         });
 
-        // NOTE: We are SKIPPING the heavy `agent_site_documents` insert for performance.
-        // The site will render based on the live config status, effectively using the latest ephemeral build.
-        // TODO: Implement async document storage via separate queue or lighter payload.
+        // Execute all persistence operations
+        const [docRes, configRes, logRes] = await Promise.all([docPromise, configPromise, logPromise]);
 
-        console.info(`[build-site] Build generation complete. Returning response before persistence settles.`);
+        if (docRes.error) console.error('[build-site-background] Document persistence error:', docRes.error);
+        if (configRes.error) console.error('[build-site-background] Config update error:', configRes.error);
+        if (logRes.error) console.error('[build-site-background] Usage log error:', logRes.error);
 
-        return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                success: true,
-                siteUrl: `https://auroapp.com/sites/${agentConfig.slug}`,
-                version: nextVersion
-            })
-        };
+        console.info(`[build-site-background] Mark LIVE complete for slug: ${agentConfig.slug}. Rows updated:`, configRes.count);
+
+        return { statusCode: 200 };
 
     } catch (error: any) {
         console.error(`[build-site] Error: ${error.message}`);
