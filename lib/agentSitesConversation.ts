@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { supabase } from './supabase';
 import { Agent, AgentConfig, SiteConversation } from '../shared/agent-sites-types';
 import { getAgentConfigByAgentId, createOrUpdateAgentConfig } from './db/agentConfigs';
@@ -129,15 +130,19 @@ async function callScrapeStyle(url: string, agentId: string) {
 }
 
 async function callBuildSite(agentId: string) {
-    const apiBase = process.env.URL || process.env.VITE_API_BASE_URL || 'http://localhost:8888';
+    const apiBase = process.env.URL || process.env.VITE_API_BASE_URL || 'https://auroapp.com';
+    const buildUrl = `${apiBase}/.netlify/functions/build-site`;
+
+    console.log(`[AgentSites] Triggering build-site`, { agentId, buildUrl });
+
     try {
-        const response = await fetch(`${apiBase}/.netlify/functions/build-site`, {
-            method: 'POST',
-            body: JSON.stringify({ agentId })
+        const response = await axios.post(buildUrl, { agentId }, {
+            timeout: 5000,
+            headers: { 'Content-Type': 'application/json' }
         });
-        const res = await response.json();
-        return res;
+        return { success: true, data: response.data };
     } catch (e: any) {
+        console.error(`[AgentSites] build-site trigger error:`, e.response?.data || e.message);
         return { success: false, error: e.message };
     }
 }
@@ -208,7 +213,7 @@ export async function processAgentSitesMessage(
 
     if (!config && currentState !== 'IDENTIFY_AGENT') {
         const defaultSlug = agent.phone.replace('+', '');
-        console.log(`[processAgentSitesMessage] Creating missing AgentConfig for agent ${agent.id} (Slug: ${defaultSlug})`);
+        console.log(`[processAgentSitesMessage] Creating missing AgentConfig for agent ${agent.id}(Slug: ${defaultSlug})`);
         const { data: newConfig, error: createConfigError } = await createOrUpdateAgentConfig(agent.id, {
             slug: defaultSlug,
             status: 'draft',
@@ -217,7 +222,7 @@ export async function processAgentSitesMessage(
         });
 
         if (createConfigError) {
-            console.error(`[processAgentSitesMessage] Failed to create AgentConfig:`, createConfigError);
+            console.error(`[processAgentSitesMessage] Failed to create AgentConfig: `, createConfigError);
         } else {
             config = newConfig;
         }
