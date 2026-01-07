@@ -622,7 +622,11 @@ export async function processAgentSitesMessage(
             const cmd = text.toUpperCase();
             if (intent === 'publish') {
                 const slug = config?.slug;
-                replyText = `Your site is already live at https://auroapp.com/sites/${slug}. Type 'update' to modify your listings or profile.`;
+                // Re-trigger build logic
+                callBuildSite(agent.id).catch(err => {
+                    console.error("[AgentSites] Build trigger fire-and-forget error:", err.message);
+                });
+                replyText = `Re-building your website now! It will be updated at https://auroapp.com/sites/${slug} shortly.`;
                 nextState = 'READY_FOR_UPDATES';
             } else if (cmd.startsWith('ADD LISTING') || cmd.includes('UPDATE')) {
                 replyText = "Sure! Send a listing URL or type 'manual'.";
