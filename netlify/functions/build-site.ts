@@ -10,8 +10,10 @@ export const handler: Handler = async (event) => {
     }
 
     try {
+        console.info(`[build-site] Event body: ${event.body}`);
         const { agentId } = JSON.parse(event.body || '{}');
         if (!agentId) {
+            console.error(`[build-site] Missing agentId in payload`);
             return { statusCode: 400, body: JSON.stringify({ error: 'agentId is required' }) };
         }
 
@@ -25,9 +27,11 @@ export const handler: Handler = async (event) => {
             .single();
 
         if (configError || !configRow) {
-            console.error(`[build-site] publish_failed_missing_agent_config`, { agentId, error: configError });
-            return { statusCode: 404, body: JSON.stringify({ error: 'Agent config not found' }) };
+            console.error(`[build-site] Config lookup failed or empty`, { agentId, configError });
+            return { statusCode: 404, body: JSON.stringify({ error: 'Agent config not found', detail: configError?.message }) };
         }
+
+        console.info(`[build-site] Found config row for slug: ${configRow.slug}`);
 
         // Map snake_case to camelCase for the builder
         const agentConfig: AgentConfig = {

@@ -139,14 +139,22 @@ async function callBuildSite(agentId: string) {
 
     try {
         const response = await axios.post(buildUrl, { agentId }, {
-            timeout: 5000,
+            timeout: 10000, // Increased to 10s for initial trigger
             headers: { 'Content-Type': 'application/json' }
         });
-        console.info(`[AgentSites] Build-site trigger response:`, response.data);
+        console.info(`[AgentSites] callBuildSite success:`, {
+            status: response.status,
+            data: response.data
+        });
         return { success: true, data: response.data };
     } catch (e: any) {
         // If it's a timeout, it might still be building, so we don't necessarily treat it as a hard failure
-        console.error(`[AgentSites] build-site trigger error:`, e.response?.data || e.message);
+        console.error(`[AgentSites] callBuildSite error:`, {
+            message: e.message,
+            status: e.response?.status,
+            data: e.response?.data,
+            url: buildUrl
+        });
         return { success: false, error: e.message };
     }
 }
