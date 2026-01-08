@@ -7,18 +7,18 @@ function App() {
   return (
     <Router basename="/sites">
       <Routes>
-        {/* Most specific routes first */}
+        {/* Multi-page routes - specific paths FIRST */}
         <Route path="/:slug/about" element={<AgentSite pageId="about" />} />
         <Route path="/:slug/listings" element={<AgentSite pageId="listings" />} />
         <Route path="/:slug/contact" element={<AgentSite pageId="contact" />} />
 
-        {/* Slug home page */}
+        {/* Base slug route - matches /sites/phillip-walsh */}
         <Route path="/:slug" element={<AgentSite pageId="home" />} />
 
-        {/* Static home for the /sites/ base */}
+        {/* Global root for /sites/ */}
         <Route path="/" element={<div className="home-placeholder"><h1>Auro Agent Sites</h1><p>Public site renderer</p></div>} />
 
-        {/* Global fallback */}
+        {/* 404 handler */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

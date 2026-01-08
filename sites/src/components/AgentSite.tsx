@@ -121,7 +121,8 @@ const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document:
 
     const currentPage: Page | undefined = doc.pages?.find(p =>
         p.id?.toLowerCase() === pageId?.toLowerCase() ||
-        (pageId === 'home' && (p.id === 'index' || p.id === 'main'))
+        (pageId === 'home' && (p.id?.toLowerCase() === 'home' || p.id?.toLowerCase() === 'index' || p.id?.toLowerCase() === 'main')) ||
+        (pageId === 'listings' && (p.id?.toLowerCase() === 'properties' || p.id?.toLowerCase() === 'listings' || p.id?.toLowerCase() === 'listingsgrid'))
     ) || doc.pages?.[0];
 
     if (!currentPage || !doc.pages || doc.pages.length === 0) {
