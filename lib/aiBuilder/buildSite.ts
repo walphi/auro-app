@@ -97,6 +97,8 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
 
         // Sanitize retry output
         let cleanRetry = retryText.trim();
+        console.info(`[build-site] Raw retry output length: ${cleanRetry.length}`);
+
         if (cleanRetry.includes('{')) {
             const start = cleanRetry.indexOf('{');
             const end = cleanRetry.lastIndexOf('}');
@@ -104,7 +106,6 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
                 cleanRetry = cleanRetry.substring(start, end + 1);
             }
         }
-
         return cleanRetry;
     };
 
@@ -119,6 +120,7 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
     }
 
     const validatedOutput = await validateAndRetry(cleanJson, input, retryFn);
+    console.info('[build-site] Validation succeeded, proceeding to persistence');
 
     // Construct the full document merging Config + AI Output
     const fullDocument: any = {
