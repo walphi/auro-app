@@ -70,6 +70,31 @@ export async function validateAndRetry(
         const jsonStr = rawOutput.substring(jsonStart, jsonEnd + 1);
         const parsed = JSON.parse(jsonStr);
 
+        // Normalize section types before Zod validation
+        if (parsed.pages && Array.isArray(parsed.pages)) {
+            parsed.pages.forEach((page: any, pIdx: number) => {
+                if (page.sections && Array.isArray(page.sections)) {
+                    page.sections.forEach((section: any, sIdx: number) => {
+                        if (section.type && typeof section.type === 'string') {
+                            const validTypes = SectionTypeSchema.options;
+                            if (!validTypes.includes(section.type as any)) {
+                                console.warn(`[build-site] Normalized unknown section type`, {
+                                    originalType: section.type,
+                                    normalizedTo: 'services', // Safe fallback
+                                    pageIndex: pIdx,
+                                    sectionIndex: sIdx
+                                });
+                                // Keep original type in content for debugging if needed, but satisfy schema
+                                if (!section.content) section.content = {};
+                                section.content._originalType = section.type;
+                                section.type = 'services';
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
         // Validate against schema
         return AISiteOutputSchema.parse(parsed);
     } catch (error: any) {

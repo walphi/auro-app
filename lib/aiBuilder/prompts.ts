@@ -9,7 +9,8 @@ STRICT REQUIREMENTS:
 2. Design for a LUXURY Dubai real estate audience (Eden House style). Minimalist, high-end, elegant.
 3. Generate a MULTI-PAGE structure: Home, About, Listings, Contact.
 4. Copywriting must be persuasive, professional, and trust-building.
-5. Return a single JSON object matching the schema below.
+6. Return a single JSON object matching the schema below.
+7. For each section.type, use only one of: hero, about, services, focusAreas, listingsGrid, testimonials, contact, faq, ctaBand, stats, developers. Do not invent new section types. If you are unsure, use services or about for general content sections.
 
 SCHEMA REFERENCE:
 {
