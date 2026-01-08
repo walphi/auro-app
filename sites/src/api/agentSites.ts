@@ -53,23 +53,67 @@ export interface AgentConfig {
     agentId: string;
 }
 
-export async function getAgentSite(slug: string): Promise<AgentConfig> {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-    const response = await fetch(`${apiBase}/.netlify/functions/get-agent-site?slug=${slug}`);
+// Types for AI-generated site document
+export interface DesignSystem {
+    colors: {
+        primary: string;
+        secondary: string;
+        accent: string;
+        background: string;
+        text: string;
+        muted: string;
+    };
+    fonts: {
+        heading: string;
+        body: string;
+    };
+    spacing: {
+        sectionPadding: string;
+        containerMaxWidth: string;
+    };
+}
 
-    if (!response.ok) {
-        if (response.status === 404) {
-            throw new Error('Agent site not found');
-        }
-        if (response.status === 403) {
-            throw new Error('Not published yet');
-        }
-        throw new Error('Failed to fetch agent site');
-    }
+export interface NavItem {
+    label: string;
+    path: string;
+    type: 'page' | 'link' | 'button';
+    action?: string;
+}
 
-    const raw = await response.json();
+export interface Section {
+    id?: string;
+    type: string;
+    content: Record<string, any>;
+}
 
-    // Map snake_case from DB to camelCase for FE
+export interface Page {
+    id: string;
+    title: string;
+    meta?: {
+        description?: string;
+    };
+    sections: Section[];
+}
+
+export interface SiteDocument {
+    site: {
+        name: string;
+        tagline?: string;
+        designSystem: DesignSystem;
+    };
+    nav: {
+        items: NavItem[];
+    };
+    pages: Page[];
+    listings?: Listing[];
+}
+
+export interface AgentSiteResponse {
+    config: AgentConfig;
+    document: SiteDocument | null;
+}
+
+function mapConfigFromRaw(raw: any): AgentConfig {
     return {
         id: raw.id,
         slug: raw.slug,
@@ -89,6 +133,34 @@ export async function getAgentSite(slug: string): Promise<AgentConfig> {
         status: raw.status,
         agentId: raw.agent_id
     };
+}
+
+export async function getAgentSite(slug: string): Promise<AgentConfig> {
+    const response = await getAgentSiteWithDocument(slug);
+    return response.config;
+}
+
+export async function getAgentSiteWithDocument(slug: string): Promise<AgentSiteResponse> {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    const response = await fetch(`${apiBase}/.netlify/functions/get-agent-site?slug=${slug}`);
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new Error('Agent site not found');
+        }
+        if (response.status === 403) {
+            throw new Error('Not published yet');
+        }
+        throw new Error('Failed to fetch agent site');
+    }
+
+    const raw = await response.json();
+
+    // API now returns { config, document }
+    const config = mapConfigFromRaw(raw.config);
+    const document = raw.document || null;
+
+    return { config, document };
 }
 
 export function trackEvent(name: string, properties: any) {

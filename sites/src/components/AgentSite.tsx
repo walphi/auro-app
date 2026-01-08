@@ -2,12 +2,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MessageCircle, Phone, Mail, MapPin, BedDouble, Bath, Maximize } from 'lucide-react';
-import { getAgentSite, type AgentConfig, trackEvent } from '../api/agentSites';
+import { getAgentSiteWithDocument, type AgentConfig, type SiteDocument, type Page, trackEvent } from '../api/agentSites';
+import Navigation from './Navigation';
+import SectionRenderer from './SectionRenderer';
 import './AgentSite.css';
 
-const AgentSite: React.FC = () => {
+interface AgentSiteProps {
+    pageId?: string;
+}
+
+const AgentSite: React.FC<AgentSiteProps> = ({ pageId = 'home' }) => {
     const { slug } = useParams<{ slug: string }>();
     const [config, setConfig] = useState<AgentConfig | null>(null);
+    const [siteDocument, setSiteDocument] = useState<SiteDocument | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -17,33 +24,22 @@ const AgentSite: React.FC = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const data = await getAgentSite(slug);
-                console.log('[AgentSite] Successfully fetched config:', {
-                    name: data.name,
-                    slug: data.slug,
-                    listingsCount: data.listings?.length || 0,
-                    status: (data as any).status
+                const data = await getAgentSiteWithDocument(slug);
+                console.log('[AgentSite] Successfully fetched data:', {
+                    name: data.config.name,
+                    slug: data.config.slug,
+                    listingsCount: data.config.listings?.length || 0,
+                    hasDocument: !!data.document,
+                    documentPages: data.document?.pages?.length || 0
                 });
-                setConfig(data);
+                setConfig(data.config);
+                setSiteDocument(data.document);
 
                 // Track page view
-                trackEvent('page_view', { slug });
+                trackEvent('page_view', { slug, pageId });
 
-                // Apply theme from style profile if available
-                if (data.styleProfile) {
-                    const root = document.documentElement;
-                    if (data.styleProfile.primaryColor) {
-                        root.style.setProperty('--primary-color', data.styleProfile.primaryColor);
-                    }
-                    if (data.styleProfile.secondaryColor) {
-                        root.style.setProperty('--secondary-color', data.styleProfile.secondaryColor);
-                    }
-                } else if (data.primaryColor) {
-                    // Fallback to agentconfigs columns
-                    const root = document.documentElement;
-                    root.style.setProperty('--primary-color', data.primaryColor);
-                    root.style.setProperty('--secondary-color', data.secondaryColor || '#c9a227');
-                }
+                // Apply design system from document or fallback to config
+                applyDesignSystem(data.document, data.config);
             } catch (err: any) {
                 console.error('Error fetching agent site:', err);
                 setError(err.message);
@@ -53,7 +49,31 @@ const AgentSite: React.FC = () => {
         };
 
         fetchData();
-    }, [slug]);
+    }, [slug, pageId]);
+
+    const applyDesignSystem = (doc: SiteDocument | null, cfg: AgentConfig) => {
+        const root = window.document.documentElement;
+
+        if (doc?.site?.designSystem?.colors) {
+            const { colors } = doc.site.designSystem;
+            root.style.setProperty('--primary-color', colors.primary || '#c9a227');
+            root.style.setProperty('--secondary-color', colors.secondary || '#1a1a2e');
+            root.style.setProperty('--accent-color', colors.accent || '#d4af37');
+            root.style.setProperty('--background-color', colors.background || '#0f0f1a');
+            root.style.setProperty('--text-color', colors.text || '#ffffff');
+            root.style.setProperty('--muted-color', colors.muted || '#888888');
+        } else if (cfg.styleProfile) {
+            if (cfg.styleProfile.primaryColor) {
+                root.style.setProperty('--primary-color', cfg.styleProfile.primaryColor);
+            }
+            if (cfg.styleProfile.secondaryColor) {
+                root.style.setProperty('--secondary-color', cfg.styleProfile.secondaryColor);
+            }
+        } else if (cfg.primaryColor) {
+            root.style.setProperty('--primary-color', cfg.primaryColor);
+            root.style.setProperty('--secondary-color', cfg.secondaryColor || '#c9a227');
+        }
+    };
 
     if (loading) {
         return (
@@ -74,6 +94,78 @@ const AgentSite: React.FC = () => {
         );
     }
 
+    // If we have a document, render the multi-page version
+    if (siteDocument) {
+        return <DocumentBasedSite config={config} document={siteDocument} pageId={pageId} />;
+    }
+
+    // Fallback to legacy single-page rendering
+    return <LegacySinglePageSite config={config} />;
+};
+
+// New document-based multi-page renderer
+interface DocumentBasedSiteProps {
+    config: AgentConfig;
+    document: SiteDocument;
+    pageId: string;
+}
+
+const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document: doc, pageId }) => {
+    // Find the current page
+    const currentPage: Page | undefined = doc.pages?.find(p => p.id === pageId) || doc.pages?.[0];
+
+    if (!currentPage) {
+        return (
+            <div className="error-container">
+                <h1>Page Not Found</h1>
+                <p>The requested page could not be found.</p>
+            </div>
+        );
+    }
+
+    // Merge listings from document or config
+    const listings = doc.listings || config.listings || [];
+
+    return (
+        <div className="agent-site agent-site--document">
+            {/* Navigation */}
+            {doc.nav?.items && (
+                <Navigation
+                    items={doc.nav.items}
+                    brandName={doc.site?.name || config.name}
+                    logoUrl={config.logoUrl}
+                />
+            )}
+
+            {/* Page Sections */}
+            <main className="site-content">
+                {currentPage.sections?.map((section, index) => (
+                    <SectionRenderer
+                        key={section.id || index}
+                        section={section}
+                        listings={listings}
+                        config={config}
+                        designSystem={doc.site?.designSystem}
+                    />
+                ))}
+            </main>
+
+            {/* Footer */}
+            <footer className="footer">
+                <div className="footer-logo">{doc.site?.name || config.name}</div>
+                <div className="footer-company">&copy; {new Date().getFullYear()} {config.name} | {config.company}</div>
+                <div className="footer-credits">Powered by Auro APP</div>
+            </footer>
+        </div>
+    );
+};
+
+// Legacy single-page renderer (backward compatibility)
+interface LegacySinglePageSiteProps {
+    config: AgentConfig;
+}
+
+const LegacySinglePageSite: React.FC<LegacySinglePageSiteProps> = ({ config }) => {
     const { leadConfig } = config;
     const primaryChannel = leadConfig?.primaryChannel || 'whatsapp';
     const whatsappLink = `https://wa.me/${leadConfig?.whatsappNumber || config.phone}?text=${encodeURIComponent('Hi, I\'m interested in your real estate services.')}`;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { type Section, type Listing, type AgentConfig, type DesignSystem } from '../api/agentSites';
 import HeroSection from './sections/HeroSection';
 import AboutSection from './sections/AboutSection';
 import ServicesSection from './sections/ServicesSection';
@@ -10,14 +11,10 @@ import StatsSection from './sections/StatsSection';
 import FocusAreasSection from './sections/FocusAreasSection';
 
 interface SectionRendererProps {
-    section: {
-        id?: string;
-        type: string;
-        content: Record<string, any>;
-    };
-    listings?: any[];
-    config?: any;
-    designSystem?: any;
+    section: Section;
+    listings?: Listing[];
+    config?: AgentConfig;
+    designSystem?: DesignSystem;
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({ section, listings, config, designSystem }) => {
