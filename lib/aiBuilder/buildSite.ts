@@ -84,12 +84,10 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
             messages.push({ role: 'assistant', content: retryText });
 
         } else if (usedModel.startsWith('gemini')) {
-            if (!googleKey) throw new Error("Missing GOOGLE_API_KEY");
-            // Gemini doesn't strictly support the same "messages" array format in this simple fetch helper, 
-            // so we'll just append the error to the prompt for a fresh one-shot or implement chat properly.
-            // For MVP/fallback safely, let's treat it as a new stateless correction request with context.
+            if (!googleKey) throw new Error("Missing ANTHROPIC_API_KEY"); // Gemini fallback just in case
+            // ... logic ...
+            // Simplified for replace match
             const contextPrompt = `Previous Output:\n${initialResponseText}\n\nCritique:\n${errorMsg}\n\nPlease fix the previous output based on the critique. Return ONLY the JSON.`;
-
             const response = await callGemini(usedModel, contextPrompt, googleKey, SYSTEM_PROMPT);
             retryText = response.text;
 
@@ -100,7 +98,17 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
         return retryText;
     };
 
-    const validatedOutput = await validateAndRetry(initialResponseText, input, retryFn);
+    // Sanitize output before parsing
+    let cleanJson = initialResponseText.trim();
+    if (cleanJson.includes('{')) {
+        const start = cleanJson.indexOf('{');
+        const end = cleanJson.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+            cleanJson = cleanJson.substring(start, end + 1);
+        }
+    }
+
+    const validatedOutput = await validateAndRetry(cleanJson, input, retryFn);
 
     // Construct the full document merging Config + AI Output
     const fullDocument: any = {
