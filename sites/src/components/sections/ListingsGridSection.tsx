@@ -17,115 +17,151 @@ const ListingsGridSection: React.FC<ListingsGridSectionProps> = ({ content, list
     const subtitle = content?.subheading || content?.subtitle || 'Handpicked luxury residences for the discerning client.';
 
     const getListingImage = (listing: any) => {
-        if (listing.photos && listing.photos.length > 0) return listing.photos[0];
-        if (listing.image_url) return listing.image_url;
-        return 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1073&q=80';
+        if (listing.photos && listing.photos.length > 0 && !listing.photos[0].includes('example.com') && !listing.photos[0].includes('url_to_image')) {
+            return listing.photos[0];
+        }
+        if (listing.image_url && !listing.image_url.includes('example.com')) {
+            return listing.image_url;
+        }
+        // Fallback luxury placeholder
+        return 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80';
     };
 
     return (
-        <section className="listings-grid-section" id={sectionId || 'listings'} style={{ padding: '100px 0', background: '#fcfcfc' }}>
+        <section className="listings-grid-section" id={sectionId || 'listings'} style={{ padding: '120px 0', background: '#ffffff' }}>
             <div className="container">
-                <div style={{ textAlign: 'center', marginBottom: '60px' }} className="fade-in">
-                    <h2 className="section-title" style={{ fontSize: '3rem', color: 'var(--primary-color)' }}>{title}</h2>
-                    <div style={{ width: '80px', height: '2px', background: 'var(--secondary-color)', margin: '20px auto' }}></div>
-                    {subtitle && <p className="section-subtitle" style={{ fontSize: '1.2rem', color: 'var(--muted-color)', maxWidth: '700px', margin: '0 auto', fontFamily: 'var(--body-font)', fontWeight: 300 }}>{subtitle}</p>}
+                <div style={{ textAlign: 'center', marginBottom: '80px' }} className="fade-in-up">
+                    <span style={{
+                        textTransform: 'uppercase',
+                        letterSpacing: '4px',
+                        fontSize: '0.8rem',
+                        color: 'var(--secondary-color)',
+                        fontWeight: '600',
+                        display: 'block',
+                        marginBottom: '15px'
+                    }}>Curated Selection</span>
+                    <h2 className="section-title" style={{
+                        fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+                        color: 'var(--primary-color)',
+                        fontFamily: 'var(--heading-font)',
+                        marginBottom: '25px'
+                    }}>{title}</h2>
+                    <div style={{ width: '50px', height: '1px', background: 'var(--secondary-color)', margin: '0 auto 25px' }}></div>
+                    {subtitle && <p className="section-subtitle" style={{
+                        fontSize: '1.1rem',
+                        color: 'var(--muted-color)',
+                        maxWidth: '600px',
+                        margin: '0 auto',
+                        fontFamily: 'var(--body-font)',
+                        fontWeight: 300,
+                        lineHeight: '1.8'
+                    }}>{subtitle}</p>}
                 </div>
 
                 <div className="listings-grid" style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
-                    gap: '40px',
+                    gap: '50px 30px',
                     padding: '0 20px'
                 }}>
                     {listings.map((listing: any, index: number) => (
                         <Link
                             key={listing.id || index}
-                            to={`/sites/${slug}/listings/${listing.id}`}
+                            to={`/${slug}/listings/${listing.id}`}
                             className="listing-card fade-in"
                             style={{
                                 textDecoration: 'none',
                                 color: 'inherit',
                                 background: 'white',
-                                borderRadius: '0px', // Luxury often uses sharp edges or very subtle ones
+                                borderRadius: '0px',
                                 overflow: 'hidden',
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.03)',
-                                transition: 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)',
-                                border: '1px solid rgba(0,0,0,0.05)',
-                                display: 'block'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-10px)';
-                                e.currentTarget.style.boxShadow = '0 30px 60px rgba(0,0,0,0.07)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.03)';
+                                transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
+                                display: 'block',
+                                position: 'relative'
                             }}
                         >
-                            <div className="listing-image-container" style={{ height: '300px', position: 'relative', overflow: 'hidden' }}>
+                            <div className="listing-image-container" style={{
+                                height: '450px',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                background: '#f0f0f0'
+                            }}>
                                 <img
                                     src={getListingImage(listing)}
                                     alt={listing.title}
                                     className="listing-image"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s ease' }}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        transition: 'transform 1.2s cubic-bezier(0.19, 1, 0.22, 1)'
+                                    }}
                                 />
                                 <div style={{
                                     position: 'absolute',
                                     top: 0, left: 0, right: 0, bottom: 0,
-                                    background: 'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.4))'
+                                    background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.7))',
+                                    opacity: 0.8
                                 }}></div>
-                                {listing.type && (
-                                    <span className="listing-badge" style={{
-                                        position: 'absolute',
-                                        top: '20px',
-                                        left: '20px',
-                                        background: 'var(--primary-color)',
-                                        color: 'white',
-                                        padding: '6px 15px',
-                                        fontSize: '0.7rem',
+
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: '30px',
+                                    left: '30px',
+                                    right: '30px',
+                                    color: 'white'
+                                }}>
+                                    <div style={{
+                                        fontSize: '1.8rem',
                                         fontWeight: '600',
+                                        marginBottom: '5px',
+                                        fontFamily: 'var(--heading-font)'
+                                    }}>
+                                        {listing.currency || 'AED'} {listing.price ? Number(listing.price).toLocaleString() : 'POA'}
+                                    </div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: '400', letterSpacing: '0.5px' }}>{listing.title || 'Exclusive Property'}</h3>
+                                </div>
+
+                                {listing.type && (
+                                    <span style={{
+                                        position: 'absolute',
+                                        top: '30px',
+                                        right: '30px',
+                                        background: 'var(--secondary-color)',
+                                        color: 'var(--primary-color)',
+                                        padding: '8px 20px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: '700',
                                         textTransform: 'uppercase',
-                                        letterSpacing: '1px'
+                                        letterSpacing: '2px',
+                                        backdropFilter: 'blur(5px)'
                                     }}>
                                         {listing.type}
                                     </span>
                                 )}
                             </div>
-                            <div className="listing-details" style={{ padding: '30px' }}>
-                                <div className="listing-price" style={{
-                                    fontSize: '1.8rem',
-                                    fontWeight: '700',
-                                    color: 'var(--primary-color)',
-                                    marginBottom: '10px',
-                                    fontFamily: 'var(--heading-font)'
-                                }}>
-                                    {listing.currency || 'AED'} {listing.price ? Number(listing.price).toLocaleString() : 'POA'}
-                                </div>
-                                <h3 className="listing-title" style={{ fontSize: '1.25rem', marginBottom: '15px', fontWeight: '500' }}>{listing.title || 'Exclusive Property'}</h3>
-                                <div className="listing-location" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--muted-color)', marginBottom: '25px', fontSize: '0.95rem' }}>
-                                    <MapPin size={16} color="var(--secondary-color)" />
-                                    {listing.towerOrCommunity || listing.location || 'Dubai'}
+                            <div style={{ padding: '25px 0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--muted-color)', marginBottom: '15px', fontSize: '0.9rem' }}>
+                                    <MapPin size={14} color="var(--secondary-color)" />
+                                    <span style={{ letterSpacing: '1px', textTransform: 'uppercase' }}>{listing.towerOrCommunity || listing.location || 'Dubai'}</span>
                                 </div>
 
-                                <div className="listing-specs" style={{
+                                <div style={{
                                     display: 'flex',
-                                    justifyContent: 'flex-start',
-                                    gap: '25px',
-                                    borderTop: '1px solid rgba(0,0,0,0.05)',
-                                    paddingTop: '20px',
-                                    fontSize: '0.85rem',
-                                    color: 'var(--text-color)',
-                                    textTransform: 'uppercase',
+                                    gap: '20px',
+                                    fontSize: '0.8rem',
+                                    color: 'var(--primary-color)',
+                                    fontWeight: '600',
                                     letterSpacing: '1px'
                                 }}>
-                                    <div className="spec-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <BedDouble size={18} strokeWidth={1.5} /> <span>{listing.beds || 0} Beds</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <BedDouble size={16} strokeWidth={1.5} /> <span>{listing.beds || 0} BEDS</span>
                                     </div>
-                                    <div className="spec-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Bath size={18} strokeWidth={1.5} /> <span>{listing.baths || 0} Baths</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Bath size={16} strokeWidth={1.5} /> <span>{listing.baths || 0} BATHS</span>
                                     </div>
-                                    <div className="spec-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Maximize size={18} strokeWidth={1.5} /> <span>{listing.sizeSqft ? listing.sizeSqft.toLocaleString() : 'N/A'} SQFT</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Maximize size={16} strokeWidth={1.5} /> <span>{listing.sizeSqft ? listing.sizeSqft.toLocaleString() : 'N/A'} SQFT</span>
                                     </div>
                                 </div>
                             </div>
@@ -134,7 +170,7 @@ const ListingsGridSection: React.FC<ListingsGridSectionProps> = ({ content, list
                 </div>
                 {listings.length === 0 && (
                     <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                        <p className="no-listings" style={{ fontSize: '1.2rem', color: 'var(--muted-color)', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '1.2rem', color: 'var(--muted-color)', fontStyle: 'italic', fontWeight: 300 }}>
                             No properties available at this time. Please contact us for exclusive off-market opportunities.
                         </p>
                     </div>
