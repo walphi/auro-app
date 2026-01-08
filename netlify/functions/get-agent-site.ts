@@ -57,17 +57,35 @@ export const handler: Handler = async (event) => {
             };
         }
 
-        // Return the config
-        console.log(`[get-agent-site] Returning config for ${slug}`, {
+        // Fetch the latest document for this agent
+        const { data: document, error: docError } = await supabase
+            .from('agent_site_documents')
+            .select('*')
+            .eq('slug', slug)
+            .order('version', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (docError) {
+            console.log(`[get-agent-site] No document found for ${slug}, using config only`, docError.message);
+        }
+
+        // Return merged data
+        console.log(`[get-agent-site] Returning data for ${slug}`, {
             status: config.status,
             agentId: config.agent_id,
-            listingsCount: config.listings?.length || 0
+            listingsCount: config.listings?.length || 0,
+            hasDocument: !!document,
+            documentVersion: document?.version
         });
 
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify(config),
+            body: JSON.stringify({
+                config,
+                document: document || null
+            }),
         };
     } catch (error: any) {
         console.error('[get-agent-site] Unexpected error:', error);
