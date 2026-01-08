@@ -7,16 +7,18 @@ function App() {
   return (
     <Router basename="/sites">
       <Routes>
-        {/* Multi-page routes - Order is important, most specific first if they overlap, but these are unique enough */}
+        {/* Most specific routes first */}
         <Route path="/:slug/about" element={<AgentSite pageId="about" />} />
         <Route path="/:slug/listings" element={<AgentSite pageId="listings" />} />
         <Route path="/:slug/contact" element={<AgentSite pageId="contact" />} />
 
-        {/* Home page route for the slug */}
+        {/* Slug home page */}
         <Route path="/:slug" element={<AgentSite pageId="home" />} />
 
-        {/* Fallback routes */}
+        {/* Static home for the /sites/ base */}
         <Route path="/" element={<div className="home-placeholder"><h1>Auro Agent Sites</h1><p>Public site renderer</p></div>} />
+
+        {/* Global fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
