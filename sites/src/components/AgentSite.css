@@ -1,276 +1,151 @@
 :root {
-    --primary-color: #1a365d;
+    --primary-color: #1a1a1a;
     --secondary-color: #c9a227;
-    --bg-color: #ffffff;
+    --accent-color: #c9a55c;
+    --background-color: #ffffff;
     --text-color: #1a1a1a;
-    --text-muted: #666666;
-    --card-bg: #f8fafc;
-    --accent-soft: rgba(201, 162, 39, 0.1);
-    --border-radius: 12px;
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --muted-color: #888888;
+    --heading-font: 'Playfair Display', serif;
+    --body-font: 'Inter', sans-serif;
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-.agent-site {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--body-font);
     color: var(--text-color);
-    background-color: var(--bg-color);
+    background-color: var(--background-color);
     line-height: 1.6;
+    overflow-x: hidden;
 }
 
-/* Hero Section */
-.hero {
-    padding: 80px 24px;
-    text-align: center;
-    background: linear-gradient(135deg, var(--primary-color) 0%, #0c1a2d 100%);
-    color: white;
-    position: relative;
-    overflow: hidden;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--heading-font);
+    font-weight: 600;
 }
 
-.hero::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(201, 162, 39, 0.15) 0%, transparent 70%);
-    pointer-events: none;
-}
-
-.hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-}
-
-.profile-photo {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    border: 4px solid var(--secondary-color);
-    margin-bottom: 24px;
-    object-fit: cover;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.agent-name {
-    font-size: 3rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-    letter-spacing: -0.02em;
-}
-
-.agent-designation {
-    font-size: 1.25rem;
-    color: var(--secondary-color);
-    font-weight: 500;
-    margin-bottom: 32px;
-    opacity: 0.9;
-}
-
-.cta-button {
-    background-color: var(--secondary-color);
-    color: var(--primary-color);
-    padding: 16px 32px;
-    border-radius: 50px;
-    font-size: 1.1rem;
-    font-weight: 700;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    transition: var(--transition);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.cta-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-    filter: brightness(1.1);
-}
-
-/* Listings Section */
-.listings-section {
+.container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 80px 24px;
+    padding: 0 20px;
 }
 
-.section-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 40px;
-    text-align: center;
-    position: relative;
+.fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
 }
 
-.section-title::after {
-    content: '';
-    display: block;
-    width: 60px;
-    height: 4px;
-    background: var(--secondary-color);
-    margin: 12px auto 0;
-    border-radius: 2px;
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.listings-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 32px;
+/* Glassmorphism utility */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
 }
 
-.listing-card {
-    background: var(--card-bg);
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-    transition: var(--transition);
-    cursor: pointer;
+/* Agent Site Layout */
+.agent-site--document {
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-.listing-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-    border-color: var(--secondary-color);
+.site-content {
+    flex: 1;
 }
 
-.listing-image-container {
-    height: 240px;
-    position: relative;
-    overflow: hidden;
-}
-
-.listing-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: var(--transition);
-}
-
-.listing-card:hover .listing-image {
-    transform: scale(1.05);
-}
-
-.listing-badge {
-    position: absolute;
-    top: 16px;
-    left: 16px;
+/* Footer Styling */
+.footer {
     background: var(--primary-color);
     color: white;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
+    padding: 80px 0 40px;
+    margin-top: 80px;
 }
 
-.listing-details {
-    padding: 24px;
-    flex-grow: 1;
-}
-
-.listing-price {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--primary-color);
-    margin-bottom: 8px;
-}
-
-.listing-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--text-color);
-}
-
-.listing-location {
-    font-size: 0.95rem;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 16px;
-}
-
-.listing-specs {
-    display: flex;
-    gap: 16px;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 16px;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.spec-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* About Section */
-.about-section {
-    background-color: var(--card-bg);
-    padding: 80px 24px;
-}
-
-.about-container {
-    max-width: 800px;
+.footer-container {
+    max-width: 1200px;
     margin: 0 auto;
-    text-align: center;
-}
-
-.about-text {
-    font-size: 1.15rem;
-    color: var(--text-muted);
-    white-space: pre-wrap;
-}
-
-/* Footer */
-.footer {
-    padding: 60px 24px;
-    text-align: center;
-    background-color: var(--primary-color);
-    color: white;
-    opacity: 0.9;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 40px;
 }
 
 .footer-logo {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: white;
+    font-family: var(--heading-font);
+    font-size: 2rem;
+    margin-bottom: 10px;
 }
 
-.footer-company {
-    font-size: 1rem;
-    color: var(--secondary-color);
-    font-weight: 500;
+.footer-tagline {
+    color: var(--accent-color);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
 }
 
-/* Loading/Error States */
-.loader-container,
-.error-container {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
+.footer-info {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+}
+
+.footer-credits {
+    margin-top: 10px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Shared Section Components Styling */
+.section-title {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
     text-align: center;
 }
 
+/* Loader */
+.loader-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #fdfdfd;
+}
+
 .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid var(--secondary-color);
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(201, 162, 39, 0.1);
+    border-top: 2px solid var(--secondary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+    margin-bottom: 20px;
 }
 
 @keyframes spin {
@@ -284,11 +159,13 @@
 }
 
 @media (max-width: 768px) {
-    .agent-name {
-        font-size: 2.25rem;
+    .footer-container {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
     }
 
-    .listings-grid {
-        grid-template-columns: 1fr;
+    .footer-info {
+        text-align: center;
     }
 }

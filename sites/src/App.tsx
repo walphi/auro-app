@@ -7,9 +7,10 @@ function App() {
   return (
     <Router basename="/sites">
       <Routes>
-        {/* Multi-page routes - specific paths FIRST */}
+        {/* Most specific routes first */}
         <Route path="/:slug/about" element={<AgentSite pageId="about" />} />
         <Route path="/:slug/listings" element={<AgentSite pageId="listings" />} />
+        <Route path="/:slug/listings/:listingId" element={<AgentSite pageId="listing-detail" />} />
         <Route path="/:slug/contact" element={<AgentSite pageId="contact" />} />
 
         {/* Base slug route - matches /sites/phillip-walsh */}

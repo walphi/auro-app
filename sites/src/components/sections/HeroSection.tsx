@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, ChevronDown } from 'lucide-react';
 import './HeroSection.css';
 
 interface HeroSectionProps {
@@ -10,10 +10,10 @@ interface HeroSectionProps {
 }
 
 const HeroSection: React.FC<HeroSectionProps> = ({ content, config, sectionId }) => {
-    const headline = content?.headline || content?.title || config?.name || 'Welcome';
-    const subheadline = content?.subheadline || content?.subtitle || config?.designation || '';
-    const ctaText = content?.ctaText || config?.leadConfig?.ctaTexts?.primary || 'Get in Touch';
-    const backgroundImage = content?.backgroundImage || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
+    const title = content?.title || content?.headline || config?.name || 'Luxury Real Estate';
+    const subtitle = content?.subtitle || content?.subheadline || config?.designation || '';
+    const ctaText = content?.cta?.text || content?.ctaText || 'Enquire Now';
+    const backgroundImage = content?.backgroundImage || content?.image || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80';
 
     const whatsappNumber = config?.leadConfig?.whatsappNumber || config?.phone;
     const ctaLink = whatsappNumber
@@ -22,22 +22,34 @@ const HeroSection: React.FC<HeroSectionProps> = ({ content, config, sectionId })
 
     return (
         <section
-            className="hero-section"
+            className="hero-section luxury-hero fade-in"
             id={sectionId || 'hero'}
-            style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(${backgroundImage})` }}
+            style={{
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url(${backgroundImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed'
+            }}
         >
-            <div className="hero-content">
-                <h1 className="hero-headline">{headline}</h1>
-                {subheadline && <p className="hero-subheadline">{subheadline}</p>}
-                <a
-                    href={ctaLink}
-                    className="hero-cta"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <MessageCircle size={20} />
-                    {ctaText}
-                </a>
+            <div className="hero-overlay"></div>
+            <div className="hero-content-wrapper">
+                <div className="hero-content glass-card fade-in-up">
+                    <h1 className="hero-title">{title}</h1>
+                    <div className="hero-divider"></div>
+                    {subtitle && <p className="hero-subtitle">{subtitle}</p>}
+                    <a
+                        href={ctaLink}
+                        className="hero-cta-button luxury-button"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <MessageCircle size={20} />
+                        <span>{ctaText}</span>
+                    </a>
+                </div>
+            </div>
+            <div className="scroll-indicator">
+                <ChevronDown size={32} className="bounce" />
             </div>
         </section>
     );
