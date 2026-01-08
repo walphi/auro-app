@@ -156,53 +156,63 @@ export async function getAgentSiteWithDocument(slug: string): Promise<AgentSiteR
     }
 
     const raw = await response.json();
+    console.log('[api/agentSites] Raw response:', raw);
 
-    // Map DB row to SiteDocument structure
     const config = mapConfigFromRaw(raw.config);
     let document: SiteDocument | null = null;
 
-    if (raw.document) {
-        const docRow = raw.document;
-        document = {
-            site: {
-                name: docRow.meta?.brand?.name || config.name,
-                logoUrl: docRow.meta?.brand?.logoUrl || config.logoUrl,
-                designSystem: {
-                    colors: {
-                        primary: docRow.meta?.designSystem?.primaryColor || '#1a1a1a',
-                        secondary: docRow.meta?.designSystem?.secondaryColor || '#c9a227',
-                        accent: docRow.meta?.designSystem?.accentColor || '#c9a55c',
-                        background: docRow.meta?.designSystem?.backgroundColor || '#ffffff',
-                        text: docRow.meta?.designSystem?.textColor || '#1a1a1a',
-                        muted: docRow.meta?.designSystem?.mutedColor || '#888888',
-                    },
-                    fonts: {
-                        heading: docRow.meta?.designSystem?.typography?.headingFont || 'Playfair Display',
-                        body: docRow.meta?.designSystem?.typography?.bodyFont || 'Inter',
-                    },
-                    spacing: {
-                        sectionPadding: '80px',
-                        containerMaxWidth: '1200px'
+    try {
+        if (raw.document) {
+            const docRow = raw.document;
+            console.log('[api/agentSites] Mapping docRow:', docRow);
+
+            // The document structure in DB might be slightly different than our FE interface
+            // We map it here robustly
+            document = {
+                site: {
+                    name: docRow.meta?.brand?.name || docRow.site?.name || config.name,
+                    logoUrl: docRow.meta?.brand?.logoUrl || docRow.site?.logoUrl || config.logoUrl,
+                    designSystem: {
+                        colors: {
+                            primary: docRow.meta?.designSystem?.primaryColor || docRow.theme?.primaryColor || '#1a1a1a',
+                            secondary: docRow.meta?.designSystem?.secondaryColor || docRow.theme?.secondaryColor || '#c9a227',
+                            accent: docRow.meta?.designSystem?.accentColor || docRow.theme?.accentColor || '#c9a55c',
+                            background: docRow.meta?.designSystem?.backgroundColor || docRow.theme?.backgroundColor || '#ffffff',
+                            text: docRow.meta?.designSystem?.textColor || docRow.theme?.textColor || '#1a1a1a',
+                            muted: docRow.meta?.designSystem?.mutedColor || docRow.theme?.mutedColor || '#888888',
+                        },
+                        fonts: {
+                            heading: docRow.meta?.designSystem?.typography?.headingFont || docRow.theme?.typography?.headingFont || 'Playfair Display',
+                            body: docRow.meta?.designSystem?.typography?.bodyFont || docRow.theme?.typography?.bodyFont || 'Inter',
+                        },
+                        spacing: {
+                            sectionPadding: '80px',
+                            containerMaxWidth: '1200px'
+                        }
                     }
-                }
-            },
-            nav: {
-                items: docRow.sections?.map((s: any) => ({
-                    label: s.title,
-                    path: s.path,
-                    type: 'page'
-                })) || []
-            },
-            pages: docRow.sections?.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-                meta: {
-                    description: s.metaDescription
                 },
-                sections: s.sections || []
-            })) || [],
-            listings: docRow.listings
-        };
+                nav: {
+                    // Try docRow.nav.items then docRow.sections
+                    items: docRow.nav?.items || docRow.sections?.map((s: any) => ({
+                        label: s.title,
+                        path: s.path || (s.id === 'home' ? '/' : `/${s.id}`),
+                        type: 'page'
+                    })) || []
+                },
+                pages: docRow.pages || docRow.sections?.map((s: any) => ({
+                    id: s.id,
+                    title: s.title,
+                    meta: {
+                        description: s.metaDescription || s.meta?.description
+                    },
+                    sections: s.sections || []
+                })) || [],
+                listings: docRow.listings
+            };
+            console.log('[api/agentSites] Successfully mapped document:', document);
+        }
+    } catch (err) {
+        console.error('[api/agentSites] Error mapping document:', err);
     }
 
     return { config, document };
