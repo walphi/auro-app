@@ -57,6 +57,8 @@ const ListingDetailSection: React.FC<{ content: any }> = ({ content }) => {
 const SectionRenderer: React.FC<SectionRendererProps> = ({ section, listings, config, designSystem }) => {
     const { type, content, id } = section;
 
+    console.log(`[SectionRenderer] Rendering section: ${type}`, { id, contentKeys: Object.keys(content || {}) });
+
     const commonProps = {
         content,
         listings,
