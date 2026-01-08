@@ -99,6 +99,10 @@ export async function validateAndRetry(
         return AISiteOutputSchema.parse(parsed);
     } catch (error: any) {
         if (attempt >= 3) {
+            const snippet = rawOutput.length > 200
+                ? rawOutput.substring(0, 100) + '...' + rawOutput.substring(rawOutput.length - 100)
+                : rawOutput;
+            console.error(`[build-site] FATAL VALIDATION ERROR on attempt ${attempt}. Raw output snippet: ${snippet}`);
             throw new Error(`Failed to generate valid site after 3 attempts: ${error.message}`);
         }
 

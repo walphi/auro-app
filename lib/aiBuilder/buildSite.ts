@@ -84,7 +84,7 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
             messages.push({ role: 'assistant', content: retryText });
 
         } else if (usedModel.startsWith('gemini')) {
-            if (!googleKey) throw new Error("Missing ANTHROPIC_API_KEY"); // Gemini fallback just in case
+            if (!googleKey) throw new Error("Missing GOOGLE_API_KEY");
             // ... logic ...
             // Simplified for replace match
             const contextPrompt = `Previous Output:\n${initialResponseText}\n\nCritique:\n${errorMsg}\n\nPlease fix the previous output based on the critique. Return ONLY the JSON.`;
@@ -95,7 +95,17 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
             finalTokenUsage.output += response.usage?.candidatesTokenCount || 0;
         }
 
-        return retryText;
+        // Sanitize retry output
+        let cleanRetry = retryText.trim();
+        if (cleanRetry.includes('{')) {
+            const start = cleanRetry.indexOf('{');
+            const end = cleanRetry.lastIndexOf('}');
+            if (start !== -1 && end !== -1) {
+                cleanRetry = cleanRetry.substring(start, end + 1);
+            }
+        }
+
+        return cleanRetry;
     };
 
     // Sanitize output before parsing
