@@ -156,9 +156,9 @@ export async function getAgentSiteWithDocument(slug: string): Promise<AgentSiteR
 
     const raw = await response.json();
 
-    // API now returns { config, document }
+    // API now returns { config, document } where document is the row
     const config = mapConfigFromRaw(raw.config);
-    const document = raw.document || null;
+    const document = raw.document ? raw.document.document : null;
 
     return { config, document };
 }
