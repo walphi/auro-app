@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { MessageCircle, Phone, Mail, MapPin, BedDouble, Bath, Maximize } from 'lucide-react';
 import { getAgentSiteWithDocument, type AgentConfig, type SiteDocument, type Page, trackEvent } from '../api/agentSites';
 import Navigation from './Navigation';
 import SectionRenderer from './SectionRenderer';
@@ -121,7 +120,7 @@ const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document:
     const currentPage: Page | undefined = doc.pages?.find(p =>
         p.id?.toLowerCase() === pageId?.toLowerCase() ||
         (pageId === 'home' && (p.id?.toLowerCase() === 'home' || p.id?.toLowerCase() === 'index')) ||
-        (pageId === 'listings' && (p.id?.toLowerCase() === 'properties' || p.id?.toLowerCase() === 'listings'))
+        (pageId === 'listings' && (p.id?.toLowerCase() === 'properties' || p.id?.toLowerCase() === 'listings' || p.id?.toLowerCase() === 'listingsgrid'))
     ) || doc.pages?.[0];
 
     // Handle listing detail special case
@@ -187,7 +186,7 @@ const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document:
 };
 
 // Legacy fallback
-const LegacySinglePageSite: React.FC<{ config: AgentConfig }> = ({ config }) => {
+const LegacySinglePageSite: React.FC<{ config: AgentConfig }> = ({ config: _config }) => {
     // ... (Keep existing implementation for safety but wrap in luxury styles)
     return <div className="agent-site">Legacy Content</div>;
 };
