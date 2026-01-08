@@ -123,7 +123,7 @@ export const handler: Handler = async (event) => {
             published_at: new Date().toISOString(),
             last_built_at: new Date().toISOString(),
             needs_site_rebuild: false
-        }).eq('id', agentConfig.id);
+        }).eq('id', agentConfig.id).select();
 
         // Usage log
         const logPromise = supabase.from('ai_usage_logs').insert({
@@ -143,7 +143,12 @@ export const handler: Handler = async (event) => {
         if (configRes.error) console.error('[build-site-background] Config update error:', configRes.error);
         if (logRes.error) console.error('[build-site-background] Usage log error:', logRes.error);
 
-        console.info(`[build-site-background] Mark LIVE complete for slug: ${agentConfig.slug}. Rows updated:`, configRes.count);
+        const rowsUpdated = configRes.data?.length || 0;
+        console.info(`[build-site-background] Mark LIVE complete for slug: ${agentConfig.slug}. Rows updated: ${rowsUpdated}`, {
+            configId: agentConfig.id,
+            hasError: !!configRes.error,
+            dataLength: configRes.data?.length
+        });
 
         return { statusCode: 200 };
 
