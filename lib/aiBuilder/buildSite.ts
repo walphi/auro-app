@@ -5,10 +5,10 @@ import crypto from 'crypto';
 
 export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSiteOutput> {
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    const googleKey = process.env.GOOGLE_API_KEY;
+    const geminiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
     if (!anthropicKey) console.warn("[buildSite] ANTHROPIC_API_KEY missing");
-    if (!googleKey) console.warn("[buildSite] GOOGLE_API_KEY missing");
+    if (!geminiKey) console.warn("[buildSite] No Gemini API key found (checked GOOGLE_API_KEY and GEMINI_API_KEY)");
 
     const modelOptions = [
         'claude-sonnet-4-5-20250929',    // Claude Sonnet 4.5
@@ -38,8 +38,8 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
                     output: response.usage.output_tokens
                 };
             } else if (model.startsWith('gemini')) {
-                if (!googleKey) throw new Error("Missing GOOGLE_API_KEY");
-                const response = await callGemini(model, initialPrompt, googleKey, SYSTEM_PROMPT);
+                if (!geminiKey) throw new Error("Missing GOOGLE_API_KEY");
+                const response = await callGemini(model, initialPrompt, geminiKey, SYSTEM_PROMPT);
                 initialResponseText = response.text;
                 finalTokenUsage = {
                     input: response.usage?.promptTokenCount || 0,
@@ -84,11 +84,11 @@ export async function buildSiteInternal(input: BuildSiteInput): Promise<BuildSit
             messages.push({ role: 'assistant', content: retryText });
 
         } else if (usedModel.startsWith('gemini')) {
-            if (!googleKey) throw new Error("Missing GOOGLE_API_KEY");
+            if (!geminiKey) throw new Error("Missing GOOGLE_API_KEY");
             // ... logic ...
             // Simplified for replace match
             const contextPrompt = `Previous Output:\n${initialResponseText}\n\nCritique:\n${errorMsg}\n\nPlease fix the previous output based on the critique. Return ONLY the JSON.`;
-            const response = await callGemini(usedModel, contextPrompt, googleKey, SYSTEM_PROMPT);
+            const response = await callGemini(usedModel, contextPrompt, geminiKey, SYSTEM_PROMPT);
             retryText = response.text;
 
             finalTokenUsage.input += response.usage?.promptTokenCount || 0;
