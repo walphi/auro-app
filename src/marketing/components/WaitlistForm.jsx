@@ -9,7 +9,6 @@ const WaitlistForm = ({ isOpen, onClose }) => {
         isDldRegistered: '',
         leadVolume: '',
         coordinationChallenges: [],
-        coordinationChallenges: [],
         crmSystem: '',
         otherCrmSystem: '',
         brokerCount: '',
