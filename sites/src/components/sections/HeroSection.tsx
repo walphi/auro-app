@@ -9,7 +9,7 @@ interface HeroSectionProps {
     sectionId?: string;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ content, config, designSystem, sectionId }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({ content, config, sectionId }) => {
     const headline = content?.headline || content?.title || config?.name || 'Welcome';
     const subheadline = content?.subheadline || content?.subtitle || config?.designation || '';
     const ctaText = content?.ctaText || config?.leadConfig?.ctaTexts?.primary || 'Get in Touch';
