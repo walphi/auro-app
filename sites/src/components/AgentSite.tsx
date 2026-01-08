@@ -111,14 +111,26 @@ interface DocumentBasedSiteProps {
 }
 
 const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document: doc, pageId }) => {
-    // Find the current page
-    const currentPage: Page | undefined = doc.pages?.find(p => p.id === pageId) || doc.pages?.[0];
+    // Find the current page - robust matching
+    console.log('[DocumentBasedSite] Selecting page:', {
+        pageId,
+        availablePages: doc.pages?.map(p => p.id),
+        hasNav: !!doc.nav,
+        hasDesign: !!doc.site?.designSystem
+    });
 
-    if (!currentPage) {
+    const currentPage: Page | undefined = doc.pages?.find(p =>
+        p.id?.toLowerCase() === pageId?.toLowerCase() ||
+        (pageId === 'home' && (p.id === 'index' || p.id === 'main'))
+    ) || doc.pages?.[0];
+
+    if (!currentPage || !doc.pages || doc.pages.length === 0) {
+        console.error('[DocumentBasedSite] No page found for:', pageId, 'Document:', doc);
         return (
             <div className="error-container">
                 <h1>Page Not Found</h1>
-                <p>The requested page could not be found.</p>
+                <p>We couldn't find the "{pageId}" page for this agent.</p>
+                <a href={`/sites/${config.slug}`} className="cta-button">Back to Home</a>
             </div>
         );
     }
