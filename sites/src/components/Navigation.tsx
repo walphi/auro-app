@@ -1,13 +1,7 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { type NavItem } from '../api/agentSites';
 import './Navigation.css';
-
-interface NavItem {
-    label: string;
-    path: string;
-    type: 'page' | 'link' | 'button';
-    action?: string;
-}
 
 interface NavigationProps {
     items: NavItem[];
@@ -20,19 +14,29 @@ const Navigation: React.FC<NavigationProps> = ({ items, brandName, logoUrl }) =>
     const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
     const getFullPath = (path: string) => {
-        if (path === '/') return `/${slug}`;
-        return `/${slug}${path}`;
+        // Ensure path starts with /
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+        // Map common AI paths to our routing structure if needed, 
+        // but generally /about -> /:slug/about
+        if (normalizedPath === '/' || normalizedPath === '/home' || normalizedPath === '/index') {
+            return `/${slug}`;
+        }
+
+        return `/${slug}${normalizedPath}`;
     };
 
     return (
         <nav className="site-navigation">
             <div className="nav-container">
                 <div className="nav-brand">
-                    {logoUrl ? (
-                        <img src={logoUrl} alt={brandName} className="nav-logo" />
-                    ) : (
-                        <span className="nav-brand-text">{brandName || 'Agent Site'}</span>
-                    )}
+                    <Link to={`/${slug}`} className="nav-brand-link">
+                        {logoUrl ? (
+                            <img src={logoUrl} alt={brandName} className="nav-logo" />
+                        ) : (
+                            <span className="nav-brand-text">{brandName || 'Agent Site'}</span>
+                        )}
+                    </Link>
                 </div>
 
                 <button
