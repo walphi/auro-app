@@ -99,6 +99,7 @@ export interface SiteDocument {
     site: {
         name: string;
         tagline?: string;
+        logoUrl?: string;
         designSystem: DesignSystem;
     };
     nav: {
@@ -156,9 +157,53 @@ export async function getAgentSiteWithDocument(slug: string): Promise<AgentSiteR
 
     const raw = await response.json();
 
-    // API now returns { config, document } where document is the row
+    // Map DB row to SiteDocument structure
     const config = mapConfigFromRaw(raw.config);
-    const document = raw.document ? raw.document.document : null;
+    let document: SiteDocument | null = null;
+
+    if (raw.document) {
+        const docRow = raw.document;
+        document = {
+            site: {
+                name: docRow.meta?.brand?.name || config.name,
+                logoUrl: docRow.meta?.brand?.logoUrl || config.logoUrl,
+                designSystem: {
+                    colors: {
+                        primary: docRow.meta?.designSystem?.primaryColor || '#1a1a1a',
+                        secondary: docRow.meta?.designSystem?.secondaryColor || '#c9a227',
+                        accent: docRow.meta?.designSystem?.accentColor || '#c9a55c',
+                        background: docRow.meta?.designSystem?.backgroundColor || '#ffffff',
+                        text: docRow.meta?.designSystem?.textColor || '#1a1a1a',
+                        muted: docRow.meta?.designSystem?.mutedColor || '#888888',
+                    },
+                    fonts: {
+                        heading: docRow.meta?.designSystem?.typography?.headingFont || 'Playfair Display',
+                        body: docRow.meta?.designSystem?.typography?.bodyFont || 'Inter',
+                    },
+                    spacing: {
+                        sectionPadding: '80px',
+                        containerMaxWidth: '1200px'
+                    }
+                }
+            },
+            nav: {
+                items: docRow.sections?.map((s: any) => ({
+                    label: s.title,
+                    path: s.path,
+                    type: 'page'
+                })) || []
+            },
+            pages: docRow.sections?.map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                meta: {
+                    description: s.metaDescription
+                },
+                sections: s.sections || []
+            })) || [],
+            listings: docRow.listings
+        };
+    }
 
     return { config, document };
 }
