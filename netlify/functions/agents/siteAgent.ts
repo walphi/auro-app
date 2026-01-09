@@ -30,5 +30,19 @@ export async function handleSiteAction(payload: any) {
         }
     }
 
+    if (action === "view_site") {
+        const { data: config } = await supabase
+            .from('agentconfigs')
+            .select('slug, status')
+            .eq('agent_id', agentId)
+            .single();
+
+        if (config?.slug && config.status === 'live') {
+            return { text: `Here’s your live site 🔗\nhttps://auroapp.com/${config.slug}` };
+        } else {
+            return { text: "Your site is not published yet 🚧 Reply *APPROVE* to publish." };
+        }
+    }
+
     return { text: "SiteAgent: Unsupported action." };
 }

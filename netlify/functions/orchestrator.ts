@@ -53,14 +53,17 @@ export const handler: Handler = async (event) => {
         let response = null;
         let nextStep = currentStep;
 
-        // Handle Welcome for brand new users
-        if (currentStep === 0 && text !== "help") {
+        // Handle specific high-level commands first
+        if (text === "help") {
+            response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE\n- RESTART" };
+        } else if (text === "view site" || text === "view my site") {
+            response = await handleSiteAction({ action: "view_site", agentId });
+        } else if (currentStep === 0) {
+            // Handle Welcome ONLY for truly new users (step 0) who didn't send a command
             nextStep = 1;
             console.log(`[Sessions] Agent ${agentId} step 0 → 1 (New User Welcome)`);
             await getOrUpdateSession(agentId, phone, { step: nextStep });
             response = { text: "Welcome to Auro Agent Sites 👋\nWe’ll launch your luxury website in 5 quick steps.\n\nStep 1/5 – Your bio 🧑‍💼\n\nPlease tell me a bit about yourself and your experience." };
-        } else if (text === "help") {
-            response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE\n- RESTART" };
         } else {
             console.log(`[Sessions] Agent ${agentId} processing action: ${action} at step: ${currentStep}`);
 
@@ -69,6 +72,18 @@ export const handler: Handler = async (event) => {
                     if (text.includes("update") && text.includes("bio")) {
                         response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
                         nextStep = 2;
+                    } else if (currentStep === 1) {
+                        response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
+                        nextStep = 2;
+                    } else if (currentStep === 2) {
+                        response = await routeToAgent("listingAgent", { ...body, action: "update_areas" });
+                        nextStep = 3;
+                    } else if (currentStep === 3) {
+                        response = await routeToAgent("themeAgent", { ...body, action: "edit_theme" });
+                        nextStep = 4;
+                    } else if (currentStep === 4) {
+                        response = await routeToAgent("listingAgent", { ...body, action: "capture_listings" });
+                        nextStep = 5;
                     } else {
                         response = await handleFallback(body);
                     }
@@ -87,8 +102,14 @@ export const handler: Handler = async (event) => {
                     nextStep = 5;
                     break;
                 case "update_areas":
-                    response = await routeToAgent("listingAgent", body);
-                    nextStep = 3;
+                    // If detected as update_areas but we are at step 1, it's likely the bio
+                    if (currentStep === 1) {
+                        response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
+                        nextStep = 2;
+                    } else {
+                        response = await routeToAgent("listingAgent", body);
+                        nextStep = 3;
+                    }
                     break;
                 case "edit_theme":
                     response = await routeToAgent("themeAgent", body);
