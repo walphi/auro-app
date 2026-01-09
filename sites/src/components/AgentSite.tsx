@@ -185,10 +185,45 @@ const DocumentBasedSite: React.FC<DocumentBasedSiteProps> = ({ config, document:
     );
 };
 
-// Legacy fallback
-const LegacySinglePageSite: React.FC<{ config: AgentConfig }> = ({ config: _config }) => {
-    // ... (Keep existing implementation for safety but wrap in luxury styles)
-    return <div className="agent-site">Legacy Content</div>;
+const LegacySinglePageSite: React.FC<{ config: AgentConfig }> = ({ config }) => {
+    return (
+        <div className="agent-site agent-site--legacy fade-in">
+            <header className="hero" style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary-color)', color: 'white', textAlign: 'center' }}>
+                <div className="container">
+                    {config.profilePhotoUrl && <img src={config.profilePhotoUrl} alt={config.name} style={{ width: '120px', height: '120px', borderRadius: '50%', marginBottom: '20px', border: '2px solid var(--secondary-color)' }} />}
+                    <h1 style={{ color: 'white' }}>{config.name}</h1>
+                    <p style={{ color: 'var(--secondary-color)', textTransform: 'uppercase', letterSpacing: '4px', fontSize: '0.8rem' }}>{config.designation} @ {config.company}</p>
+                </div>
+            </header>
+
+            <main className="container" style={{ padding: '80px 30px' }}>
+                <SectionRenderer
+                    section={{ type: 'listingsGrid', content: { title: 'Featured Properties' }, id: 'featured' }}
+                    listings={config.listings}
+                    config={config}
+                />
+
+                {config.bio && (
+                    <SectionRenderer
+                        section={{ type: 'about', content: { title: `About ${config.name}`, text: config.bio }, id: 'about' }}
+                        config={config}
+                    />
+                )}
+
+                <SectionRenderer
+                    section={{ type: 'contact', content: { title: 'Let\'s Connect' }, id: 'contact' }}
+                    config={config}
+                />
+            </main>
+
+            <footer className="footer">
+                <div className="footer-container">
+                    <div className="footer-logo">{config.name}</div>
+                    <p className="footer-credits">Powered by Auro APP</p>
+                </div>
+            </footer>
+        </div>
+    );
 };
 
 export default AgentSite;

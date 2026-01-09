@@ -1,6 +1,7 @@
-
 import { Handler } from '@netlify/functions';
+import axios from 'axios';
 import * as querystring from 'querystring';
+import { supabase } from '../../lib/supabase';
 import { processAgentSitesMessage, AgentSitesInboundMessage } from '../../lib/agentSitesConversation';
 import { TwilioWhatsAppClient } from '../../lib/twilioWhatsAppClient';
 
@@ -52,6 +53,27 @@ export const handler: Handler = async (event) => {
             return { statusCode: 200, body: '<Response/>' };
         }
 
+        // 1. Find or Create Agent
+        let { data: agent, error: agentError } = await supabase
+            .from('agents')
+            .select('*')
+            .eq('phone', from)
+            .single();
+
+        if (!agent) {
+            const { data: newAgent, error: createError } = await supabase
+                .from('agents')
+                .insert({
+                    phone: from,
+                    status: 'onboarding'
+                })
+                .select()
+                .single();
+
+            if (createError) throw createError;
+            agent = newAgent;
+        }
+
         // Setup proactive sender for Twilio
         const twilioClient = new TwilioWhatsAppClient();
 
@@ -62,13 +84,33 @@ export const handler: Handler = async (event) => {
             platform: 'twilio'
         };
 
-        const result = await processAgentSitesMessage(agentMsg, async (proactiveText: string) => {
-            console.log(`[Twilio Proactive] Sending to ${from}: ${proactiveText}`);
-            await twilioClient.sendTextMessage(from, proactiveText);
-        });
+        // Multi-Agent Orchestrator Delegation (via Edge Intents)
+        const apiBase = (process.env.URL || process.env.VITE_API_BASE_URL || 'http://localhost:8888').trim();
+        const edgeIntentsUrl = `${apiBase}/edge/intents`;
 
-        const twiml = result?.text
-            ? `<Response><Message>${result.text}</Message></Response>`
+        console.log(`[AgentSites] Delegating to Edge Intents: ${edgeIntentsUrl}`);
+
+        let resultText = "";
+        try {
+            const edgeResponse = await axios.post(edgeIntentsUrl, {
+                action: "handle_message",
+                agentId: agent.id,
+                from: from,
+                payload: { text, mediaUrls }
+            });
+            resultText = edgeResponse.data?.text || "I'm processing your request.";
+        } catch (e: any) {
+            console.error("[AgentSites] Edge Intents error, falling back to legacy:", e.message);
+            // Fallback to legacy processAgentSitesMessage
+            const result = await processAgentSitesMessage(agentMsg, async (proactiveText: string) => {
+                console.log(`[Twilio Proactive] Sending to ${from}: ${proactiveText}`);
+                await twilioClient.sendTextMessage(from, proactiveText);
+            });
+            resultText = result?.text || "";
+        }
+
+        const twiml = resultText
+            ? `<Response><Message>${resultText}</Message></Response>`
             : `<Response/>`;
 
         // 4. Log conversation outcome (limited fields as intent/state are internal to state machine)

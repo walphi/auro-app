@@ -1,4 +1,5 @@
 import React from 'react';
+import './StatsSection.css';
 
 interface StatsSectionProps {
     content: Record<string, any>;

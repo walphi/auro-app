@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
+import './CTABandSection.css';
 
 interface CTABandSectionProps {
     content: Record<string, any>;

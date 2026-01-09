@@ -37,6 +37,10 @@
   to = "/sites/index.html"
   status = 200
 
+[[edge_functions]]
+function = "intents"
+path = "/edge/intents"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

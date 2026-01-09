@@ -1,0 +1,42 @@
+.cta-band-section {
+    padding: 100px 0;
+    background: #0a0a0a;
+    color: white;
+    text-align: center;
+}
+
+.cta-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.cta-band-section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: white;
+    margin-bottom: 20px;
+}
+
+.cta-band-section p {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 40px;
+}
+
+.cta-band-section .cta-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--secondary-color);
+    color: var(--primary-color);
+    padding: 16px 40px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.cta-band-section .cta-button:hover {
+    background: white;
+    transform: translateY(-5px);
+}
