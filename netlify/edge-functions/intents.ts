@@ -1,75 +1,95 @@
 import { Context } from "@netlify/edge-functions";
 
 export default async (request: Request, context: Context) => {
-    const USE_GEMMA_EDGE = Deno.env.get("USE_GEMMA_EDGE") === "true";
-    const ORCHESTRATOR_URL = `${new URL(request.url).origin}/.netlify/functions/orchestrator`;
-
+    // 1. Properly accept POST requests
     if (request.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
     }
 
     try {
         const contentType = request.headers.get("content-type") || "";
-        let bodyText = "";
+        let parsed: any = {};
 
+        // 2. Parse payload based on Content-Type
         if (contentType.includes("application/x-www-form-urlencoded")) {
-            bodyText = await request.text();
+            const bodyText = await request.text();
+            const params = new URLSearchParams(bodyText);
+            parsed = Object.fromEntries(params.entries());
+        } else if (contentType.includes("application/json")) {
+            parsed = await request.json();
         } else {
-            // Just passthrough if not standard Twilio format, or handle JSON
-            return await fetch(ORCHESTRATOR_URL, request);
+            return new Response("Unsupported Media Type", { status: 415 });
         }
 
-        const params = new URLSearchParams(bodyText);
-        const messageText = params.get("Body") || "";
-        const from = params.get("From") || "";
+        // 3. Build normalized payload
+        const normalized = {
+            platform: 'twilio',
+            from: (parsed.From || parsed.WaId || parsed.from || "").replace("whatsapp:", ""),
+            text: (parsed.Body || parsed.text || ""),
+            raw: parsed
+        };
 
-        console.log(`[Edge Intents] Incoming from ${from}: ${messageText}`);
+        console.log(`[Edge Intents] Normalized payload from ${normalized.from}: "${normalized.text.substring(0, 50)}"`);
 
-        let intentPayload = null;
+        // 4. Call Gemma parsing logic (simulated for Edge performance)
+        let intent = await parseWithGemma(normalized.text);
 
-        if (USE_GEMMA_EDGE) {
-            // Placeholder for actual Gemma local execution if supported by environment
-            // In Netlify Edge, we typically call a lightweight WASM or an optimized endpoint
-            // For this implementation, we simulate the logic or call the provided path
-            try {
-                intentPayload = await parseWithGemma(messageText);
-            } catch (e) {
-                console.error("[Edge Intents] Gemma failed, falling back", e);
-            }
+        if (!intent) {
+            // Standard standardized intent object for orchestrator consumption
+            intent = {
+                action: parsed.action || "handle_message",
+                agentId: parsed.agentId || null,
+                from: "whatsapp",
+                payload: normalized,
+                source: "edge"
+            } as any;
+        } else {
+            // Enrich Gemma-detected intent
+            intent = {
+                ...(intent as any),
+                agentId: parsed.agentId || null,
+                from: "whatsapp",
+                source: "edge"
+            } as any;
         }
 
-        if (!intentPayload) {
-            // Fallback to Orchestrator (which will handle Claude fallback if needed)
-            return await fetch(ORCHESTRATOR_URL, {
-                method: "POST",
-                headers: request.headers,
-                body: bodyText
-            });
-        }
-
-        // Forward parsed intent to Orchestrator
-        return await fetch(ORCHESTRATOR_URL, {
-            method: "POST",
+        // 5. Return 200 with JSON intent
+        return new Response(JSON.stringify(intent), {
+            status: 200,
             headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                ...intentPayload,
-                rawBody: bodyText,
-                from: from.replace("whatsapp:", "")
-            })
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
         });
 
-    } catch (error) {
-        console.error("[Edge Intents] Error:", error);
-        return await fetch(ORCHESTRATOR_URL, request);
+    } catch (error: any) {
+        console.error("[Edge Intents] Error:", error.message);
+        // Ensure even errors return JSON for the caller to handle
+        return new Response(JSON.stringify({
+            error: error.message,
+            source: "edge_error"
+        }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 };
 
-async function parseWithGemma(text: string) {
-    // Logic to interface with FunctionGemma 270M
-    // Since we are in an Edge Function environment, we assume a local or very fast endpoint
-    // For now, we return null to trigger the orchestrator fallback unless specific Gemma setup is confirmed
+/**
+ * Simulated FunctionGemma Intent Parsing
+ * Detects actions for Site, Listing, Theme, etc.
+ */
+async function parseWithGemma(text: string): Promise<{ action: string } | null> {
+    const t = text.toLowerCase();
+
+    // Intent Detection Mapping
+    if (t.includes("create") || t.includes("generate")) return { action: "generate_site" };
+    if (t.includes("publish") || t.includes("approve")) return { action: "publish_site" };
+    if (t.includes("http") || t.includes("bayut") || t.includes("pf")) return { action: "capture_listings" };
+    if (t.includes("theme") || t.includes("color") || t.includes("style")) return { action: "edit_theme" };
+    if (t.includes("edit") || t.includes("rewrite")) return { action: "edit_content" };
+    if (t.includes("follow up") || t.includes("nurture")) return { action: "follow_up" };
+
     return null;
 }
 
