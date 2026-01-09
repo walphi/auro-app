@@ -22,14 +22,20 @@ export default async (request: Request, context: Context) => {
         }
 
         // 3. Build normalized payload
+        const bodyText =
+            parsed.Body ||
+            parsed.payload?.text ||
+            parsed.text ||
+            '';
+
         const normalized = {
             platform: 'twilio',
             from: (parsed.From || parsed.WaId || parsed.from || "").replace("whatsapp:", ""),
-            text: (parsed.Body || parsed.text || ""),
+            text: bodyText,
             raw: parsed
         };
 
-        console.log(`[Edge Intents] Normalized payload from ${normalized.from}: "${normalized.text.substring(0, 50)}"`);
+        console.log(`[Edge Intents] Normalized payload from ${normalized.from}: "${bodyText.substring(0, 50)}"`);
 
         // 4. Call Gemma parsing logic (simulated for Edge performance)
         let intent = await parseWithGemma(normalized.text);
