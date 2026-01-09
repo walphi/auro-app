@@ -25,8 +25,20 @@ export const handler: Handler = async (event) => {
         console.log(`[Orchestrator] Action: ${action}, Agent: ${agentId}, From: ${phone}`);
 
         // 1. Manage Session State
-        const session = await getOrUpdateSession(agentId, phone);
+        let session = await getOrUpdateSession(agentId, phone);
         const currentStep = session?.state?.step || 0;
+        const text = (payload?.text || "").toLowerCase().trim();
+
+        // Support RESTART
+        if (text === "restart") {
+            console.log(`[Sessions] Agent ${agentId} requested RESTART.`);
+            await getOrUpdateSession(agentId, phone, { step: 1 });
+            return {
+                statusCode: 200,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: "Welcome to Auro Agent Sites 👋\nWe’ve restarted your onboarding. Let’s build your luxury website!\n\nStep 1/5 – Your bio 🧑‍💼\n\nPlease tell me a bit about yourself." })
+            };
+        }
 
         // 2. Log the intent
         await supabase.from('agent_intents_log').insert({
@@ -39,50 +51,63 @@ export const handler: Handler = async (event) => {
 
         // 3. Route to specialized agents
         let response = null;
-        const text = (payload?.text || "").toLowerCase().trim();
+        let nextStep = currentStep;
 
-        // Handle Welcome for new users
+        // Handle Welcome for brand new users
         if (currentStep === 0 && text !== "help") {
-            await getOrUpdateSession(agentId, phone, { step: 1 });
+            nextStep = 1;
+            console.log(`[Sessions] Agent ${agentId} step 0 → 1 (New User Welcome)`);
+            await getOrUpdateSession(agentId, phone, { step: nextStep });
             response = { text: "Welcome to Auro Agent Sites 👋\nWe’ll launch your luxury website in 5 quick steps.\n\nStep 1/5 – Your bio 🧑‍💼\n\nPlease tell me a bit about yourself and your experience." };
         } else if (text === "help") {
-            response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE" };
+            response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE\n- RESTART" };
         } else {
+            console.log(`[Sessions] Agent ${agentId} processing action: ${action} at step: ${currentStep}`);
+
             switch (action) {
                 case "handle_message":
                     if (text.includes("update") && text.includes("bio")) {
                         response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
-                        await getOrUpdateSession(agentId, phone, { step: 2 });
+                        nextStep = 2;
                     } else {
                         response = await handleFallback(body);
                     }
                     break;
                 case "generate_site":
                 case "publish_site":
-                    response = await routeToAgent("siteAgent", body);
-                    await getOrUpdateSession(agentId, phone, { step: 5 });
+                    if (currentStep < 4) {
+                        response = { text: `We’re not ready to publish yet 🚧 You’re currently on Step ${currentStep}/5. Let’s finish the remaining steps first.` };
+                    } else {
+                        response = await routeToAgent("siteAgent", body);
+                        nextStep = 5;
+                    }
                     break;
                 case "capture_listings":
                     response = await routeToAgent("listingAgent", body);
-                    await getOrUpdateSession(agentId, phone, { step: 5 });
+                    nextStep = 5;
                     break;
                 case "update_areas":
                     response = await routeToAgent("listingAgent", body);
-                    await getOrUpdateSession(agentId, phone, { step: 3 });
+                    nextStep = 3;
                     break;
                 case "edit_theme":
                     response = await routeToAgent("themeAgent", body);
-                    await getOrUpdateSession(agentId, phone, { step: 4 });
+                    nextStep = 4;
                     break;
                 case "edit_content":
                     response = await routeToAgent("contentAgent", body);
-                    await getOrUpdateSession(agentId, phone, { step: 2 });
+                    nextStep = 2;
                     break;
                 case "follow_up":
                     response = await routeToAgent("crmAgent", body);
                     break;
                 default:
                     response = await handleFallback(body);
+            }
+
+            if (nextStep !== currentStep) {
+                console.log(`[Sessions] Agent ${agentId} step ${currentStep} → ${nextStep} on action ${action}`);
+                await getOrUpdateSession(agentId, phone, { step: nextStep });
             }
         }
 

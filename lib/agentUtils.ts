@@ -41,25 +41,47 @@ export async function checkGemmaHealth(): Promise<boolean> {
  * Handle agent sessions and state persistence.
  */
 export async function getOrUpdateSession(agentId: string, leadId: string, newState?: any) {
-    const { data: session, error } = await supabase
+    if (!agentId || !leadId) {
+        console.error("[AgentUtils] Missing agentId or leadId for session", { agentId, leadId });
+        return null;
+    }
+
+    const { data: session, error: fetchError } = await supabase
         .from('agent_sessions')
         .select('*')
         .eq('agent_id', agentId)
         .eq('lead_id', leadId)
-        .single();
+        .maybeSingle();
+
+    if (fetchError) console.error("[AgentUtils] Session fetch error:", fetchError);
 
     if (newState) {
         if (session) {
-            await supabase.from('agent_sessions').update({
-                state: { ...(session.state || {}), ...newState },
-                last_activity: new Date().toISOString()
-            }).eq('id', session.id);
+            const { data: updated, error: updateError } = await supabase
+                .from('agent_sessions')
+                .update({
+                    state: { ...(session.state || {}), ...newState },
+                    last_activity: new Date().toISOString()
+                })
+                .eq('id', session.id)
+                .select()
+                .single();
+
+            if (updateError) console.error("[AgentUtils] Session update error:", updateError);
+            return updated;
         } else {
-            await supabase.from('agent_sessions').insert({
-                agent_id: agentId,
-                lead_id: leadId,
-                state: newState
-            });
+            const { data: inserted, error: insertError } = await supabase
+                .from('agent_sessions')
+                .insert({
+                    agent_id: agentId,
+                    lead_id: leadId,
+                    state: newState
+                })
+                .select()
+                .single();
+
+            if (insertError) console.error("[AgentUtils] Session insert error:", insertError);
+            return inserted;
         }
     }
 
