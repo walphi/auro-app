@@ -38,7 +38,7 @@ export async function handleSiteAction(payload: any) {
             .single();
 
         if (config?.slug && config.status === 'live') {
-            return { text: `Here’s your live site 🔗\nhttps://auroapp.com/${config.slug}` };
+            return { text: `Here’s your live site 🔗\nhttps://auroapp.com/sites/${config.slug}` };
         } else {
             return { text: "Your site is not published yet 🚧 Reply *APPROVE* to publish." };
         }

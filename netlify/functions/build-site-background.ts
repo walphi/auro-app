@@ -153,7 +153,7 @@ export const handler: Handler = async (event) => {
         // 7. Send Success Notification
         if (agentConfig.phone) {
             const twilio = new TwilioWhatsAppClient();
-            const siteUrl = `https://auroapp.com/${agentConfig.slug}`;
+            const siteUrl = `https://auroapp.com/sites/${agentConfig.slug}`;
             await twilio.sendTextMessage(agentConfig.phone, `Your site is live ✨\nView it here: ${siteUrl}`);
         }
 
