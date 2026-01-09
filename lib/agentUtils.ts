@@ -65,3 +65,17 @@ export async function getOrUpdateSession(agentId: string, leadId: string, newSta
 
     return session;
 }
+
+/**
+ * Format a standard agent response with progress steps and emojis.
+ */
+export function formatAgentResponse(text: string, step?: number, totalSteps: number = 5) {
+    let prefix = "";
+    if (step === 1) prefix = "Step 1/5 – Your bio 🧑‍💼\n\n";
+    if (step === 2) prefix = "Step 2/5 – Areas you focus on 📍\n\n";
+    if (step === 3) prefix = "Step 3/5 – Brand colours & style 🎨\n\n";
+    if (step === 4) prefix = "Step 4/5 – Listings 🏙️\n\n";
+    if (step === 5) prefix = "Step 5/5 – Contact & WhatsApp CTA 📞\n\n";
+
+    return { text: `${prefix}${text}` };
+}

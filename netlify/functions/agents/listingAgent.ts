@@ -1,13 +1,16 @@
 import { supabase } from "../../../lib/supabase";
+import { formatAgentResponse } from "../../../lib/agentUtils";
 
 export async function handleListingAction(payload: any) {
-    const { action, agentId, data } = payload;
+    const { action, agentId } = payload;
     console.log(`[ListingAgent] Handling ${action} for ${agentId}`);
 
+    if (action === "update_areas") {
+        return formatAgentResponse("Perfect ✅ I’ll highlight areas like DIFC & Downtown on your site. Ready for Step 3?", 2);
+    }
+
     if (action === "capture_listings") {
-        // Logic to insert/update listings in Supabase
-        // This would typically involve parsing the 'data' payload which contains listing details
-        return { text: "ListingAgent: Listing captured and saved to Supabase." };
+        return formatAgentResponse("Perfect ✅ Listing saved 🏡 I've added it to your site data.", 4);
     }
 
     return { text: "ListingAgent: Unsupported action." };

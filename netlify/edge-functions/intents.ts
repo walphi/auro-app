@@ -93,7 +93,8 @@ async function parseWithGemma(text: string): Promise<{ action: string } | null> 
     if (t.includes("publish") || t.includes("approve")) return { action: "publish_site" };
     if (t.includes("http") || t.includes("bayut") || t.includes("pf")) return { action: "capture_listings" };
     if (t.includes("theme") || t.includes("color") || t.includes("style")) return { action: "edit_theme" };
-    if (t.includes("edit") || t.includes("rewrite")) return { action: "edit_content" };
+    if (t.includes("edit") || t.includes("rewrite") || t.includes("bio")) return { action: "edit_content" };
+    if (t.includes("area") || t.includes("focus") || t.includes("location")) return { action: "update_areas" };
     if (t.includes("follow up") || t.includes("nurture")) return { action: "follow_up" };
 
     return null;

@@ -154,30 +154,13 @@ export const handler: Handler = async (event) => {
         if (agentConfig.phone) {
             const twilio = new TwilioWhatsAppClient();
             const siteUrl = `https://auroapp.com/${agentConfig.slug}`;
-            await twilio.sendTextMessage(agentConfig.phone, `✅ Your website build is complete! You can view it here: ${siteUrl}`);
+            await twilio.sendTextMessage(agentConfig.phone, `Your site is live ✨\nView it here: ${siteUrl}`);
         }
 
         return { statusCode: 200 };
 
     } catch (error: any) {
         console.error(`[build-site] Error: ${error.message}`);
-
-        // Log failure
-        if (event.body) {
-            const { agentId } = JSON.parse(event.body);
-            if (agentId) {
-                console.log(`[build-site] site_build_failed`, {
-                    agentId,
-                    reason: error.message
-                });
-                await supabase.from('ai_usage_logs').insert({
-                    agent_id: agentId,
-                    operation: 'build_site',
-                    success: false,
-                    error_message: error.message
-                });
-            }
-        }
 
         // Send Failure Notification
         if (event.body) {
@@ -186,7 +169,7 @@ export const handler: Handler = async (event) => {
                 const { data: cfg } = await supabase.from('agentconfigs').select('phone').eq('agent_id', agentId).single();
                 if (cfg?.phone) {
                     const twilio = new TwilioWhatsAppClient();
-                    await twilio.sendTextMessage(cfg.phone, `❌ Sorry, there was an error updating your website: ${error.message}. Our team has been notified.`);
+                    await twilio.sendTextMessage(cfg.phone, `Build failed ⚠️ Please try again or reply HELP.`);
                 }
             }
         }
