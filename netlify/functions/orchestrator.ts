@@ -27,12 +27,13 @@ export const handler: Handler = async (event) => {
         // 1. Manage Session State
         let session = await getOrUpdateSession(agentId, phone);
         const currentStep = session?.state?.step || 0;
+        const currentMode = session?.state?.mode || null;
         const text = (payload?.text || "").toLowerCase().trim();
 
         // Support RESTART
         if (text === "restart") {
             console.log(`[Sessions] Agent ${agentId} requested RESTART.`);
-            await getOrUpdateSession(agentId, phone, { step: 1 });
+            await getOrUpdateSession(agentId, phone, { step: 1, mode: null });
             return {
                 statusCode: 200,
                 headers: { "Content-Type": "application/json" },
@@ -52,14 +53,23 @@ export const handler: Handler = async (event) => {
         // 3. Route to specialized agents
         let response = null;
         let nextStep = currentStep;
+        let nextMode = currentMode;
 
         // Handle specific high-level commands first
         if (text === "help") {
             response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE\n- RESTART" };
         } else if (text === "view site" || text === "view my site") {
             response = await handleSiteAction({ action: "view_site", agentId });
+        } else if (currentMode === "EDIT_BIO") {
+            console.log(`[Sessions] Agent ${agentId} bio updated in EDIT_BIO mode`);
+            response = await routeToAgent("contentAgent", { ...body, action: "update_bio_direct" });
+            nextMode = null;
+        } else if (currentMode === "EDIT_THEME") {
+            console.log(`[Sessions] Agent ${agentId} theme updated in EDIT_THEME mode`);
+            response = await routeToAgent("themeAgent", { ...body, action: "update_theme_direct" });
+            nextMode = null;
         } else if (currentStep === 0) {
-            // Handle Welcome ONLY for truly new users (step 0) who didn't send a command
+            // Handle Welcome ONLY for truly new users (step 0)
             nextStep = 1;
             console.log(`[Sessions] Agent ${agentId} step 0 → 1 (New User Welcome)`);
             await getOrUpdateSession(agentId, phone, { step: nextStep });
@@ -67,6 +77,7 @@ export const handler: Handler = async (event) => {
         } else {
             console.log(`[Sessions] Agent ${agentId} processing action: ${action} at step: ${currentStep}`);
 
+            // Guard against unwanted resets: If session exists and action is edit_content/update_areas, handle appropriately
             switch (action) {
                 case "handle_message":
                     if (text.includes("update") && text.includes("bio")) {
@@ -84,8 +95,38 @@ export const handler: Handler = async (event) => {
                     } else if (currentStep === 4) {
                         response = await routeToAgent("listingAgent", { ...body, action: "capture_listings" });
                         nextStep = 5;
+                    } else if (currentStep >= 5) {
+                        response = { text: "What would you like to update? (bio, colors, listings, view site)" };
                     } else {
                         response = await handleFallback(body);
+                    }
+                    break;
+                case "edit_content":
+                    if (currentStep >= 5) {
+                        if (text.includes("bio") || text.includes("about")) {
+                            console.log(`[Sessions] Agent ${agentId} entering EDIT_BIO mode`);
+                            response = { text: "No problem ✏️ Please send your new bio text." };
+                            nextMode = "EDIT_BIO";
+                        } else {
+                            response = { text: "What would you like to update? (bio, colors, listings, view site)" };
+                        }
+                    } else {
+                        response = await routeToAgent("contentAgent", body);
+                        nextStep = 2;
+                    }
+                    break;
+                case "edit_theme":
+                    if (currentStep >= 5) {
+                        if (text.includes("colors") || text.includes("brand") || text.includes("style")) {
+                            console.log(`[Sessions] Agent ${agentId} entering EDIT_THEME mode`);
+                            response = { text: "Sure 🎨 Send your new brand colours or hex codes." };
+                            nextMode = "EDIT_THEME";
+                        } else {
+                            response = { text: "What would you like to update? (bio, colors, listings, view site)" };
+                        }
+                    } else {
+                        response = await routeToAgent("themeAgent", body);
+                        nextStep = 4;
                     }
                     break;
                 case "generate_site":
@@ -102,7 +143,6 @@ export const handler: Handler = async (event) => {
                     nextStep = 5;
                     break;
                 case "update_areas":
-                    // If detected as update_areas but we are at step 1, it's likely the bio
                     if (currentStep === 1) {
                         response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
                         nextStep = 2;
@@ -111,14 +151,6 @@ export const handler: Handler = async (event) => {
                         nextStep = 3;
                     }
                     break;
-                case "edit_theme":
-                    response = await routeToAgent("themeAgent", body);
-                    nextStep = 4;
-                    break;
-                case "edit_content":
-                    response = await routeToAgent("contentAgent", body);
-                    nextStep = 2;
-                    break;
                 case "follow_up":
                     response = await routeToAgent("crmAgent", body);
                     break;
@@ -126,9 +158,9 @@ export const handler: Handler = async (event) => {
                     response = await handleFallback(body);
             }
 
-            if (nextStep !== currentStep) {
-                console.log(`[Sessions] Agent ${agentId} step ${currentStep} → ${nextStep} on action ${action}`);
-                await getOrUpdateSession(agentId, phone, { step: nextStep });
+            if (nextStep !== currentStep || nextMode !== currentMode) {
+                console.log(`[Sessions] Agent ${agentId} state update: step ${currentStep}→${nextStep}, mode ${currentMode}→${nextMode}`);
+                await getOrUpdateSession(agentId, phone, { step: nextStep, mode: nextMode });
             }
         }
 
