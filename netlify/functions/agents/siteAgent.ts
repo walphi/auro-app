@@ -12,15 +12,24 @@ export async function handleSiteAction(payload: any) {
 
         const buildUrl = `${apiBase}/.netlify/functions/build-site-background`;
 
+        console.info(`[SiteAgent] Invoking build-site-background for agentId: ${agentId} at URL: ${buildUrl}`);
+
         try {
+            // We use a short timeout because it's a background function; it should return 202 quickly.
             const response = await axios.post(buildUrl, { agentId }, {
-                timeout: 5000,
-                headers: { 'Content-Type': 'application/json' }
+                timeout: 8000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Auro-SiteAgent'
+                }
             });
-            return { text: `Site build triggered for agent ${agentId}. Status: ${response.data.message || 'Queued'}` };
+
+            console.info(`[SiteAgent] Build triggered successfully. Status: ${response.status}`);
+            return { text: `Site build triggered for agent ${agentId}. Status: Queued` };
         } catch (e: any) {
-            console.error(`[SiteAgent] Build error:`, e.message);
-            return { text: `Failed to trigger site build: ${e.message}` };
+            console.error(`[SiteAgent] Build trigger failed:`, e.message);
+            // Even if the trigger fails, we log it for the broker but they might need to retry.
+            return { text: `⚠️ Failed to trigger build: ${e.message}. Status: Error` };
         }
     }
 

@@ -150,6 +150,13 @@ export const handler: Handler = async (event) => {
             dataLength: configRes.data?.length
         });
 
+        // 7. Send Success Notification
+        if (agentConfig.phone) {
+            const twilio = new TwilioWhatsAppClient();
+            const siteUrl = `https://auroapp.com/${agentConfig.slug}`;
+            await twilio.sendTextMessage(agentConfig.phone, `✅ Your website build is complete! You can view it here: ${siteUrl}`);
+        }
+
         return { statusCode: 200 };
 
     } catch (error: any) {
@@ -169,6 +176,18 @@ export const handler: Handler = async (event) => {
                     success: false,
                     error_message: error.message
                 });
+            }
+        }
+
+        // Send Failure Notification
+        if (event.body) {
+            const { agentId } = JSON.parse(event.body);
+            if (agentId) {
+                const { data: cfg } = await supabase.from('agentconfigs').select('phone').eq('agent_id', agentId).single();
+                if (cfg?.phone) {
+                    const twilio = new TwilioWhatsAppClient();
+                    await twilio.sendTextMessage(cfg.phone, `❌ Sorry, there was an error updating your website: ${error.message}. Our team has been notified.`);
+                }
             }
         }
 
