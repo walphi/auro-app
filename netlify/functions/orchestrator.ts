@@ -35,6 +35,17 @@ export const handler: Handler = async (event) => {
         // Route to specialized agents
         let response = null;
         switch (action) {
+            case "handle_message":
+                const text = (payload?.text || "").toLowerCase().trim();
+                if (text === "help") {
+                    response = { text: "Available commands:\n- ADD LISTING\n- UPDATE PRICE\n- UPDATE BIO\n- CHANGE COLORS\n- VIEW SITE" };
+                } else if (text.includes("update") && text.includes("bio")) {
+                    response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
+                } else {
+                    // Fallback to legacy behavior for unhandled patterns
+                    response = await handleFallback(body);
+                }
+                break;
             case "generate_site":
             case "publish_site":
                 response = await routeToAgent("siteAgent", body);
@@ -90,7 +101,24 @@ async function routeToAgent(agentType: string, payload: any) {
 }
 
 async function handleFallback(payload: any) {
-    // Use Claude or legacy logic as fallback
-    console.log("[Orchestrator] Using fallback logic");
-    return { text: "I'm not sure how to handle that. Could you please rephrase?" };
+    // Use Legacy logic as fallback to maintain state machine continuity
+    console.log("[Orchestrator] Using legacy fallback for payload:", JSON.stringify(payload));
+
+    try {
+        const { processAgentSitesMessage } = require("../../lib/agentSitesConversation");
+        const { from, payload: innerPayload } = payload;
+
+        const msg = {
+            from: from || innerPayload?.from,
+            text: innerPayload?.text || "",
+            mediaUrls: innerPayload?.mediaUrls || [],
+            platform: "twilio" as const
+        };
+
+        const result = await processAgentSitesMessage(msg);
+        return { text: result?.text || "I'm processing your request." };
+    } catch (e: any) {
+        console.error("[Orchestrator] Legacy fallback failed:", e.message);
+        return { text: "I'm not sure how to handle that. Could you please rephrase?" };
+    }
 }
