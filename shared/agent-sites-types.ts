@@ -59,7 +59,23 @@ export interface LeadConfig {
     };
 }
 
+export interface SiteInspiration {
+    id: string;
+    source_url?: string;
+    screenshot_path: string;
+    user_description?: string;
+    timestamp: string;
+    extracted_preferences?: {
+        mood?: string[];
+        colors?: string[];
+        layout?: string[];
+        typography?: string[];
+    };
+    screenshot_analysis?: any; // Future use
+}
+
 export interface SiteStyleProfile {
+    // Legacy fields (kept for compatibility)
     sourceUrl?: string;             // Inspiration site URL
     primaryColor?: string;          // "#1a365d"
     secondaryColor?: string;        // "#c9a227"
@@ -67,6 +83,37 @@ export interface SiteStyleProfile {
     layoutHints?: string[];         // ["hero-full-width", "card-grid", "minimal-nav"]
     toneHints?: string[];           // ["luxury", "professional", "family-friendly"]
     examplePhrases?: string[];      // Sample copy from inspiration site
+
+    // New Inspiration fields
+    inspirations?: SiteInspiration[];
+    synthesized_style?: {
+        primary_mood?: string;
+        color_palette?: {
+            primary: string;
+            secondary: string;
+            accent: string;
+            background: string;
+            text_primary: string;
+            text_secondary: string;
+        };
+        typography?: {
+            heading_style: string;
+            body_style: string;
+            heading_weight: string | number;
+            letter_spacing: string;
+        };
+        layout_preferences?: {
+            hero_style: string;
+            section_spacing: string;
+            image_treatment: string;
+            grid_style?: string;
+        };
+        ui_elements?: {
+            button_style: string;
+            navigation_style: string;
+            card_style?: string;
+        };
+    };
 }
 
 export interface AgentConfig {

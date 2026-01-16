@@ -2,6 +2,7 @@ import axios from 'axios';
 import { supabase } from './supabase';
 import { Agent, AgentConfig, SiteConversation } from '../shared/agent-sites-types';
 import { getAgentConfigByAgentId, createOrUpdateAgentConfig } from './db/agentConfigs';
+import { downloadAndStoreMedia } from './mediaHandler';
 
 export interface AgentSitesInboundMessage {
     from: string;          // E.164 phone, e.g. +971507150121
@@ -348,10 +349,64 @@ export async function processAgentSitesMessage(
 
         case 'COLLECT_SERVICES':
             const services = text.split(',').map(s => s.trim());
-            stateData.services = services;
-            replyText = "Excellent! Time to add your listings. 🏘️\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
-            nextState = 'LISTINGS_LOOP';
             if (config) await createOrUpdateAgentConfig(agent.id, { services });
+            replyText = "✨ *Let's capture your vision*\n\nThe best luxury sites have a distinct personality. To help me design yours, I'd love to see what inspires you.\n\n📸 *Please share a screenshot of a premium property website you admire.*\n\nThis could be:\n• A Dubai developer site (Emaar, DAMAC, Sobha)\n• An international luxury real estate brand\n• Any website whose style speaks to you\n\nJust send the image when you're ready! (or type 'skip')";
+            nextState = 'COLLECT_STYLE_INSPIRATION_REQUEST';
+            break;
+
+        case 'COLLECT_STYLE_INSPIRATION_REQUEST':
+            if (text.toLowerCase() === 'skip') {
+                replyText = "No problem! Let's move on to your listings.\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
+                nextState = 'LISTINGS_LOOP';
+            } else if (mediaUrls && mediaUrls.length > 0) {
+                const storedUrl = await downloadAndStoreMedia(mediaUrls[0], agent.id);
+                if (storedUrl) {
+                    const inspirationId = `insp_${Date.now()}`;
+                    const newInspiration = {
+                        id: inspirationId,
+                        screenshot_path: storedUrl,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    stateData.currentInspiration = newInspiration;
+                    stateData.style_profile = stateData.style_profile || { inspirations: [] };
+
+                    replyText = "Beautiful choice! 👀\n\nNow tell me — *what specifically do you love about this design?*\n\nFor example:\n• \"The dark, moody color palette feels exclusive\"\n• \"I love the large property images with minimal text\"\n• \"The gold accents feel luxurious\"\n• \"The clean navigation makes it easy to browse\"\n\nJust describe it in your own words ✍️";
+                    nextState = 'COLLECT_STYLE_INSPIRATION_DESCRIPTION';
+                } else {
+                    replyText = "I had trouble saving that image. Could you try sending it again, or send a public URL?";
+                }
+            } else {
+                replyText = "Please send a screenshot (image) of a website you admire, or type 'skip'.";
+            }
+            break;
+
+        case 'COLLECT_STYLE_INSPIRATION_DESCRIPTION':
+            if (stateData.currentInspiration) {
+                stateData.currentInspiration.user_description = text;
+                stateData.style_profile.inspirations.push(stateData.currentInspiration);
+                delete stateData.currentInspiration;
+
+                if (config) {
+                    await createOrUpdateAgentConfig(agent.id, {
+                        style_profile: stateData.style_profile,
+                        needs_site_rebuild: true
+                    });
+                }
+            }
+
+            replyText = "Perfect, I've noted your style preferences! 🎨\n\nWould you like to add another inspiration? Sometimes combining 2 styles creates something unique.\n\nReply:\n• *\"Add another\"* to share one more\n• *\"Continue\"* to proceed with your listings";
+            nextState = 'COLLECT_STYLE_INSPIRATION_CONFIRM';
+            break;
+
+        case 'COLLECT_STYLE_INSPIRATION_CONFIRM':
+            if (text.toLowerCase().includes('add another')) {
+                replyText = "Great! Send me another screenshot of a site you love.";
+                nextState = 'COLLECT_STYLE_INSPIRATION_REQUEST';
+            } else {
+                replyText = "✅ *Style inspiration saved!*\n\nI'll use this to guide your site's color palette, typography, and mood. Now let's add your exclusive properties... 🏠\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
+                nextState = 'LISTINGS_LOOP';
+            }
             break;
 
         case 'LISTINGS_LOOP':

@@ -75,15 +75,36 @@ export function buildUserPrompt(agentConfig: AgentConfig, styleProfile?: SiteSty
     `- [${l.id}] ${l.title} in ${l.towerOrCommunity} (${l.price} ${l.currency})`
   ).join('\n');
 
-  const styleHints = styleProfile ? `
+  // Use the provided styleProfile or fallback to the one in agentConfig
+  const effectiveStyle = styleProfile || agentConfig.styleProfile;
+
+  const styleHints = effectiveStyle ? `
 STYLE PREFERENCES:
-- Primary Color: ${styleProfile.primaryColor}
-- Secondary Color: ${styleProfile.secondaryColor}
-- Font Hints: ${styleProfile.fontHints?.join(', ')}
-- Tone: ${styleProfile.toneHints?.join(', ')}
-- Layout: ${styleProfile.layoutHints?.join(', ')}
-- Example Phrases to mimic: ${styleProfile.examplePhrases?.join('; ')}
-` : 'STYLE PREFERENCES: Use a modern, high-end Dubai real estate aesthetic (Eden House style). Use "luxury" theme hints.';
+- Primary Color: ${effectiveStyle.primaryColor}
+- Secondary Color: ${effectiveStyle.secondaryColor}
+- Font Hints: ${effectiveStyle.fontHints?.join(', ')}
+- Tone: ${effectiveStyle.toneHints?.join(', ')}
+- Layout: ${effectiveStyle.layoutHints?.join(', ')}
+` : 'STYLE PREFERENCES: Use a modern, high-end Dubai real estate aesthetic (Eden House style).';
+
+  const inspirationContext = effectiveStyle?.inspirations?.length ? `
+## DESIGN INSPIRATION CONTEXT
+The broker has provided visual inspiration for their site's aesthetic.
+
+### Inspirations:
+${effectiveStyle.inspirations.map(insp => `- ${insp.user_description}`).join('\n')}
+
+${effectiveStyle.synthesized_style ? `
+### Synthesized Style Direction:
+${JSON.stringify(effectiveStyle.synthesized_style, null, 2)}
+` : ''}
+
+### GUIDELINES:
+1. **Interpret, don't copy**: Extract the feel and principles, not exact implementations.
+2. **Mood Translation**: If inspiration is "dark luxury", create a sophisticated version that fits the broker.
+3. **What to Extract**: Emotional tone, visual weight distribution, and whitespace philosophy.
+4. **What to Avoid**: Literal replication of color hex codes or font families from the source.
+` : '';
 
   return `
 GENERATE LUXURY SITE FOR: ${agentConfig.name}
@@ -103,12 +124,14 @@ CTA TEXT: ${agentConfig.leadConfig.ctaTexts.primary}
 
 ${styleHints}
 
+${inspirationContext}
+
 INSTRUCTIONS:
-1. Create a "Home" page with a high-impact Hero section (full-bleed image style), a brief About teaser, Featured properties, and a strong CTA band.
-2. Create an "About" page with detailed bio, services, and testimonials.
-3. Create a "Listings" page with a grid.
-4. Create a "Contact" page with a focused form and location info.
-5. Use "Eden House" style hints: generous whitespace, elegant serif headings, minimal UI elements.
+1. Create a "Home" page with a high-impact Hero section, About teaser, Featured properties, and a CTA band.
+2. Create an "About" page with detailed bio, services (using icons), and personal stats.
+3. Create a "Listings" page showing properties clearly.
+4. Create a "Contact" page with a professional form.
+5. Use "Eden House" style hints: generous whitespace, elegant layout, and premium typography.
 
 Generate the JSON document now.
 `;
