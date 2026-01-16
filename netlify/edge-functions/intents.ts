@@ -88,13 +88,22 @@ export default async (request: Request, context: Context) => {
 async function parseWithGemma(text: string): Promise<{ action: string } | null> {
     const t = text.toLowerCase();
 
-    // Intent Detection Mapping
-    if (t.includes("create") || t.includes("generate")) return { action: "generate_site" };
+    // Intent Detection Mapping (Stricter matching to avoid misclassifying bios)
+    if (t.includes("create site") || t.includes("generate site")) return { action: "generate_site" };
     if (t.includes("publish") || t.includes("approve")) return { action: "publish_site" };
-    if (t.includes("http") || t.includes("bayut") || t.includes("pf")) return { action: "capture_listings" };
-    if (t.includes("theme") || t.includes("color") || t.includes("style")) return { action: "edit_theme" };
-    if (t.includes("edit") || t.includes("rewrite") || t.includes("bio")) return { action: "edit_content" };
-    if (t.includes("area") || t.includes("focus") || t.includes("location")) return { action: "update_areas" };
+
+    // Listing/Portal links are high confidence
+    if (t.includes("http") || t.includes("bayut.com") || t.includes("propertyfinder.ae")) return { action: "capture_listings" };
+
+    // Theme/Style - require more context
+    if (t.includes("change theme") || t.includes("change colors") || t.includes("brand color")) return { action: "edit_theme" };
+
+    // Content/Bio - require more context
+    if (t.includes("edit bio") || (t.includes("update") && t.includes("bio"))) return { action: "edit_content" };
+
+    // Areas - require specific intent phrases
+    if (t.includes("update my area") || t.includes("change my focus") || t.includes("update location")) return { action: "update_areas" };
+
     if (t.includes("follow up") || t.includes("nurture")) return { action: "follow_up" };
 
     return null;

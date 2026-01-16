@@ -7,6 +7,19 @@ export async function handleThemeAction(payload: any) {
     console.log(`[ThemeAgent] Handling ${action} for ${agentId}`);
 
     if (action === "edit_theme") {
+        const hexMatch = text.match(/#[0-9A-Fa-f]{6}/);
+        const primaryColor = hexMatch ? hexMatch[0] : (text.length < 20 ? text : null);
+
+        if (primaryColor) {
+            await supabase
+                .from('agentconfigs')
+                .update({
+                    primary_color: primaryColor,
+                    needs_site_rebuild: true
+                })
+                .eq('agent_id', agentId);
+        }
+
         return formatAgentResponse("Colours set successfully 🎨💛💙 Looking premium! Step 4/5 – Listings 🏙️", 3);
     }
 

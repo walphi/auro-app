@@ -7,6 +7,10 @@ export async function handleContentAction(payload: any) {
     console.log(`[ContentAgent] Handling ${action} for ${agentId}`);
 
     if (action === "edit_content") {
+        await supabase
+            .from('agentconfigs')
+            .update({ bio: text })
+            .eq('agent_id', agentId);
         return formatAgentResponse("Got it ✅ Bio updated. Step 2/5 – Areas you focus on 📍", 1);
     }
 

@@ -30,12 +30,24 @@ export const handler: Handler = async (event) => {
         const session = await getOrUpdateSession(agentId, phone, channel);
 
         // 2. Decide Next Action (Business Logic Layer)
+        // Normalize action for onboarding: during steps 1-4, treat free-text as handle_message 
+        // to avoid misclassification (e.g. bios containing keywords triggered as CMS intents)
+        let normalizedAction = action;
+        const currentStep = session?.state?.step || 0;
+        const text = (payload?.text || "").toLowerCase().trim();
+        const isKeywordCommand = ["restart", "help", "view site", "publish", "approve"].some(k => text.includes(k));
+
+        if (currentStep > 0 && currentStep < 5 && !isKeywordCommand) {
+            console.log(`[Orchestrator] Normalizing ${action} -> handle_message for onboarding step ${currentStep}`);
+            normalizedAction = "handle_message";
+        }
+
         const decision = decideNextAction({
-            intent: { ...body, from: phone, source: body.source || 'edge' },
+            intent: { ...body, action: normalizedAction, from: phone, source: body.source || 'edge' },
             session: session ? { agentId, leadId: phone, state: session.state } : null
         });
 
-        console.info(`[AgentLogic] Agent ${agentId} step ${session?.state?.step} mode ${session?.state?.mode} → decision ${decision.type} nextStep ${decision.nextState.step} nextMode ${decision.nextState.mode}`);
+        console.info(`[AgentLogic] Agent ${agentId} step ${currentStep} mode ${session?.state?.mode} → decision ${decision.type} nextStep ${decision.nextState.step} nextMode ${decision.nextState.mode}`);
 
         // 3. Log the intent
         await supabase.from('agent_intents_log').insert({
@@ -57,7 +69,7 @@ export const handler: Handler = async (event) => {
             case "CONTINUE_ONBOARDING_STEP":
                 const step = session?.state?.step || 1;
                 if (step === 1) {
-                    response = await routeToAgent("contentAgent", body);
+                    response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
                     decision.nextState.step = 2;
                 } else if (step === 2) {
                     response = await routeToAgent("listingAgent", { ...body, action: "update_areas" });
