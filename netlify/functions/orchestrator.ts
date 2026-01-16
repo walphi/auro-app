@@ -26,7 +26,8 @@ export const handler: Handler = async (event) => {
         console.log(`[Orchestrator] Action: ${action}, Agent: ${agentId}, From: ${phone}`);
 
         // 1. Manage Session State
-        const session = await getOrUpdateSession(agentId, phone);
+        const channel = payload?.platform || body.source || 'whatsapp';
+        const session = await getOrUpdateSession(agentId, phone, channel);
 
         // 2. Decide Next Action (Business Logic Layer)
         const decision = decideNextAction({
@@ -117,7 +118,8 @@ export const handler: Handler = async (event) => {
 
         // 5. Update Session State
         if (decision.nextState) {
-            await getOrUpdateSession(agentId, phone, decision.nextState);
+            const channel = payload?.platform || body.source || 'whatsapp';
+            await getOrUpdateSession(agentId, phone, channel, decision.nextState);
         }
 
         return {

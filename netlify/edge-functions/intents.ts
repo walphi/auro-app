@@ -45,7 +45,7 @@ export default async (request: Request, context: Context) => {
             intent = {
                 action: parsed.action || "handle_message",
                 agentId: parsed.agentId || null,
-                from: "whatsapp",
+                from: normalized.from,
                 payload: normalized,
                 source: "edge"
             } as any;
@@ -54,7 +54,7 @@ export default async (request: Request, context: Context) => {
             intent = {
                 ...(intent as any),
                 agentId: parsed.agentId || null,
-                from: "whatsapp",
+                from: normalized.from,
                 source: "edge"
             } as any;
         }
