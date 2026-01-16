@@ -108,8 +108,8 @@ export function decideNextAction(input: {
         };
     }
 
-    // Priority 4: Onboarding Flow (Steps 1–4)
-    if (currentStep >= 1 && currentStep < 5) {
+    // Priority 4: Onboarding Flow (Steps 1–5)
+    if (currentStep >= 1 && currentStep < 6) {
         let nextStep = currentStep;
         // Map current step to expected progress
         // Step 1: Bio -> advance to 2
@@ -131,8 +131,8 @@ export function decideNextAction(input: {
         };
     }
 
-    // Priority 5: Post-onboarding / READY state (Step 5)
-    if (currentStep >= 5) {
+    // Priority 5: Post-onboarding / READY state (Step 6)
+    if (currentStep >= 6) {
         // Check for Edit requests
         if (intent.action === "edit_content" || text.includes("bio") || text.includes("about") || text.includes("profile")) {
             // If it looks like a bio edit request
@@ -156,7 +156,7 @@ export function decideNextAction(input: {
             };
         }
 
-        // Default to Legacy / Fallback if at step 5 and no specific edit intent
+        // Default to Legacy / Fallback if at step 6 and no specific edit intent
         return {
             type: "LEGACY_FALLBACK",
             nextState: { step: currentStep, mode: "NONE" }

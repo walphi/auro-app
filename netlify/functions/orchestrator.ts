@@ -5,6 +5,7 @@ import { handleListingAction } from "./agents/listingAgent";
 import { handleThemeAction } from "./agents/themeAgent";
 import { handleContentAction } from "./agents/contentAgent";
 import { handleCRMAction } from "./agents/crmAgent";
+import { handleDesignAction } from "./agents/designAgent";
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -68,22 +69,32 @@ export const handler: Handler = async (event) => {
 
             case "CONTINUE_ONBOARDING_STEP":
                 const step = session?.state?.step || 1;
+                const agentData = { ...body, payload: { ...body.payload, state: session?.state } };
+
                 if (step === 1) {
-                    response = await routeToAgent("contentAgent", { ...body, action: "edit_content" });
+                    response = await routeToAgent("contentAgent", { ...agentData, action: "edit_content" });
                     decision.nextState.step = 2;
                 } else if (step === 2) {
-                    response = await routeToAgent("listingAgent", { ...body, action: "update_areas" });
+                    response = await routeToAgent("listingAgent", { ...agentData, action: "update_areas" });
                     decision.nextState.step = 3;
                 } else if (step === 3) {
-                    response = await routeToAgent("themeAgent", { ...body, action: "edit_theme" });
-                    decision.nextState.step = 4;
+                    // Inspiration Step - handles internal sub-states
+                    response = await routeToAgent("designAgent", { ...agentData, action: "process_inspiration" });
+                    if (response.advanceStep) {
+                        decision.nextState.step = 4;
+                    }
+                    if (response.nextState) {
+                        decision.nextState = { ...decision.nextState, ...response.nextState };
+                    }
                 } else if (step === 4) {
-                    response = await routeToAgent("listingAgent", { ...body, action: "capture_listings" });
+                    response = await routeToAgent("themeAgent", { ...agentData, action: "edit_theme" });
                     decision.nextState.step = 5;
                 } else if (step === 5) {
-                    // Check for approval/publish
+                    response = await routeToAgent("listingAgent", { ...agentData, action: "capture_listings" });
+                    decision.nextState.step = 6;
+                } else if (step === 6) {
                     if (action === "publish_site" || action === "generate_site") {
-                        response = await routeToAgent("siteAgent", body);
+                        response = await routeToAgent("siteAgent", agentData);
                     } else {
                         response = { text: "What would you like to update? (bio, colors, listings, view site)" };
                     }
@@ -160,6 +171,8 @@ async function routeToAgent(agentType: string, payload: any) {
             return await handleThemeAction(payload);
         case "contentAgent":
             return await handleContentAction(payload);
+        case "designAgent":
+            return await handleDesignAction(payload);
         case "crmAgent":
             return await handleCRMAction(payload);
         default:

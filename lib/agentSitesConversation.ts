@@ -172,6 +172,10 @@ export async function processAgentSitesMessage(
         platform
     });
 
+    if (mediaUrls && mediaUrls.length > 0) {
+        console.log(`[AgentSites] Incoming message from ${from} has ${mediaUrls.length} media items.`);
+    }
+
     // 1. Find or Create Agent
     let { data: agent, error: agentError } = await supabase
         .from('agents')
@@ -304,23 +308,42 @@ export async function processAgentSitesMessage(
             break;
 
         case 'COLLECT_PHOTO':
-            stateData.profilePhotoUrl = text;
+            let photoUrl = text;
+            if (mediaUrls && mediaUrls.length > 0) {
+                const stored = await downloadAndStoreMedia(mediaUrls[0], agent.id);
+                if (stored) photoUrl = stored;
+            }
+            stateData.profilePhotoUrl = photoUrl;
             replyText = "Photo received! Do you have a company logo? Send it now, or type 'skip'.";
             nextState = 'COLLECT_LOGO';
-            if (config) await createOrUpdateAgentConfig(agent.id, { profile_photo_url: text });
+            if (config) await createOrUpdateAgentConfig(agent.id, { profile_photo_url: photoUrl });
             break;
 
         case 'COLLECT_LOGO':
-            stateData.logoUrl = text === 'skip' ? null : text;
-            replyText = "What colors represent your brand? Send two hex codes (e.g., #1a365d, #c9a227) or describe them (e.g. 'Gold and Black').";
-            nextState = 'COLLECT_COLORS';
-            if (config && text !== 'skip') await createOrUpdateAgentConfig(agent.id, { logo_url: text });
+            let logoUrl = text === 'skip' ? null : text;
+            if (text !== 'skip' && mediaUrls && mediaUrls.length > 0) {
+                const stored = await downloadAndStoreMedia(mediaUrls[0], agent.id);
+                if (stored) logoUrl = stored;
+            }
+            stateData.logoUrl = logoUrl;
+            replyText = "Which areas do you specialize in? (e.g., Dubai Marina, Palm Jumeirah, Downtown). Separate with commas.";
+            nextState = 'COLLECT_AREAS';
+            if (config && logoUrl) await createOrUpdateAgentConfig(agent.id, { logo_url: logoUrl });
             break;
 
         case 'COLLECT_COLORS':
             stateData.colors = text;
-            replyText = "Which areas do you specialize in? (e.g., Dubai Marina, Palm Jumeirah, Downtown). Separate with commas.";
-            nextState = 'COLLECT_AREAS';
+            replyText = "✅ *Style and colors saved!*\n\nNow let's add your properties... 🏠\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
+            nextState = 'LISTINGS_LOOP';
+            // Also update the agent config with these colors
+            if (config) {
+                const hexMatches = text.match(/#[0-9A-Fa-f]{6}/g);
+                await createOrUpdateAgentConfig(agent.id, {
+                    primary_color: hexMatches?.[0] || text.split(',')[0].trim(),
+                    secondary_color: hexMatches?.[1] || (text.split(',')[1] || text.split(',')[0]).trim(),
+                    needs_site_rebuild: true
+                });
+            }
             break;
 
         case 'COLLECT_AREAS':
@@ -355,11 +378,19 @@ export async function processAgentSitesMessage(
             break;
 
         case 'COLLECT_STYLE_INSPIRATION_REQUEST':
+            const urlInfo = detectUrlType(text);
             if (text.toLowerCase() === 'skip') {
-                replyText = "No problem! Let's move on to your listings.\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
-                nextState = 'LISTINGS_LOOP';
-            } else if (mediaUrls && mediaUrls.length > 0) {
-                const storedUrl = await downloadAndStoreMedia(mediaUrls[0], agent.id);
+                replyText = "No problem! What colors represent your brand? Send hex codes or describe them (e.g. 'Dark navy and gold').";
+                nextState = 'COLLECT_COLORS';
+            } else if ((mediaUrls && mediaUrls.length > 0) || urlInfo.hasUrl) {
+                const inspirationUrl = mediaUrls?.[0] || urlInfo.url;
+                if (!inspirationUrl) {
+                    replyText = "I couldn't find a valid image or URL. Please send a screenshot or a website link.";
+                    break;
+                }
+
+                const storedUrl = mediaUrls?.[0] ? await downloadAndStoreMedia(mediaUrls[0], agent.id) : inspirationUrl;
+
                 if (storedUrl) {
                     const inspirationId = `insp_${Date.now()}`;
                     const newInspiration = {
@@ -371,13 +402,13 @@ export async function processAgentSitesMessage(
                     stateData.currentInspiration = newInspiration;
                     stateData.style_profile = stateData.style_profile || { inspirations: [] };
 
-                    replyText = "Beautiful choice! 👀\n\nNow tell me — *what specifically do you love about this design?*\n\nFor example:\n• \"The dark, moody color palette feels exclusive\"\n• \"I love the large property images with minimal text\"\n• \"The gold accents feel luxurious\"\n• \"The clean navigation makes it easy to browse\"\n\nJust describe it in your own words ✍️";
+                    replyText = "Beautiful choice! 👀\n\nNow tell me — *what specifically do you love about this design?*\n\nFor example:\n• \"The dark, moody color palette feels exclusive\"\n• \"I love the large property images with minimal text\"\n• \"The gold accents feel luxurious\"\n\nJust describe it in your own words ✍️";
                     nextState = 'COLLECT_STYLE_INSPIRATION_DESCRIPTION';
                 } else {
-                    replyText = "I had trouble saving that image. Could you try sending it again, or send a public URL?";
+                    replyText = "I had trouble saving that inspiration. Could you try sending it again?";
                 }
             } else {
-                replyText = "Please send a screenshot (image) of a website you admire, or type 'skip'.";
+                replyText = "📸 *Please share a screenshot or a website URL* of a design you admire (or type 'skip').";
             }
             break;
 
@@ -401,11 +432,11 @@ export async function processAgentSitesMessage(
 
         case 'COLLECT_STYLE_INSPIRATION_CONFIRM':
             if (text.toLowerCase().includes('add another')) {
-                replyText = "Great! Send me another screenshot of a site you love.";
+                replyText = "Great! Send me another screenshot or URL of a site you love.";
                 nextState = 'COLLECT_STYLE_INSPIRATION_REQUEST';
             } else {
-                replyText = "✅ *Style inspiration saved!*\n\nI'll use this to guide your site's color palette, typography, and mood. Now let's add your exclusive properties... 🏠\n\nYou can send me a URL from Bayut or Property Finder, or type 'manual' to enter details. Type 'done' when finished.";
-                nextState = 'LISTINGS_LOOP';
+                replyText = "✅ *Style inspiration saved!*\n\nFinally, what colors represent your brand? Send hex codes or describe them (e.g. 'Dark navy and gold').";
+                nextState = 'COLLECT_COLORS';
             }
             break;
 
@@ -737,8 +768,12 @@ export async function processAgentSitesMessage(
             nextState = 'CMS_MODE';
             break;
 
-        default:
-            replyText = "I'm not sure what to do next. Type 'help' to see what I can do.";
+    }
+
+    // Ensure others ignore stray media
+    const mediaFriendlyStates = ['COLLECT_STYLE_INSPIRATION_REQUEST', 'COLLECT_PHOTO', 'COLLECT_LOGO', 'MANUAL_LISTING_PHOTOS'];
+    if (mediaUrls && mediaUrls.length > 0 && !mediaFriendlyStates.includes(currentState)) {
+        console.log(`[AgentSites] Ignoring ${mediaUrls.length} media items outside media-friendly states for agent ${agent.id}. State: ${currentState}`);
     }
 
     if (!replyText) {
