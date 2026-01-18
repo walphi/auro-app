@@ -266,6 +266,8 @@ export async function processAgentSitesMessage(
         return { text: "Starting over! 🏠 What is your full name?" };
     }
 
+    let urlInfo;
+
     switch (currentState) {
         case 'IDENTIFY_AGENT':
             replyText = "Welcome to Auro Agent Sites! 🏠 Let's build your professional real estate website in minutes.\n\nWhat is your full name?";
@@ -378,7 +380,7 @@ export async function processAgentSitesMessage(
             break;
 
         case 'COLLECT_STYLE_INSPIRATION_REQUEST':
-            const urlInfo = detectUrlType(text);
+            urlInfo = detectUrlType(text);
             if (text.toLowerCase() === 'skip') {
                 replyText = "No problem! What colors represent your brand? Send hex codes or describe them (e.g. 'Dark navy and gold').";
                 nextState = 'COLLECT_COLORS';
@@ -441,7 +443,7 @@ export async function processAgentSitesMessage(
             break;
 
         case 'LISTINGS_LOOP':
-            const urlInfo = detectUrlType(text);
+            urlInfo = detectUrlType(text);
             if (text.toLowerCase() === 'done') {
                 replyText = "Great portfolio! Now let's set up how leads reach you.\n\nWhich channel do you prefer for leads? (whatsapp, phone, or email)";
                 nextState = 'COLLECT_LEAD_CONFIG_CHANNEL';
