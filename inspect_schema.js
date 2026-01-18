@@ -1,29 +1,27 @@
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import path from 'path';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+dotenv.config({ path: path.resolve('.env.local') });
 
-async function inspectColumns() {
-    try {
-        // Fetch one row to see columns
-        const { data, error } = await supabase.from('agentconfigs').select('*').limit(1);
+const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(url, key);
+
+async function inspectTables() {
+    const tables = ['leads', 'messages', 'agent_intents_log', 'lead_intents_log', 'agent_sessions'];
+    for (const table of tables) {
+        const { data, error } = await supabase.from(table).select('*').limit(1);
         if (error) {
-            console.error('Error fetching agentconfigs:', error);
-            // If table is empty, we might need another way.
-            // Let's try to insert a dummy and see what fails or just use the error.
-        } else if (data && data.length > 0) {
-            console.log('Columns in agentconfigs:', Object.keys(data[0]));
+            console.log(`Table ${table} Error: ${error.message}`);
         } else {
-            console.log('Table agentconfigs is empty. Trying to describe table via RPC or just guessing from errors.');
+            console.log(`Table ${table} OK, rows: ${data.length}`);
+            if (data.length > 0) {
+                console.log(`Table ${table} columns: ${Object.keys(data[0]).join(', ')}`);
+            }
         }
-
-        // Try to get table info from information_schema if possible via query
-        const { data: schemaData, error: schemaError } = await supabase.from('agentconfigs').select().limit(0);
-        console.log('Target columns in types vs actual?');
-    } catch (e) {
-        console.error('Unexpected error:', e);
     }
 }
 
-inspectColumns();
+inspectTables();
