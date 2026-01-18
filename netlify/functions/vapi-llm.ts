@@ -3,12 +3,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { getListingById } from "./listings-helper";
 import axios from "axios";
+import { logLeadIntent } from "../../lib/enterprise/leadIntents";
+import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 
-async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
+async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
     try {
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+        const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+        const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+        const from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
 
         if (!accountSid || !authToken) return false;
 
@@ -86,7 +88,7 @@ async function queryRAGForVoice(query: string, clientId: string = 'demo'): Promi
 }
 
 // Trigger RAG learning for booking confirmations
-async function triggerRAGLearning(leadId: string, outcome: string): Promise<void> {
+async function triggerRAGLearning(leadId: string, outcome: string, tenant: Tenant): Promise<void> {
     try {
         const host = process.env.URL || 'https://auro-app.netlify.app';
         await fetch(`${host}/.netlify/functions/rag-learn`, {
@@ -96,7 +98,7 @@ async function triggerRAGLearning(leadId: string, outcome: string): Promise<void
                 action: 'process_lead',
                 lead_id: leadId,
                 outcome: outcome,
-                client_id: 'demo'
+                client_id: tenant.rag_client_id
             })
         });
         console.log(`[VAPI-LLM] RAG learning triggered for lead ${leadId} with outcome ${outcome}`);
@@ -118,6 +120,26 @@ const handler: Handler = async (event) => {
         const body = JSON.parse(event.body || "{}");
         const { messages, call } = body;
         console.log(`[VAPI-LLM] Request for SID: ${call?.id}`);
+
+        // --- TENANT RESOLUTION ---
+        let tenant: Tenant | null = null;
+        const vapiAssistantId = call?.assistantId;
+        const tenantIdFromVars = call?.assistantOverrides?.variableValues?.tenant_id;
+
+        if (tenantIdFromVars) {
+            tenant = await getTenantById(parseInt(tenantIdFromVars));
+            console.log(`[VAPI-LLM] Resolved tenant from variableValues: ${tenant?.short_name} (ID: ${tenant?.id})`);
+        }
+
+        if (!tenant && vapiAssistantId) {
+            tenant = await getTenantByVapiId(vapiAssistantId);
+            console.log(`[VAPI-LLM] Resolved tenant from Assistant ID: ${tenant?.short_name} (ID: ${tenant?.id})`);
+        }
+
+        if (!tenant) {
+            console.log("[VAPI-LLM] No tenant found in payload, falling back to default.");
+            tenant = await getDefaultTenant();
+        }
 
         // 1. Context Loading
         let phoneNumber = call?.customer?.number;
@@ -149,7 +171,7 @@ CURRENT LEAD PROFILE:
 - Booking: ${leadData.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";
 
-        const systemInstruction = `You are Morgan, a Lead Qualification Agent for Provident Real Estate Dubai.
+        const systemInstruction = `You are Morgan, a Lead Qualification Agent for ${tenant.system_prompt_identity}.
 Goal: Qualify lead and book a viewing.
 ${contextString}
 RULES & BEHAVIOR:
@@ -299,29 +321,30 @@ RULES & BEHAVIOR:
                         }) + " Dubai time";
 
                         // Send WhatsApp Confirmation
-                        const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+                        const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
                         const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
 
                         if (phoneNumber) {
-                            await sendWhatsAppMessage(phoneNumber, messageText);
+                            await sendWhatsAppMessage(phoneNumber, messageText, tenant);
                         }
 
                         // Log message
-                        await supabase.from('messages').insert({
-                            lead_id: leadId,
-                            type: 'System_Note',
-                            sender: 'System',
-                            content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
+                        await logLeadIntent(leadId, 'booking_confirmed', {
+                            property_id,
+                            property_title: listingTitle,
+                            datetime: resolved_datetime,
+                            formatted_date: formattedDate,
+                            source: 'vapi-llm'
                         });
 
                         // Trigger RAG learning for successful booking
-                        await triggerRAGLearning(leadId, 'booking_confirmed');
+                        await triggerRAGLearning(leadId, 'booking_confirmed', tenant);
                     }
                 } else if (call.name === 'RAG_QUERY_TOOL') {
                     // Handle RAG query with voice priority
                     const query = (call.args as any).query;
                     if (query) {
-                        const ragResult = await queryRAGForVoice(query);
+                        const ragResult = await queryRAGForVoice(query, tenant.rag_client_id);
                         console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
                     }
                 } else if (call.name === 'OFFPLAN_BOOKING') {
@@ -338,11 +361,13 @@ RULES & BEHAVIOR:
                             if (agent && agent.length > 0) agentInfo = `Assigned agent: ${agent[0].agent_name}`;
                         } catch (e) { }
 
-                        await supabase.from('messages').insert({
-                            lead_id: leadId,
-                            type: 'System_Note',
-                            sender: 'System',
-                            content: `OFFPLAN flow in Voice: ${preferred_option || 'Interests'}. ${agentInfo}`
+                        await logLeadIntent(leadId, 'offplan_flow_triggered', {
+                            property_id,
+                            property_name,
+                            community,
+                            developer,
+                            preferred_option,
+                            source: 'vapi-llm'
                         });
                     }
                 }

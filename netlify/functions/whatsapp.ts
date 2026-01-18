@@ -4,6 +4,9 @@ import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl, buildProxyImageUrl } from "./listings-helper";
+import { logLeadIntent } from "../../lib/enterprise/leadIntents";
+import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
+import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -13,7 +16,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // RAG Query Helper - prioritizes rag_chunks (hot topics), supplements with knowledge_base
-async function queryRAG(query: string): Promise<string> {
+async function queryRAG(query: string, clientId: string = 'demo'): Promise<string> {
     try {
         console.log('[RAG] Querying:', query);
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
@@ -23,18 +26,18 @@ async function queryRAG(query: string): Promise<string> {
         let results: string[] = [];
 
         // Primary: Get from rag_chunks (hot topics, recent content)
-        console.log('[RAG] Searching rag_chunks (client: demo)...');
+        console.log(`[RAG] Searching rag_chunks (client: ${clientId})...`);
         let { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
             query_embedding: embedding,
             match_threshold: 0.3,  // Lowered for better recall in demo
             match_count: 5,
-            filter_client_id: 'demo',
+            filter_client_id: clientId,
             filter_folder_id: null
         });
 
-        // Fallback: If nothing in demo, search across all clients (useful if Provident info was uploaded globally)
+        // Fallback: If nothing in tenant specific, search across all clients (useful if info was uploaded globally)
         if (!ragData || ragData.length === 0) {
-            console.log('[RAG] No results for client: demo, trying global search...');
+            console.log(`[RAG] No results for client: ${clientId}, trying global search...`);
             const { data: globalData, error: globalError } = await supabase.rpc('match_rag_chunks', {
                 query_embedding: embedding,
                 match_threshold: 0.3,
@@ -142,11 +145,11 @@ async function searchWeb(query: string): Promise<string> {
     }
 }
 
-async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
+async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
     try {
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886'; // Default sandbox
+        const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+        const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+        const from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
 
         if (!accountSid || !authToken) {
             console.error("[WhatsApp] Missing Twilio credentials for sending message.");
@@ -180,11 +183,11 @@ async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
     }
 }
 
-async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boolean> {
+async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: any): Promise<boolean> {
     try {
         const payload: any = {
-            phoneNumberId: process.env.VAPI_PHONE_NUMBER,
-            assistantId: process.env.VAPI_ASSISTANT_ID,
+            phoneNumberId: tenant.vapi_phone_number_id || process.env.VAPI_PHONE_NUMBER,
+            assistantId: tenant.vapi_assistant_id || process.env.VAPI_ASSISTANT_ID,
             customer: {
                 number: phoneNumber,
             },
@@ -192,6 +195,7 @@ async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boo
             assistantOverrides: {
                 variableValues: {
                     lead_id: context?.lead_id || "",
+                    tenant_id: tenant.id.toString(),
                     name: context?.name || "",
                     budget: context?.budget || "",
                     location: context?.location || "",
@@ -209,7 +213,7 @@ async function initiateVapiCall(phoneNumber: string, context?: any): Promise<boo
             payload,
             {
                 headers: {
-                    Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+                    Authorization: `Bearer ${tenant.vapi_api_key || process.env.VAPI_API_KEY}`,
                 },
             }
         );
@@ -238,7 +242,16 @@ const handler: Handler = async (event) => {
         const userMessage = (body.Body as string) || "";
         const numMedia = parseInt((body.NumMedia as string) || "0");
         const fromNumber = (body.From as string).replace('whatsapp:', '');
+        const toNumber = (body.To as string);
         const host = event.headers.host || "auro-app.netlify.app";
+
+        // --- TENANT RESOLUTION ---
+        let tenant = await getTenantByTwilioNumber(toNumber);
+        if (!tenant) {
+            console.log(`[WhatsApp] No tenant found for ${toNumber}, falling back to default.`);
+            tenant = await getDefaultTenant();
+        }
+        console.log(`[WhatsApp] Resolved tenant: ${tenant.short_name} (ID: ${tenant.id})`);
 
         let isVoiceResponse = false;
         let responseText = "";
@@ -303,6 +316,7 @@ const handler: Handler = async (event) => {
         // --- SUPABASE: Get or Create Lead ---
         let leadId: string | null = null;
         let leadContext = "";
+        let leadSource = "Source: WhatsApp";
 
         if (supabaseUrl && supabaseKey) {
             const { data: existingLead, error: findError } = await supabase
@@ -334,15 +348,17 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Currently interested in Property ID: ${currentListingId}
 - Last image index shown: ${lastImageIndex}
 `;
+                leadSource = existingLead.custom_field_1 || leadSource;
             } else {
-                console.log("Creating new lead for", fromNumber);
+                console.log("Creating new lead for", fromNumber, "under tenant", tenant.id);
                 const { data: newLead, error: createError } = await supabase
                     .from('leads')
                     .insert({
                         phone: fromNumber,
                         name: `WhatsApp Lead ${fromNumber}`,
                         status: 'New',
-                        custom_field_1: 'Source: WhatsApp'
+                        custom_field_1: 'Source: WhatsApp',
+                        tenant_id: tenant.id
                     })
                     .select('id')
                     .single();
@@ -395,11 +411,24 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
         }
 
         // --- GEMINI AGENT WITH TOOLS ---
-        const systemInstruction = `You are the AI Assistant for Provident Real Estate, a premier Dubai real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base (specifically the Provident Real Estate folder).
+        const systemInstruction = `You are the AI Assistant for ${tenant.system_prompt_identity}, a premier real estate agency using the AURO platform. Your primary and most reliable source of information is your RAG Knowledge Base.
 
 YOUR GOAL:
 Qualify the lead by naturally asking for missing details, and help them find properties.
 ${leadContext}
+
+${(() => {
+                const isPaidSource = /meta|google|property_finder/i.test(leadSource);
+                if (!isPaidSource) return "";
+
+                // Rationale: reports/enterprise-intents-daily.md - Offplan leads from paid ads perform better with investment-first qualification.
+                return `
+PROMPTING STRATEGY (AD-SOURCED LEAD from ${leadSource}):
+Prioritize opening with: "Hi! Thanks for your interest in [Project]. Are you looking at this as a high-yield investment opportunity or for your own residence in Dubai?"
+Replace [Project] with the project name the user is inquiring about. If not immediately clear, use "our latest project".
+DO NOT ask for Name, Email, or Budget until the user has answered the investment vs residence question.
+`;
+            })()}
 
 REQUIRED DETAILS (Ask only if "Unknown" above):
 1. Name
@@ -426,7 +455,7 @@ RULES & BEHAVIOR:
 
 3. CONTEXTUAL ANSWERS:
    - Community/Project: Use the 'community' and 'sub_community' fields. 
-   - Broker Identity: Use 'agent_name', 'agent_phone', and 'agent_company' fields. "This listing is with Provident. Your agent is [Name]..."
+   - Broker Identity: Use 'agent_name', 'agent_phone', and 'agent_company' fields. "This listing is with ${tenant.system_prompt_identity}. Your agent is [Name]..."
    - Investment/Yields: YOU MUST USE 'RAG_QUERY_TOOL' which will fetch live market data. Do NOT guess. Use the data returned to give a range (e.g. "Similar units in [Community] typically yield X-Y%").
      - Follow up with: "Are you focused on yield or personal use?"
 
@@ -686,7 +715,7 @@ RULES & BEHAVIOR:
                     }
 
                     if (query) {
-                        toolResult = await queryRAG(query);
+                        toolResult = await queryRAG(query, tenant.rag_client_id);
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
@@ -714,7 +743,7 @@ RULES & BEHAVIOR:
                         const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
                         context = { ...data, lead_id: leadId };
                     }
-                    const callStarted = await initiateVapiCall(fromNumber, context);
+                    const callStarted = await initiateVapiCall(fromNumber, tenant, context);
                     if (callStarted) {
                         toolResult = "Got it, I'll have our assistant give you a quick call on this number in the next few minutes.";
                     } else {
@@ -858,11 +887,10 @@ Description: ${listing.description || 'No detailed description available.'}
 
                     // Log the booking intent
                     if (leadId) {
-                        await supabase.from('messages').insert({
-                            lead_id: leadId,
-                            type: 'System_Note',
-                            sender: 'System',
-                            content: `Booking intent detected for: ${listingTitle}. Offered Vapi call escalation.`
+                        await logLeadIntent(leadId, 'booking_interest', {
+                            property_id: propertyId,
+                            property_title: listingTitle,
+                            source: 'whatsapp'
                         });
                     }
                 } else if (name === 'OFFPLAN_BOOKING') {
@@ -917,11 +945,14 @@ Description: ${listing.description || 'No detailed description available.'}
                     }
 
                     if (leadId) {
-                        await supabase.from('messages').insert({
-                            lead_id: leadId,
-                            type: 'System_Note',
-                            sender: 'System',
-                            content: `Offplan flow triggered for ${propertyName}. Country detected: ${isInternational ? 'International' : 'Local'}. Option: ${preferredOption || 'Offer 3-paths'}`
+                        await logLeadIntent(leadId, 'offplan_flow_triggered', {
+                            property_id: propertyId,
+                            property_name: propertyName,
+                            community,
+                            developer,
+                            preferred_option: preferredOption || 'Offer 3-paths',
+                            is_international: isInternational,
+                            source: 'whatsapp'
                         });
                     }
                 }

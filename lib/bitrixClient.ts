@@ -1,46 +1,87 @@
+import axios from 'axios';
+
 /**
- * Bitrix24 REST API Client Stub
+ * Bitrix24 REST API Client
  * 
- * This client will handle interaction with Provident Real Estate's Bitrix24 CRM.
- * Implementation will be added in Phase One.
+ * This client handles interaction with Provident Real Estate's Bitrix24 CRM.
+ * It uses the BITRIX_WEBHOOK_URL environment variable.
  */
 
 export interface BitrixLead {
     id: string;
-    title: string;
-    name?: string;
-    lastName?: string;
-    phone?: string;
-    email?: string;
+    TITLE: string;
+    NAME?: string;
+    LAST_NAME?: string;
+    PHONE?: Array<{ VALUE: string; VALUE_TYPE: string }>;
+    EMAIL?: Array<{ VALUE: string; VALUE_TYPE: string }>;
     [key: string]: any;
 }
 
 /**
  * Fetches full lead details from Bitrix24
  * @param leadId The ID of the lead to fetch
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  * @returns Promise with lead data
  */
-export async function getLeadById(leadId: string): Promise<BitrixLead> {
-    console.log(`[BitrixClient] Stub: Fetching lead ${leadId}`);
+export async function getLeadById(leadId: string, customWebhookUrl?: string): Promise<BitrixLead> {
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL env)');
+    }
 
-    // TODO: Implement actual Bitrix24 crm.lead.get call
-    return {
-        id: leadId,
-        title: "Stub Lead",
-        name: "John",
-        lastName: "Doe",
-        phone: "+971500000000",
-        email: "john.doe@example.com"
-    };
+    console.log(`[BitrixClient] Fetching lead ${leadId} from Bitrix24 using ${webhookUrl.substring(0, 30)}...`);
+
+    try {
+        const response = await axios.get(`${webhookUrl}/crm.lead.get.json`, {
+            params: { ID: leadId }
+        });
+
+        if (response.data.error) {
+            console.error(`[BitrixClient] Bitrix API Error: ${response.data.error_description || response.data.error}`);
+            throw new Error(`Bitrix API Error: ${response.data.error}`);
+        }
+
+        return response.data.result;
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to fetch lead ${leadId}:`, error.message);
+        if (error.response?.data) {
+            console.error(`[BitrixClient] Error details:`, JSON.stringify(error.response.data));
+        }
+        throw error;
+    }
 }
 
 /**
- * Updates lead fields in Bitrix24 (e.g. qualification results)
+ * Updates lead fields in Bitrix24
  * @param leadId The ID of the lead to update
  * @param fields Object containing fields to update
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  */
-export async function updateLead(leadId: string, fields: Record<string, any>): Promise<void> {
-    console.log(`[BitrixClient] Stub: Updating lead ${leadId} with fields:`, fields);
+export async function updateLead(leadId: string, fields: Record<string, any>, customWebhookUrl?: string): Promise<void> {
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL env)');
+    }
 
-    // TODO: Implement actual Bitrix24 crm.lead.update call
+    console.log(`[BitrixClient] Updating lead ${leadId} in Bitrix24 using ${webhookUrl.substring(0, 30)}...`);
+
+    try {
+        const response = await axios.post(`${webhookUrl}/crm.lead.update.json`, {
+            id: leadId,
+            fields: fields
+        });
+
+        if (response.data.error) {
+            console.error(`[BitrixClient] Bitrix API Error during update: ${response.data.error_description || response.data.error}`);
+            throw new Error(`Bitrix API Error: ${response.data.error}`);
+        }
+
+        console.log(`[BitrixClient] Lead ${leadId} updated successfully`);
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to update lead ${leadId}:`, error.message);
+        if (error.response?.data) {
+            console.error(`[BitrixClient] Error details:`, JSON.stringify(error.response.data));
+        }
+        throw error;
+    }
 }

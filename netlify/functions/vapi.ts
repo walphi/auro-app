@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { searchListings, formatListingsForVoice, SearchFilters, getListingById } from "./listings-helper";
 import axios from "axios";
+import { logLeadIntent } from "../../lib/enterprise/leadIntents";
+import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -11,11 +13,11 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function sendWhatsAppMessage(to: string, text: string): Promise<boolean> {
+async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
   try {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
 
     if (!accountSid || !authToken) return false;
 
@@ -45,6 +47,27 @@ const handler: Handler = async (event) => {
 
     const body = JSON.parse(event.body || "{}");
     console.log("[VAPI] Received payload:", JSON.stringify(body, null, 2));
+
+    // --- TENANT RESOLUTION ---
+    let tenant: Tenant | null = null;
+    const vapiAssistantId = body.message?.call?.assistantId || body.call?.assistantId;
+    const tenantIdFromVars = body.message?.call?.assistantOverrides?.variableValues?.tenant_id ||
+      body.call?.assistantOverrides?.variableValues?.tenant_id;
+
+    if (tenantIdFromVars) {
+      tenant = await getTenantById(parseInt(tenantIdFromVars));
+      console.log(`[VAPI] Resolved tenant from variableValues: ${tenant?.short_name} (ID: ${tenant?.id})`);
+    }
+
+    if (!tenant && vapiAssistantId) {
+      tenant = await getTenantByVapiId(vapiAssistantId);
+      console.log(`[VAPI] Resolved tenant from Assistant ID: ${tenant?.short_name} (ID: ${tenant?.id})`);
+    }
+
+    if (!tenant) {
+      console.log("[VAPI] No tenant found in payload, falling back to default.");
+      tenant = await getDefaultTenant();
+    }
 
     const messageType = body.message?.type;
     const toolCalls = body.message?.toolCalls || [];
@@ -88,7 +111,8 @@ const handler: Handler = async (event) => {
             phone: phoneNumber,
             name: `Voice User ${phoneNumber.slice(-4)}`,
             status: 'New',
-            custom_field_1: 'Source: VAPI Voice Call'
+            custom_field_1: 'Source: VAPI Voice Call',
+            tenant_id: tenant.id
           })
           .select('id')
           .single();
@@ -134,21 +158,17 @@ const handler: Handler = async (event) => {
         const status = body.message?.status;
         console.log(`[VAPI] Status Update: ${status}`);
 
-        await supabase.from('messages').insert({
-          lead_id: leadId,
-          type: 'System_Note',
-          sender: 'System',
-          content: `Call Status: ${status}`
+        await logLeadIntent(leadId, 'vapi_status_update', {
+          status: status,
+          source: 'vapi'
         });
       } else if (messageType === 'error') {
         const error = body.message?.error;
         console.error(`[VAPI] Call Error:`, error);
 
-        await supabase.from('messages').insert({
-          lead_id: leadId,
-          type: 'System_Note',
-          sender: 'System',
-          content: `VAPI Error: ${error || 'Unknown error during call'}`
+        await logLeadIntent(leadId, 'vapi_error', {
+          error: error || 'Unknown error during call',
+          source: 'vapi'
         });
       } else if (messageType === 'call-ended') {
         const summary = body.message?.analysis?.summary || body.message?.transcript;
@@ -178,7 +198,7 @@ const handler: Handler = async (event) => {
               action: 'process_lead',
               lead_id: leadId,
               outcome: learningOutcome,
-              client_id: 'demo'
+              client_id: tenant.rag_client_id
             })
           });
         } catch (learnError: any) {
@@ -217,7 +237,7 @@ const handler: Handler = async (event) => {
             query_embedding: embedding,
             match_threshold: 0.3,
             match_count: 3,
-            filter_client_id: 'demo',
+            filter_client_id: tenant.rag_client_id,
             filter_folder_id: null
           });
           if (ragData) results.push(...ragData.map((i: any) => i.content));
@@ -397,17 +417,18 @@ const handler: Handler = async (event) => {
           } catch (notifyErr: any) {
             console.error('[VAPI] Notification trigger failed:', notifyErr.message);
             // Fallback: send WhatsApp directly
-            const calLink = `https://cal.com/provident-real-estate/viewing?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+            const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
             const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
-            await sendWhatsAppMessage(phoneNumber, messageText);
+            await sendWhatsAppMessage(phoneNumber, messageText, tenant);
           }
 
-          // 5. Log as Message
-          await supabase.from('messages').insert({
-            lead_id: leadId,
-            type: 'System_Note',
-            sender: 'System',
-            content: `Booking Confirmed for ${listingTitle} at ${formattedDate}`
+          // 5. Log as Intent
+          await logLeadIntent(leadId, 'booking_confirmed', {
+            property_id: property_id,
+            property_title: listingTitle,
+            datetime: resolved_datetime,
+            formatted_date: formattedDate,
+            source: 'vapi'
           });
 
           // 6. Trigger RAG learning
@@ -419,7 +440,7 @@ const handler: Handler = async (event) => {
                 action: 'process_lead',
                 lead_id: leadId,
                 outcome: 'booking_confirmed',
-                client_id: 'demo'
+                client_id: tenant.rag_client_id
               })
             });
           } catch (learnErr: any) {
@@ -459,7 +480,7 @@ const handler: Handler = async (event) => {
         console.log("[VAPI] No leadId, skipping user message log");
       }
 
-      const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for Provident Real Estate, a premier Dubai real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base (Provident Real Estate folders), which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
+      const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for ${tenant.system_prompt_identity}, a premier real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base, which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
 
 CRITICAL RULE:
 ALWAYS ground your answers in the RAG data, especially for figures like pricing and payment plans.
