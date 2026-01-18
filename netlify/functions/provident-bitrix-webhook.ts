@@ -6,7 +6,7 @@ import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
  * Netlify Function: provident-bitrix-webhook
  * 
  * Endpoint for Bitrix24 ONCRMLEADADD event.
- * Validates request, logs payload, and stubs future processing.
+ * Validates request, fetches lead details, and triggers engagement.
  */
 export const handler: Handler = async (event, context) => {
     // 1. Ensure the request is POST
@@ -36,41 +36,78 @@ export const handler: Handler = async (event, context) => {
         }
 
         const body = JSON.parse(event.body);
-        console.log('[Webhook] Received Bitrix24 payload:', JSON.stringify(body, null, 2));
-
-        // Expecting Bitrix24 event payload structure
-        // data.FIELDS.ID is the LEAD_ID for ONCRMLEADADD
         const leadId = body.data?.FIELDS?.ID;
 
         if (!leadId) {
-            console.error('[Webhook] Invalid payload: Missing leadId (data.FIELDS.ID)');
+            console.error('[Webhook] Invalid payload: Missing leadId');
             return {
                 statusCode: 400,
                 body: JSON.stringify({ error: 'invalid_payload' }),
             };
         }
 
-        // 4. Future logic stubs
-        // In the next iteration, we will:
-        // a) Fetch full lead details using bitrixClient.getLeadById(leadId)
-        // b) Pass detail to auroWhatsApp.triggerLeadEngagement(leadId, leadData)
-        // For now, we just log.
+        console.log(`[Webhook] Processing ONCRMLEADADD for lead ${leadId}`);
 
-        console.log(`[Webhook] Successfully accepted lead ${leadId}. Ready for Phase One processing.`);
+        // 4. Fetch full lead data from Bitrix24
+        let bitrixLead;
+        try {
+            bitrixLead = await getLeadById(leadId);
+        } catch (bitrixError: any) {
+            console.error('[Webhook] Bitrix fetch error:', bitrixError.message);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'bitrix_error', message: 'Failed to fetch lead from CRM' }),
+            };
+        }
 
-        // 5. Return success response
+        // 5. Extract lead details
+        // Phone numbers in Bitrix are often in an array
+        const phone = bitrixLead.PHONE?.[0]?.VALUE;
+        const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
+        const projectName = bitrixLead.TITLE || 'off-plan opportunities';
+
+        if (!phone) {
+            console.warn(`[Webhook] Lead ${leadId} has no phone number. Skipping WhatsApp engagement.`);
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    status: 'accepted',
+                    leadId: leadId,
+                    bitrixFetched: true,
+                    whatsappTriggered: false,
+                    reason: 'missing_phone'
+                }),
+            };
+        }
+
+        // 6. Trigger WhatsApp engagement flow
+        const whatsappTriggered = await triggerLeadEngagement({
+            phone: phone,
+            name: name,
+            projectName: projectName
+        });
+
+        if (!whatsappTriggered) {
+            console.error(`[Webhook] Failed to trigger WhatsApp for lead ${leadId}`);
+            // We still return 200/accepted because the lead *was* processed by Bitrix level
+            // but we flag that WhatsApp failed.
+        }
+
+        // 7. Success response
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 status: 'accepted',
                 event: body.event || 'ONCRMLEADADD',
-                leadId: leadId
+                leadId: leadId,
+                bitrixFetched: true,
+                whatsappTriggered: whatsappTriggered
             }),
         };
 
-    } catch (error) {
-        console.error('[Webhook] Internal error:', error);
+    } catch (error: any) {
+        console.error('[Webhook] Internal error:', error.message);
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'internal_error' }),
