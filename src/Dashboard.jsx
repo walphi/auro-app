@@ -848,25 +848,94 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
 
 // Main CRM App
 function CRMApp() {
+    const { user, isLoaded: isUserLoaded } = useUser();
     const [activeView, setActiveView] = useState('dashboard');
     const [leads, setLeads] = useState([]);
     const [selectedLeadId, setSelectedLeadId] = useState(null);
     const [filter, setFilter] = useState('All');
     const [currentTenant, setCurrentTenant] = useState(null);
+    const [isLoadingTenant, setIsLoadingTenant] = useState(true);
 
     const selectedLead = leads.find(l => l.id === selectedLeadId);
 
     const [error, setError] = useState(null);
 
-    // Fetch data & realtime
+    // Resolve user profile and tenant on login
     useEffect(() => {
+        const resolveUserTenant = async () => {
+            if (!isUserLoaded || !user) return;
+
+            setIsLoadingTenant(true);
+            try {
+                console.log(`[Dashboard] Resolving tenant for user: ${user.id}`);
+
+                // Check if profile exists
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*, tenants(*)')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (profile && profile.tenants) {
+                    console.log(`[Dashboard] Found profile, tenant: ${profile.tenants.name}`);
+                    setCurrentTenant(profile.tenants);
+                } else {
+                    // No profile - create one linked to default tenant (Provident)
+                    console.log('[Dashboard] No profile found, creating with default tenant...');
+
+                    const { data: defaultTenant } = await supabase
+                        .from('tenants')
+                        .select('*')
+                        .eq('id', 1) // Provident is ID 1
+                        .single();
+
+                    if (defaultTenant) {
+                        // Create profile
+                        await supabase.from('profiles').insert({
+                            user_id: user.id,
+                            tenant_id: defaultTenant.id,
+                            role: 'admin'
+                        });
+                        setCurrentTenant(defaultTenant);
+                    } else {
+                        // Absolute fallback
+                        setCurrentTenant({
+                            id: 1,
+                            name: 'Provident Estate',
+                            rag_client_id: 'demo'
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('[Dashboard] Tenant resolution error:', err);
+                // Fallback
+                setCurrentTenant({
+                    id: 1,
+                    name: 'Provident Estate',
+                    rag_client_id: 'demo'
+                });
+            } finally {
+                setIsLoadingTenant(false);
+            }
+        };
+
+        resolveUserTenant();
+    }, [user, isUserLoaded]);
+
+    // Fetch data & realtime - now filtered by currentTenant
+    useEffect(() => {
+        if (!currentTenant) return; // Wait for tenant resolution
+
         const fetchData = async () => {
             setError(null);
             try {
-                console.log("Attempting to fetch data from Supabase...");
+                console.log(`[Dashboard] Fetching data for tenant: ${currentTenant.name} (ID: ${currentTenant.id})`);
+
+                // Filter leads by tenant_id
                 const { data: leadsData, error: leadsError } = await supabase
                     .from('leads')
                     .select('*')
+                    .eq('tenant_id', currentTenant.id)
                     .order('last_interaction', { ascending: false });
 
                 if (leadsError) throw new Error(`Leads fetch error: ${leadsError.message}`);
@@ -892,26 +961,8 @@ function CRMApp() {
                         }))
                 }));
 
-                console.log("Successfully fetched leads:", mergedLeads.length);
+                console.log(`[Dashboard] Fetched ${mergedLeads.length} leads for tenant ${currentTenant.id}`);
                 setLeads(mergedLeads);
-
-                // Fetch current tenant
-                const { data: tenantData, error: tenantError } = await supabase
-                    .from('tenants')
-                    .select('*')
-                    .limit(1)
-                    .single();
-
-                if (!tenantError && tenantData) {
-                    setCurrentTenant(tenantData);
-                } else {
-                    // Fallback to default Provident for dev
-                    setCurrentTenant({
-                        id: 1,
-                        name: 'Provident Estate',
-                        rag_client_id: 'demo'
-                    });
-                }
             } catch (error) {
                 console.error("Error fetching data:", error);
                 setError(error.message);
@@ -992,7 +1043,7 @@ function CRMApp() {
             .subscribe();
 
         return () => supabase.removeChannel(channel);
-    }, []);
+    }, [currentTenant]);
 
     const handleSendMessage = async (content, type = 'Message') => {
         if (!selectedLeadId) return;
