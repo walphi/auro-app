@@ -86,13 +86,15 @@ async function processEmbeddings(limit: number = 5): Promise<{ processed: number
 
             // Also insert into rag_chunks for MCP compatibility
             const clientId = entry.metadata?.client_id || 'demo';
-            const folderId = entry.project_id || 'default';
+            const tenantId = entry.metadata?.tenant_id;
+            const folderId = entry.project_id || 'projects';
 
             const { error: chunkError } = await supabase
                 .from('rag_chunks')
                 .upsert({
                     chunk_id: `${clientId}:${folderId}:${entry.id}:0`,
                     client_id: clientId,
+                    tenant_id: tenantId,
                     folder_id: folderId,
                     document_id: entry.id,
                     content: entry.content,

@@ -852,6 +852,7 @@ function CRMApp() {
     const [leads, setLeads] = useState([]);
     const [selectedLeadId, setSelectedLeadId] = useState(null);
     const [filter, setFilter] = useState('All');
+    const [currentTenant, setCurrentTenant] = useState(null);
 
     const selectedLead = leads.find(l => l.id === selectedLeadId);
 
@@ -893,6 +894,24 @@ function CRMApp() {
 
                 console.log("Successfully fetched leads:", mergedLeads.length);
                 setLeads(mergedLeads);
+
+                // Fetch current tenant
+                const { data: tenantData, error: tenantError } = await supabase
+                    .from('tenants')
+                    .select('*')
+                    .limit(1)
+                    .single();
+
+                if (!tenantError && tenantData) {
+                    setCurrentTenant(tenantData);
+                } else {
+                    // Fallback to default Provident for dev
+                    setCurrentTenant({
+                        id: 1,
+                        name: 'Provident Estate',
+                        rag_client_id: 'demo'
+                    });
+                }
             } catch (error) {
                 console.error("Error fetching data:", error);
                 setError(error.message);
@@ -1017,7 +1036,7 @@ function CRMApp() {
             case 'calendar':
                 return <CalendarView />;
             case 'agent-folders':
-                return <AgentFolders />;
+                return <AgentFolders currentTenant={currentTenant} />;
             case 'messages':
                 return (
                     <MessagesView

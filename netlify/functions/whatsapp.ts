@@ -15,91 +15,106 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// RAG Query Helper - prioritizes rag_chunks (hot topics), supplements with knowledge_base
-async function queryRAG(query: string, clientId: string = 'demo'): Promise<string> {
+// RAG Query Helper - prioritizes specific folders based on intent
+async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string | string[]): Promise<string> {
     try {
-        console.log('[RAG] Querying:', query);
+        const clientId = tenant.rag_client_id || 'demo';
+        console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, query: "${query}"`);
+
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
         const embResult = await embedModel.embedContent(query);
         const embedding = embResult.embedding.values;
 
+        // Hierarchical Search Strategy
+        const searchSteps = [];
+
+        // 1. If folder specified, search it first
+        if (filterFolderId) {
+            searchSteps.push(filterFolderId);
+        } else {
+            // 2. Default Hierarchy based on query content
+            const lowerQuery = query.toLowerCase();
+
+            // Priority 1: Hot Topics (Urgent Promos/Offers)
+            if (/promo|offer|discount|urgent|exclusive|deal|limited/i.test(lowerQuery)) {
+                searchSteps.push('hot_topics');
+            }
+
+            // Priority 2: Agency Knowledge (SOPs/FAQs)
+            if (/how|sop|process|procedure|policy|faq|question|answer|agency/i.test(lowerQuery)) {
+                searchSteps.push(['faqs', 'sops']);
+            }
+
+            // Priority 3: Real Estate / Project Details
+            searchSteps.push(['projects', 'website', 'market_reports']);
+        }
+
         let results: string[] = [];
 
-        // Primary: Get from rag_chunks (hot topics, recent content)
-        console.log(`[RAG] Searching rag_chunks (client: ${clientId})...`);
-        let { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
-            query_embedding: embedding,
-            match_threshold: 0.3,  // Lowered for better recall in demo
-            match_count: 5,
-            filter_client_id: clientId,
-            filter_folder_id: null
-        });
+        // Execute searches in order until we have enough results
+        for (const folders of searchSteps) {
+            if (results.length >= 3) break;
 
-        // Fallback: If nothing in tenant specific, search across all clients (useful if info was uploaded globally)
-        if (!ragData || ragData.length === 0) {
-            console.log(`[RAG] No results for client: ${clientId}, trying global search...`);
-            const { data: globalData, error: globalError } = await supabase.rpc('match_rag_chunks', {
+            console.log(`[RAG] Step: Searching folders ${JSON.stringify(folders)}...`);
+            const { data } = await supabase.rpc('match_rag_chunks', {
                 query_embedding: embedding,
-                match_threshold: 0.3,
+                match_threshold: 0.35,
                 match_count: 5,
-                filter_client_id: null,
-                filter_folder_id: null
-            });
-            if (!globalError && globalData) ragData = globalData;
-        }
-
-        if (!ragError && ragData && ragData.length > 0) {
-            console.log('[RAG] rag_chunks:', ragData.length, 'results');
-            results = ragData.map((i: any) => i.content);
-        }
-
-        // Supplement: Get from knowledge_base if needed
-        if (results.length < 3) {
-            console.log('[RAG] Searching knowledge_base...');
-            const { data: kbData, error: kbError } = await supabase.rpc('match_knowledge', {
-                query_embedding: embedding,
-                match_threshold: 0.3, // Lowered for better recall
-                match_count: 5,
-                filter_project_id: null
+                filter_client_id: clientId,
+                filter_folder_id: Array.isArray(folders) ? null : folders // Simple RPC might not support list
             });
 
-            if (!kbError && kbData && kbData.length > 0) {
-                console.log('[RAG] knowledge_base:', kbData.length, 'results');
-                // Add only if not already included (avoid duplicates)
-                kbData.forEach((i: any) => {
-                    if (!results.some(existing => existing.substring(0, 100) === i.content.substring(0, 100))) {
+            // If RPC doesn't support list, and we have a list, we might need a different approach 
+            // but for now let's assume we can filter client-side or we'll update SQL later.
+            // If match_rag_chunks only takes single string, we use null for multi-folder and filter results.
+
+            if (data && data.length > 0) {
+                // Client-side folder filtering if we searched "all" (folder_id = null)
+                const filtered = Array.isArray(folders)
+                    ? data.filter((item: any) => folders.includes(item.folder_id))
+                    : data;
+
+                filtered.forEach((i: any) => {
+                    if (results.length < 5 && !results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
                         results.push(i.content);
                     }
                 });
             }
         }
 
-        if (results.length > 0) {
-            console.log('[RAG] Total results:', results.length);
-            return results.slice(0, 3).join("\n\n");  // Max 3 results
-        } else {
-            // SECONDARY FALLBACK: Simple text search (fail-safe for demo)
-            console.log('[RAG] Vector search failed, trying keyword fallback...');
-
-            // Extract potential agency name or subject
-            const keywords = ['Provident', 'Agency', 'Auro', 'Real Estate'];
-            const foundKeyword = keywords.find(k => query.toLowerCase().includes(k.toLowerCase()));
-
-            if (foundKeyword) {
-                const { data: textData } = await supabase
-                    .from('knowledge_base')
-                    .select('content')
-                    .ilike('content', `%${foundKeyword}%`)
-                    .limit(2);
-
-                if (textData && textData.length > 0) {
-                    console.log(`[RAG] Found ${textData.length} results via keyword search for: ${foundKeyword}`);
-                    return textData.map(i => i.content).join("\n\n");
-                }
-            }
-
-            return "No relevant information found in knowledge base.";
+        // Final Fallback: Search everything for this client
+        if (results.length === 0) {
+            const { data: allData } = await supabase.rpc('match_rag_chunks', {
+                query_embedding: embedding,
+                match_threshold: 0.3,
+                match_count: 5,
+                filter_client_id: clientId,
+                filter_folder_id: null
+            });
+            if (allData) results = allData.map((i: any) => i.content);
         }
+
+        if (results.length > 0) {
+            return results.slice(0, 3).join("\n\n");
+        }
+
+        // Keyword fallback
+        const keywords = ['Provident', 'Agency', 'Auro', 'Real Estate'];
+        const foundKeyword = keywords.find(k => query.toLowerCase().includes(k.toLowerCase()));
+
+        if (foundKeyword) {
+            const { data: textData } = await supabase
+                .from('knowledge_base')
+                .select('content')
+                .ilike('content', `%${foundKeyword}%`)
+                .limit(2);
+
+            if (textData && textData.length > 0) {
+                return textData.map(i => i.content).join("\n\n");
+            }
+        }
+
+        return "No specific details found in the knowledge base, but I'd be happy to have an agent discuss this with you directly.";
     } catch (e: any) {
         console.error('[RAG] Exception:', e.message);
         return "Error searching knowledge base.";
@@ -688,7 +703,7 @@ TONE & STRUCTURE:
                     }
 
                     if (query) {
-                        toolResult = await queryRAG(query, tenant.rag_client_id);
+                        toolResult = await queryRAG(query, tenant);
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);

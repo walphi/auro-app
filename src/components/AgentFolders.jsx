@@ -19,9 +19,21 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PU
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const AgentFolders = () => {
-    const [folders, setFolders] = useState([]);
-    const [activeFolder, setActiveFolder] = useState(null);
+const AgentFolders = ({ currentTenant }) => {
+    // Standardized Folder Mapping
+    const STANDARD_FOLDERS = [
+        { id: 'projects', name: 'Project Details', icon: Folder },
+        { id: 'brand', name: 'Brand Identity', icon: Zap },
+        { id: 'campaigns', name: 'Campaigns & Offers', icon: Globe },
+        { id: 'market_reports', name: 'Market Reports', icon: FileText },
+        { id: 'faqs', name: 'FAQs', icon: MessageSquare },
+        { id: 'sops', name: 'SOPs', icon: ListTodo },
+        { id: 'website', name: 'Website Content', icon: Globe },
+        { id: 'hot_topics', name: 'Hot Topics', icon: Zap }
+    ];
+
+    const [folders, setFolders] = useState(STANDARD_FOLDERS);
+    const [activeFolder, setActiveFolder] = useState(STANDARD_FOLDERS[0]);
     const [knowledgeBase, setKnowledgeBase] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, indexing, complete
@@ -43,45 +55,28 @@ const AgentFolders = () => {
     }, [activeFolder]);
 
     const fetchFolders = async () => {
-        try {
-            const { data, error } = await supabase.from('projects').select('*');
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                setFolders(data);
-                setActiveFolder(data[0]);
-            } else {
-                // Create a default folder if none exists
-                const { data: newFolder, error: createError } = await supabase
-                    .from('projects')
-                    .insert({ name: 'General Knowledge', status: 'Active' })
-                    .select()
-                    .single();
-
-                if (newFolder) {
-                    setFolders([newFolder]);
-                    setActiveFolder(newFolder);
-                }
-            }
-        } catch (err) {
-            console.error("Error fetching folders:", err);
-        } finally {
-            setIsLoading(false);
-        }
+        // Now using STANDARD_FOLDERS, but we could fetch custom ones if needed
+        setFolders(STANDARD_FOLDERS);
+        setIsLoading(false);
     };
 
-    const fetchKnowledgeBase = async (projectId) => {
+    const fetchKnowledgeBase = async (folderId) => {
         try {
             const { data, error } = await supabase
                 .from('knowledge_base')
                 .select('*')
-                .eq('project_id', projectId)
+                .eq('project_id', folderId)
                 .order('created_at', { ascending: false });
+
+            // Filter by tenant if metadata contains it
+            const filteredData = data.filter(doc =>
+                !doc.metadata?.tenant_id || String(doc.metadata.tenant_id) === String(currentTenant?.id || 1)
+            );
 
             if (error) throw error;
 
             // Map to UI format
-            const formattedDocs = data.map(doc => ({
+            const formattedDocs = filteredData.map(doc => ({
                 id: doc.id,
                 type: doc.type,
                 name: doc.source_name,
@@ -173,10 +168,12 @@ const AgentFolders = () => {
             }
 
             // Send extracted text to server
-            const response = await axios.post('/api/v1/client/demo/rag/upload_text', {
+            const response = await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/upload_text`, {
                 text: textContent,
                 filename: filename,
-                project_id: activeFolder.id
+                folder_id: activeFolder.id,
+                tenant_id: currentTenant?.id || 1,
+                client_id: currentTenant?.rag_client_id || 'demo'
             });
 
             setIndexingProgress(100);
@@ -198,9 +195,11 @@ const AgentFolders = () => {
         setIndexingProgress(20);
 
         try {
-            await axios.post('/api/v1/client/demo/rag/add_url', {
+            await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/add_url`, {
                 url: urlInput,
-                project_id: activeFolder.id
+                folder_id: 'website',
+                tenant_id: currentTenant?.id || 1,
+                client_id: currentTenant?.rag_client_id || 'demo'
             });
 
             setIndexingProgress(100);
@@ -220,9 +219,11 @@ const AgentFolders = () => {
         if (!hotTopicInput || !activeFolder) return;
 
         try {
-            await axios.post('/api/v1/client/demo/rag/set_context', {
+            await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/set_context`, {
                 context: hotTopicInput,
-                project_id: activeFolder.id
+                folder_id: 'hot_topics',
+                tenant_id: currentTenant?.id || 1,
+                client_id: currentTenant?.rag_client_id || 'demo'
             });
 
             setHotTopicInput('');
@@ -240,7 +241,7 @@ const AgentFolders = () => {
 
         try {
             // Call Backend API to delete (bypasses RLS)
-            await axios.post('/api/v1/client/demo/rag/delete_source', {
+            await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/delete_source`, {
                 id: sourceId
             });
 

@@ -40,47 +40,88 @@ const supabase = createClient(
 const VAPI_SECRET = process.env.VAPI_SECRET;
 
 // RAG Query with Vapi Priority Boost - prioritizes voice patterns over static uploads
-async function queryRAGForVoice(query: string, clientId: string = 'demo'): Promise<string> {
+async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: string | string[]): Promise<string> {
     try {
-        console.log('[VAPI-LLM RAG] Querying with voice priority:', query);
+        const clientId = tenant.rag_client_id || 'demo';
+        console.log(`[VAPI-LLM RAG] Querying client: ${clientId}, folder: ${filterFolderId}, query: "${query}"`);
+
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
         const embResult = await embedModel.embedContent(query);
         const embedding = embResult.embedding.values;
 
-        // Use weighted search with voice pattern priorities
-        const { data: weightedData, error: weightedError } = await supabase.rpc('match_rag_chunks_weighted', {
-            query_embedding: embedding,
-            match_threshold: 0.3,
-            match_count: 5,
-            filter_client_id: clientId,
-            filter_folder_id: null,
-            // Prioritize voice patterns: conversation_learning, winning_script, hot_topic
-            filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload'],
-            weight_outcome_correlation: 1.5, // Boost successful patterns
-            weight_feedback: 1.2,             // Boost user-approved chunks
-            weight_conversion: 1.5            // Boost high-conversion content
-        });
+        // Hierarchical Search Strategy (Voice Optimized)
+        const searchSteps = [];
+        const lowerQuery = query.toLowerCase();
 
-        if (!weightedError && weightedData && weightedData.length > 0) {
-            console.log(`[VAPI-LLM RAG] Weighted search returned ${weightedData.length} results`);
-            return weightedData.map((i: any) => i.content).slice(0, 3).join("\n\n");
+        // Priority 1: Specific Folder if requested
+        if (filterFolderId) {
+            searchSteps.push(filterFolderId);
+        } else {
+            // Priority 2: Hot Topics (Urgent Promos/Offers)
+            if (/promo|offer|discount|urgent|exclusive|deal|limited/i.test(lowerQuery)) {
+                searchSteps.push('hot_topics');
+            }
+
+            // Priority 3: Winning Scripts & Conversation Patterns (Voice Priority)
+            searchSteps.push('conversation_learning');
+
+            // Priority 4: Agency Knowledge (SOPs/FAQs)
+            if (/how|sop|process|procedure|policy|faq|question|answer|agency/i.test(lowerQuery)) {
+                searchSteps.push(['faqs', 'sops']);
+            }
+
+            // Priority 5: Real Estate / Project Details
+            searchSteps.push(['projects', 'website', 'market_reports']);
         }
 
-        // Fallback to standard search if weighted function not yet deployed
-        console.log('[VAPI-LLM RAG] Weighted search unavailable, falling back to standard');
-        const { data: ragData, error: ragError } = await supabase.rpc('match_rag_chunks', {
-            query_embedding: embedding,
-            match_threshold: 0.3,
-            match_count: 5,
-            filter_client_id: clientId,
-            filter_folder_id: null
-        });
+        let results: string[] = [];
 
-        if (!ragError && ragData && ragData.length > 0) {
-            return ragData.map((i: any) => i.content).slice(0, 3).join("\n\n");
+        // Execute searches in order
+        for (const folders of searchSteps) {
+            if (results.length >= 3) break;
+
+            const { data } = await supabase.rpc('match_rag_chunks_weighted', {
+                query_embedding: embedding,
+                match_threshold: 0.35,
+                match_count: 5,
+                filter_client_id: clientId,
+                filter_folder_id: Array.isArray(folders) ? null : folders,
+                filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload'],
+                weight_outcome_correlation: 1.5,
+                weight_feedback: 1.2,
+                weight_conversion: 1.5
+            });
+
+            if (data && data.length > 0) {
+                const filtered = Array.isArray(folders)
+                    ? data.filter((item: any) => folders.includes(item.folder_id))
+                    : data;
+
+                filtered.forEach((i: any) => {
+                    if (results.length < 5 && !results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
+                        results.push(i.content);
+                    }
+                });
+            }
         }
 
-        return "No relevant information found.";
+        // Fallback to standard search if weighted/hierarchical found nothing
+        if (results.length === 0) {
+            const { data: ragData } = await supabase.rpc('match_rag_chunks', {
+                query_embedding: embedding,
+                match_threshold: 0.3,
+                match_count: 5,
+                filter_client_id: clientId,
+                filter_folder_id: null
+            });
+            if (ragData) results = ragData.map((i: any) => i.content);
+        }
+
+        if (results.length > 0) {
+            return results.slice(0, 3).join("\n\n");
+        }
+
+        return "I'm checking our knowledge base, but I'll have a human specialist confirm the exact details for you.";
     } catch (e: any) {
         console.error('[VAPI-LLM RAG] Error:', e.message);
         return "Error searching knowledge base.";
@@ -344,7 +385,7 @@ RULES & BEHAVIOR:
                     // Handle RAG query with voice priority
                     const query = (call.args as any).query;
                     if (query) {
-                        const ragResult = await queryRAGForVoice(query, tenant.rag_client_id);
+                        const ragResult = await queryRAGForVoice(query, tenant);
                         console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
                     }
                 } else if (call.name === 'OFFPLAN_BOOKING') {

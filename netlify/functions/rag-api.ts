@@ -35,15 +35,24 @@ export const handler: Handler = async (event) => {
         let folderId = 'default';
         let metadata: any = {};
 
+        const body = JSON.parse(event.body || '{}');
+        const reqTenantId = body.tenant_id;
+        const reqClientId = body.client_id || clientId; // Fallback to URL segment
+
+        // Pass through metadata
+        metadata = {
+            ...(body.metadata || {}),
+            tenant_id: reqTenantId,
+            client_id: reqClientId
+        };
+
         // Parse request based on action
         if (action === 'upload_text') {
-            const body = JSON.parse(event.body || '{}');
             content = body.text || '';
             filename = body.filename || 'Untitled';
             type = 'file';
-            folderId = body.project_id || 'default';
+            folderId = body.folder_id || body.project_id || 'projects';
         } else if (action === 'delete_source') {
-            const body = JSON.parse(event.body || '{}');
             const sourceId = body.id;
             if (!sourceId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing ID' }) };
 
@@ -57,13 +66,14 @@ export const handler: Handler = async (event) => {
             await supabase.from('rag_chunks').delete().eq('document_id', sourceId);
             return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Deleted' }) };
         } else if (action === 'add_url') {
-            const body = JSON.parse(event.body || '{}');
             const url = body.url;
-            folderId = body.project_id || 'default';
+            folderId = 'website';
 
             if (!url) {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing URL' }) };
             }
+
+            metadata.source_url = url;
 
             // Fetch URL with 8 second timeout
             const controller = new AbortController();
@@ -166,14 +176,13 @@ export const handler: Handler = async (event) => {
             }
 
             type = 'url';
-            metadata = { source_url: url };
+            // metadata already contains source_url from above
         } else if (action === 'set_context') {
-            const body = JSON.parse(event.body || '{}');
             content = body.context || '';
             filename = 'Hot Topic Context';
             type = 'hot_topic';
-            folderId = body.project_id || 'default';
-            metadata = { priority: 'high' };
+            folderId = 'hot_topics';
+            metadata.priority = 'high';
         } else {
             return { statusCode: 404, headers, body: JSON.stringify({ error: 'Unknown action' }) };
         }
@@ -192,7 +201,7 @@ export const handler: Handler = async (event) => {
                 type,
                 source_name: filename,
                 content: content.substring(0, 5000),
-                metadata: { ...metadata, client_id: clientId },
+                metadata: metadata,
                 relevance_score: type === 'hot_topic' ? 10.0 : 1.0
             })
             .select('id')
