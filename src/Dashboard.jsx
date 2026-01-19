@@ -39,6 +39,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser } from '@clerk/clerk-react';
 import AgentFolders from './components/AgentFolders';
+import TenantAdmin from './components/TenantAdmin';
 
 // Utils
 function cn(...inputs) {
@@ -81,7 +82,8 @@ const Sidebar = ({ activeView, setActiveView }) => {
         { icon: Users, label: 'Leads', view: 'leads' },
         { icon: MessageSquare, label: 'Messages', view: 'messages' },
         { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
-        { icon: Folder, label: 'Agent Folders', view: 'agent-folders' }
+        { icon: Folder, label: 'Agent Folders', view: 'agent-folders' },
+        { icon: Settings, label: 'Tenant Admin', view: 'tenant-admin' }
     ];
 
     return (
@@ -1088,6 +1090,8 @@ function CRMApp() {
                 return <CalendarView />;
             case 'agent-folders':
                 return <AgentFolders currentTenant={currentTenant} />;
+            case 'tenant-admin':
+                return <TenantAdmin currentTenant={currentTenant} />;
             case 'messages':
                 return (
                     <MessagesView
