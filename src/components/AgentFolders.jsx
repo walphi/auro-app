@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Folder, FileText, Globe, Zap, Upload, Plus, Trash2,
     RefreshCw, CheckCircle2, Search, AlertCircle, ChevronDown,
-    Cpu, Database, ArrowRight
+    Cpu, Database, ArrowRight, MessageSquare, ListTodo
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { clsx } from 'clsx';
