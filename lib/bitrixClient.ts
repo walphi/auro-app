@@ -24,9 +24,9 @@ export interface BitrixLead {
  * @returns Promise with lead data
  */
 export async function getLeadById(leadId: string, customWebhookUrl?: string): Promise<BitrixLead> {
-    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL;
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL || process.env.BITRIX_PROVIENDENT_WEBHOOK_URL;
     if (!webhookUrl) {
-        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL env)');
+        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL / BITRIX_PROVIENDENT_WEBHOOK_URL env)');
     }
 
     console.log(`[BitrixClient] Fetching lead ${leadId} from Bitrix24 using ${webhookUrl.substring(0, 30)}...`);
@@ -58,9 +58,9 @@ export async function getLeadById(leadId: string, customWebhookUrl?: string): Pr
  * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  */
 export async function updateLead(leadId: string, fields: Record<string, any>, customWebhookUrl?: string): Promise<void> {
-    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL;
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL || process.env.BITRIX_PROVIENDENT_WEBHOOK_URL;
     if (!webhookUrl) {
-        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL env)');
+        throw new Error('Bitrix Webhook URL is not defined (checked argument and BITRIX_WEBHOOK_URL / BITRIX_PROVIENDENT_WEBHOOK_URL env)');
     }
 
     console.log(`[BitrixClient] Updating lead ${leadId} in Bitrix24 using ${webhookUrl.substring(0, 30)}...`);
