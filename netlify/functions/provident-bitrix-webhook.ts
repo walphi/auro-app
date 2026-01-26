@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { getLeadById } from '../../lib/bitrixClient';
+import { getLeadById, addLeadComment } from '../../lib/bitrixClient';
 import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
 
 /**
@@ -94,6 +94,12 @@ export const handler: Handler = async (event, context) => {
         }
 
         // 7. Success response
+        try {
+            await addLeadComment(leadId, `AURO - status: Test from Auro\nStaging write-back OK for lead ${leadId}`);
+        } catch (commentError: any) {
+            console.error(`[Webhook] Failed to add comment for lead ${leadId}:`, commentError.message);
+        }
+
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },

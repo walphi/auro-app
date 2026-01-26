@@ -85,3 +85,39 @@ export async function updateLead(leadId: string, fields: Record<string, any>, cu
         throw error;
     }
 }
+
+/**
+ * Adds a comment to the lead's timeline in Bitrix24
+ * @param entityId The ID of the lead
+ * @param comment The comment text to add
+ * @returns Promise with the API response data
+ */
+export async function addLeadComment(entityId: string, comment: string) {
+    const baseUrl = process.env.BITRIX_WEBHOOK_URL || process.env.BITRIX_PROVIENDENT_WEBHOOK_URL;
+    if (!baseUrl) {
+        throw new Error('Bitrix Webhook URL is not defined');
+    }
+
+    const url = `${baseUrl}/crm.timeline.comment.add.json`;
+
+    const body = {
+        fields: {
+            ENTITY_ID: entityId,
+            ENTITY_TYPE: 'lead',
+            COMMENT: comment,
+            AUTHOR_ID: 1
+        }
+    };
+
+    try {
+        const response = await axios.post(url, body);
+        console.log('[BitrixClient] Add comment response:', response.data);
+        return response.data;
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to add comment to lead ${entityId}:`, error.message);
+        if (error.response?.data) {
+            console.error(`[BitrixClient] Error details:`, JSON.stringify(error.response.data));
+        }
+        throw error;
+    }
+}
