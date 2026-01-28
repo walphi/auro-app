@@ -103,7 +103,9 @@ export const handler: Handler = async (event) => {
                         metadata: {
                             chunk_index: chunk.index,
                             folder: folder_id,
-                            is_sync: true
+                            source_name: filename || (folder_id === 'agency_history' ? 'Agency Summary' : 'Campaign Details'),
+                            is_sync: true,
+                            ...chunk.metadata
                         }
                     });
 
