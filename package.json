@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "vite build && cd sites && npm install && npm run build",
     "preview": "vite preview",
-    "start": "netlify dev"
+    "start": "netlify dev",
+    "ingest:history": "npx tsx scripts/ingest_history.ts",
+    "ingest:campaign": "npx tsx scripts/ingest_campaign.ts"
   },
   "dependencies": {
     "@calcom/embed-react": "^1.5.3",

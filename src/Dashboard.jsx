@@ -40,6 +40,7 @@ import { twMerge } from 'tailwind-merge';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser } from '@clerk/clerk-react';
 import AgentFolders from './components/AgentFolders';
 import TenantAdmin from './components/TenantAdmin';
+import KnowledgeBaseAdmin from './components/KnowledgeBaseAdmin';
 
 // Utils
 function cn(...inputs) {
@@ -82,6 +83,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
         { icon: Users, label: 'Leads', view: 'leads' },
         { icon: MessageSquare, label: 'Messages', view: 'messages' },
         { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
+        { icon: Book, label: 'Knowledge Base', view: 'knowledge' },
         { icon: Folder, label: 'Agent Folders', view: 'agent-folders' },
         { icon: Settings, label: 'Tenant Admin', view: 'tenant-admin' }
     ];
@@ -1101,6 +1103,8 @@ function CRMApp() {
                         onSendMessage={handleSendMessage}
                     />
                 );
+            case 'knowledge':
+                return <KnowledgeBaseAdmin tenantId={currentTenant?.id} />;
             case 'leads':
             default:
                 return (

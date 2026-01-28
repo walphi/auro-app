@@ -105,12 +105,12 @@ function detectTopic(text: string): string {
 /**
  * Check if chunk is too similar to existing chunks (deduplication)
  */
-async function isDuplicate(embedding: number[], clientId: string): Promise<boolean> {
+async function isDuplicate(embedding: number[], tenantId: number): Promise<boolean> {
     const { data } = await supabase.rpc('match_rag_chunks', {
         query_embedding: embedding,
         match_threshold: 0.9, // High threshold = very similar
         match_count: 1,
-        filter_client_id: clientId,
+        filter_tenant_id: tenantId,
         filter_folder_id: null
     });
 
@@ -132,9 +132,9 @@ async function generateEmbedding(text: string): Promise<number[]> {
 async function processLeadConversation(
     leadId: string,
     outcome: string,
-    clientId: string = 'demo'
+    tenantId: number = 1
 ): Promise<number> {
-    console.log(`[RAG-LEARN] Processing lead ${leadId} with outcome: ${outcome}`);
+    console.log(`[RAG-LEARN] Processing lead ${leadId} with outcome: ${outcome}, tenant: ${tenantId}`);
 
     // Fetch recent messages for this lead
     const { data: messages, error } = await supabase
@@ -162,7 +162,7 @@ async function processLeadConversation(
             const embedding = await generateEmbedding(chunk.content);
 
             // Check for duplicates
-            if (await isDuplicate(embedding, clientId)) {
+            if (await isDuplicate(embedding, tenantId)) {
                 console.log(`[RAG-LEARN] Skipping duplicate chunk`);
                 continue;
             }
@@ -173,7 +173,8 @@ async function processLeadConversation(
                 .from('rag_chunks')
                 .insert({
                     chunk_id: chunkId,
-                    client_id: clientId,
+                    client_id: tenantId === 1 ? 'provident' : `tenant_${tenantId}`,
+                    tenant_id: tenantId,
                     folder_id: 'conversation_learning',
                     document_id: `lead_${leadId}`,
                     content: chunk.content,
@@ -208,18 +209,22 @@ async function processLeadConversation(
 /**
  * Batch process unprocessed conversations (hourly cron pattern)
  */
-async function batchProcessConversations(clientId: string = 'demo'): Promise<{ processed: number; chunks: number }> {
-    console.log(`[RAG-LEARN] Starting batch processing for client: ${clientId}`);
+async function batchProcessConversations(targetTenantId?: number): Promise<{ processed: number; chunks: number }> {
+    console.log(`[RAG-LEARN] Starting batch processing${targetTenantId ? ` for tenant: ${targetTenantId}` : ''}`);
 
-    // Find leads with recent call-ended or qualified status that haven't been processed
-    // Using a simple approach: look for leads updated in the last hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-    const { data: leads, error } = await supabase
+    let query = supabase
         .from('leads')
-        .select('id, status, booking_status')
+        .select('id, status, booking_status, tenant_id')
         .or(`booking_status.eq.confirmed,status.eq.Qualified`)
         .gte('updated_at', oneHourAgo);
+
+    if (targetTenantId) {
+        query = query.eq('tenant_id', targetTenantId);
+    }
+
+    const { data: leads, error } = await query;
 
     if (error || !leads) {
         console.log(`[RAG-LEARN] No leads to process:`, error?.message);
@@ -231,7 +236,7 @@ async function batchProcessConversations(clientId: string = 'demo'): Promise<{ p
         const outcome = lead.booking_status === 'confirmed' ? 'booking_confirmed' :
             lead.status === 'Qualified' ? 'qualified' : 'unknown';
 
-        const chunks = await processLeadConversation(lead.id, outcome, clientId);
+        const chunks = await processLeadConversation(lead.id, outcome, lead.tenant_id || 1);
         totalChunks += chunks;
     }
 
@@ -276,7 +281,7 @@ export const handler: Handler = async (event) => {
     try {
         const body = JSON.parse(event.body || '{}');
         const action = body.action || 'batch';
-        const clientId = body.client_id || 'demo';
+        const tenantId = body.tenant_id ? parseInt(body.tenant_id.toString()) : (body.client_id === 'demo' ? 1 : null);
 
         if (action === 'process_lead') {
             // Process single lead (triggered from vapi.ts or whatsapp.ts)
@@ -285,7 +290,7 @@ export const handler: Handler = async (event) => {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing lead_id' }) };
             }
 
-            const chunks = await processLeadConversation(lead_id, outcome || 'unknown', clientId);
+            const chunks = await processLeadConversation(lead_id, outcome || 'unknown', tenantId || 1);
 
             return {
                 statusCode: 200,
@@ -298,7 +303,7 @@ export const handler: Handler = async (event) => {
             };
         } else if (action === 'batch') {
             // Batch process (hourly cron)
-            const result = await batchProcessConversations(clientId);
+            const result = await batchProcessConversations(tenantId || undefined);
 
             return {
                 statusCode: 200,

@@ -22,15 +22,19 @@ export const handler: Handler = async (event, context) => {
     };
 
     try {
-        const { query, project_id, folder_id, top_k = 5 } = JSON.parse(event.body || '{}');
+        const { query, tenant_id, project_id, folder_id, top_k = 5 } = JSON.parse(event.body || '{}');
         const targetFolderId = folder_id || project_id;
 
         if (!query) {
             return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing query' }) };
         }
 
-        const finalClientId = clientId || 'demo';
-        console.log(`[RAG Query] client=${finalClientId}, folder=${targetFolderId}, query="${query}"`);
+        const finalTenantId = tenant_id || (clientId === 'demo' ? 1 : null);
+        if (!finalTenantId) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing tenant_id' }) };
+        }
+
+        console.log(`[RAG Query] tenant=${finalTenantId}, folder=${targetFolderId}, query="${query}"`);
 
         // 1. Generate Embedding using Gemini REST API
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -68,7 +72,7 @@ export const handler: Handler = async (event, context) => {
             query_embedding: embedding,
             match_threshold: 0.4,
             match_count: top_k,
-            filter_client_id: finalClientId,
+            filter_tenant_id: finalTenantId,
             filter_folder_id: targetFolderId
         });
 

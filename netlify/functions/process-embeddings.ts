@@ -44,7 +44,7 @@ async function processEmbeddings(limit: number = 5): Promise<{ processed: number
     // Get entries without embeddings (where embedding is NULL)
     const { data: entries, error: fetchError } = await supabase
         .from('knowledge_base')
-        .select('id, project_id, content, source_name, type, metadata')
+        .select('id, project_id, content, source_name, type, metadata, tenant_id')
         .is('embedding', null)
         .limit(limit);
 
@@ -86,7 +86,7 @@ async function processEmbeddings(limit: number = 5): Promise<{ processed: number
 
             // Also insert into rag_chunks for MCP compatibility
             const clientId = entry.metadata?.client_id || 'demo';
-            const tenantId = entry.metadata?.tenant_id;
+            const tenantId = entry.tenant_id || entry.metadata?.tenant_id || (clientId === 'demo' ? 1 : null);
             const folderId = entry.project_id || 'projects';
 
             const { error: chunkError } = await supabase

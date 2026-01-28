@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
+import { chunkText, generateEmbedding } from '../../lib/rag/rag-utils';
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -36,8 +37,12 @@ export const handler: Handler = async (event) => {
         let metadata: any = {};
 
         const body = JSON.parse(event.body || '{}');
-        const reqTenantId = body.tenant_id;
+        const reqTenantId = body.tenant_id || (clientId === 'demo' ? 1 : null);
         const reqClientId = body.client_id || clientId; // Fallback to URL segment
+
+        if (!reqTenantId) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing tenant_id' }) };
+        }
 
         // Pass through metadata
         metadata = {
@@ -201,6 +206,7 @@ export const handler: Handler = async (event) => {
             .from('knowledge_base')
             .insert({
                 project_id: folderId,
+                tenant_id: reqTenantId,
                 type,
                 source_name: filename,
                 content: content.substring(0, 5000),
@@ -213,6 +219,38 @@ export const handler: Handler = async (event) => {
         if (error) {
             console.error('[RAG] DB error:', error.message);
             return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
+        }
+
+        console.log(`[RAG] Knowledge base success: ${data.id}. Starting instant indexing...`);
+
+        // Instant Indexing into rag_chunks
+        try {
+            const chunks = chunkText(content.substring(0, 10000));
+            console.log(`[RAG] Generated ${chunks.length} chunks`);
+
+            for (const chunk of chunks) {
+                const embedding = await generateEmbedding(chunk.text);
+                if (embedding) {
+                    await supabase.from('rag_chunks').upsert({
+                        chunk_id: `${reqClientId}:${folderId}:${data.id}:${chunk.index}`,
+                        client_id: reqClientId,
+                        tenant_id: reqTenantId,
+                        folder_id: folderId,
+                        document_id: data.id,
+                        content: chunk.text,
+                        embedding: embedding,
+                        metadata: {
+                            ...metadata,
+                            source_name: filename,
+                            type: type,
+                            chunk_index: chunk.index
+                        }
+                    });
+                }
+            }
+            console.log(`[RAG] Instant indexing complete for ${data.id}`);
+        } catch (indexErr: any) {
+            console.error('[RAG] Instant indexing failed (non-fatal):', indexErr.message);
         }
 
         console.log(`[RAG] Success: ${data.id}`);
