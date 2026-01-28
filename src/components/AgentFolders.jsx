@@ -22,14 +22,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const AgentFolders = ({ currentTenant }) => {
     // Standardized Folder Mapping
     const STANDARD_FOLDERS = [
-        { id: 'projects', name: 'Project Details', icon: Folder },
-        { id: 'brand', name: 'Brand Identity', icon: Zap },
-        { id: 'campaigns', name: 'Campaigns & Offers', icon: Globe },
-        { id: 'market_reports', name: 'Market Reports', icon: FileText },
-        { id: 'faqs', name: 'FAQs', icon: MessageSquare },
-        { id: 'sops', name: 'SOPs', icon: ListTodo },
-        { id: 'website', name: 'Website Content', icon: Globe },
-        { id: 'hot_topics', name: 'Hot Topics', icon: Zap }
+        { id: 'campaign_docs', name: 'Project Specifics', icon: Folder, description: 'Documents for specific buildings (State B)' },
+        { id: 'agency_history', name: 'Agency Identity', icon: Zap, description: 'Provident history, values, and trust-builders' },
+        { id: 'hot_topics', name: 'Urgent Offers', icon: Zap, description: 'High-priority temporary promos' },
+        { id: 'faqs', name: 'General FAQs', icon: MessageSquare, description: 'Common Dubai real estate questions' },
+        { id: 'sops', name: 'Internal SOPs', icon: ListTodo, description: 'Sales processes and agency rules' },
+        { id: 'market_reports', name: 'Market Reports', icon: FileText, description: 'Latest stats for investment advice' },
+        { id: 'website', name: 'Website Crawls', icon: Globe, description: 'Sync content from existing urls' }
     ];
 
     const [folders, setFolders] = useState(STANDARD_FOLDERS);
@@ -43,6 +42,8 @@ const AgentFolders = ({ currentTenant }) => {
     const [urlInput, setUrlInput] = useState('');
     const [hotTopicInput, setHotTopicInput] = useState('');
     const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
+    const [allProjects, setAllProjects] = useState([]);
+    const [selectedProjectId, setSelectedProjectId] = useState('none');
 
     useEffect(() => {
         fetchFolders();
@@ -50,23 +51,34 @@ const AgentFolders = ({ currentTenant }) => {
 
     useEffect(() => {
         if (activeFolder) {
-            fetchKnowledgeBase(activeFolder.id);
+            fetchKnowledgeBase(activeFolder.id, selectedProjectId === 'none' ? null : selectedProjectId);
         }
-    }, [activeFolder]);
+    }, [activeFolder, selectedProjectId]);
 
     const fetchFolders = async () => {
-        // Now using STANDARD_FOLDERS, but we could fetch custom ones if needed
+        // Fetch real projects for the project dropdown
+        const { data } = await supabase.from('projects').select('id, name').eq('tenant_id', currentTenant?.id || 1);
+        if (data) setAllProjects(data);
+
         setFolders(STANDARD_FOLDERS);
         setIsLoading(false);
     };
 
-    const fetchKnowledgeBase = async (folderId) => {
+    const fetchKnowledgeBase = async (folderId, projectId = null) => {
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('knowledge_base')
                 .select('*')
-                .eq('project_id', folderId)
-                .order('created_at', { ascending: false });
+                .eq('folder_id', folderId);
+
+            if (projectId) {
+                query = query.eq('project_id', projectId);
+            } else {
+                // If no project selected, show tenant-wide docs for this folder
+                query = query.eq('tenant_id', currentTenant?.id || 1);
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             // Filter by tenant if metadata contains it
             const filteredData = data.filter(doc =>
@@ -168,12 +180,12 @@ const AgentFolders = ({ currentTenant }) => {
             }
 
             // Send extracted text to server
-            const response = await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/upload_text`, {
+            const response = await axios.post('/.netlify/functions/rag-ingest', {
                 text: textContent,
                 filename: filename,
                 folder_id: activeFolder.id,
                 tenant_id: currentTenant?.id || 1,
-                client_id: currentTenant?.rag_client_id || 'demo'
+                project_id: selectedProjectId === 'none' ? null : selectedProjectId
             });
 
             setIndexingProgress(100);
@@ -269,39 +281,61 @@ const AgentFolders = ({ currentTenant }) => {
                     <p className="text-slate-400 text-sm">Manage RAG knowledge bases for your AI agents.</p>
                 </div>
 
-                {/* Folder Selector */}
-                <div className="relative">
-                    <button
-                        onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
-                        className="glass-button px-4 py-2.5 rounded-xl text-white flex items-center gap-3 min-w-[240px] justify-between group"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="font-semibold">{activeFolder?.name || 'Select Folder'}</span>
-                        </div>
-                        <ChevronDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-                    </button>
-
-                    {isFolderDropdownOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-full glass-panel rounded-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                            {folders.map(f => (
-                                <button
-                                    key={f.id}
-                                    onClick={() => { setActiveFolder(f); setIsFolderDropdownOpen(false); }}
-                                    className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors flex justify-between items-center"
-                                >
-                                    {f.name}
-                                    {activeFolder?.id === f.id && <CheckCircle2 size={14} className="text-indigo-400" />}
-                                </button>
-                            ))}
-                            <div className="border-t border-white/5 p-2">
-                                <button
-                                    onClick={handleCreateFolder}
-                                    className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors"
-                                >
-                                    <Plus size={14} /> New Folder
-                                </button>
+                <div className="flex flex-wrap items-center gap-4">
+                    {/* Folder Selector */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
+                            className="glass-button px-4 py-2.5 rounded-xl text-white flex items-center gap-3 min-w-[240px] justify-between group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="font-semibold">{activeFolder?.name || 'Select Folder'}</span>
                             </div>
+                            <ChevronDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                        </button>
+
+                        {isFolderDropdownOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-full glass-panel rounded-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                {folders.map(f => (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => { setActiveFolder(f); setIsFolderDropdownOpen(false); }}
+                                        className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors flex justify-between items-center"
+                                    >
+                                        <div>
+                                            <p className="font-medium">{f.name}</p>
+                                            <p className="text-[10px] text-slate-500">{f.description}</p>
+                                        </div>
+                                        {activeFolder?.id === f.id && <CheckCircle2 size={14} className="text-indigo-400" />}
+                                    </button>
+                                ))}
+                                <div className="border-t border-white/5 p-2">
+                                    <button
+                                        onClick={handleCreateFolder}
+                                        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors"
+                                    >
+                                        <Plus size={14} /> New Folder
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Project Selector (State B Context) */}
+                    {(activeFolder?.id === 'campaign_docs' || activeFolder?.id === 'projects') && (
+                        <div className="relative animate-in fade-in slide-in-from-left-4">
+                            <select
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                className="glass-button px-4 py-2.5 rounded-xl text-white outline-none min-w-[200px] border-amber-500/30"
+                            >
+                                <option value="none" className="bg-[#030305]">All Projects / General</option>
+                                {allProjects.map(p => (
+                                    <option key={p.id} value={p.id} className="bg-[#030305]">{p.name}</option>
+                                ))}
+                            </select>
+                            <p className="absolute -bottom-5 right-0 text-[9px] text-amber-500 font-bold uppercase tracking-tighter">Project Context (State B)</p>
                         </div>
                     )}
                 </div>
@@ -477,7 +511,7 @@ const AgentFolders = ({ currentTenant }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

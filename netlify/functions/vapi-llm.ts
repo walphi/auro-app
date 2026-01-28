@@ -5,6 +5,7 @@ import { getListingById } from "./listings-helper";
 import axios from "axios";
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
+import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
 
 async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
     try {
@@ -40,10 +41,10 @@ const supabase = createClient(
 const VAPI_SECRET = process.env.VAPI_SECRET;
 
 // RAG Query with Vapi Priority Boost - prioritizes voice patterns over static uploads
-async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: string | string[]): Promise<string> {
+async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: string | string[], projectId?: string): Promise<string> {
     try {
         const clientId = tenant.rag_client_id || 'demo';
-        console.log(`[VAPI-LLM RAG] Querying client: ${clientId}, folder: ${filterFolderId}, query: "${query}"`);
+        console.log(`[VAPI-LLM RAG] Querying client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
         const embResult = await embedModel.embedContent(query);
@@ -57,6 +58,18 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
         if (filterFolderId) {
             searchSteps.push(filterFolderId);
         } else {
+            // STATE B: If we have a project context, always try campaign_docs first
+            if (projectId) {
+                searchSteps.push('campaign_docs');
+            }
+
+            // Priority 0: Agency History (High Priority if brand-related or pre-project)
+            const isBrandQuery = /provident|history|founded|ceo|office|founder|opened|since|awards|loai|who (are|is)|about/i.test(lowerQuery);
+
+            if (isBrandQuery || (tenant.id === 1 && !projectId)) {
+                searchSteps.push('agency_history');
+            }
+
             // Priority 2: Hot Topics (Urgent Promos/Offers)
             if (/promo|offer|discount|urgent|exclusive|deal|limited/i.test(lowerQuery)) {
                 searchSteps.push('hot_topics');
@@ -72,6 +85,11 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
 
             // Priority 5: Real Estate / Project Details
             searchSteps.push(['projects', 'website', 'market_reports']);
+
+            // Fallback for Tenant 1
+            if (tenant.id === 1 && searchSteps.indexOf('agency_history') === -1) {
+                searchSteps.push('agency_history');
+            }
         }
 
         let results: string[] = [];
@@ -80,12 +98,17 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
         for (const folders of searchSteps) {
             if (results.length >= 3) break;
 
+            // Use tuned parameters
+            const isCampaign = folders === 'campaign_docs' || (Array.isArray(folders) && folders.includes('campaign_docs'));
+            const config = isCampaign ? RAG_CONFIG.campaign : RAG_CONFIG.agency;
+
             const { data } = await supabase.rpc('match_rag_chunks_weighted', {
                 query_embedding: embedding,
-                match_threshold: 0.35,
-                match_count: 5,
-                filter_client_id: clientId,
+                match_threshold: config.matchThreshold,
+                match_count: config.matchCount,
+                filter_tenant_id: tenant.id,
                 filter_folder_id: Array.isArray(folders) ? null : folders,
+                filter_project_id: projectId || null,
                 filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload'],
                 weight_outcome_correlation: 1.5,
                 weight_feedback: 1.2,
@@ -109,19 +132,43 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
         if (results.length === 0) {
             const { data: ragData } = await supabase.rpc('match_rag_chunks', {
                 query_embedding: embedding,
-                match_threshold: 0.3,
+                match_threshold: RAG_CONFIG.campaign.matchThreshold,
                 match_count: 5,
-                filter_client_id: clientId,
-                filter_folder_id: null
+                filter_tenant_id: tenant.id,
+                filter_folder_id: null,
+                filter_project_id: projectId || null
             });
             if (ragData) results = ragData.map((i: any) => i.content);
         }
 
         if (results.length > 0) {
-            return results.slice(0, 3).join("\n\n");
+            const context = results.slice(0, 3).join("\n---\n");
+            const lowerQuery = query.toLowerCase();
+            const isObjection = /expensive|high|wait|think|better|cheap|reason|why|scam|trust|risk|objection/i.test(lowerQuery);
+
+            if (isObjection) {
+                // Fetch brand context for trust in objections
+                const { data: brandData } = await supabase.rpc('match_rag_chunks', {
+                    query_embedding: embedding,
+                    match_threshold: RAG_CONFIG.agency.matchThreshold,
+                    match_count: 2,
+                    filter_tenant_id: tenant.id,
+                    filter_folder_id: 'agency_history'
+                });
+                const brandContext = brandData?.map((i: any) => i.content).join('\n') || "A premier real estate agency in Dubai.";
+                return PROMPT_TEMPLATES.OBJECTION_HANDLING(query, context, brandContext);
+            }
+
+            // If query is brand-related and we have results
+            const isBrandQuery = /provident|who are|about|history|background|founded|ceo|founder|awards/i.test(lowerQuery);
+            if (isBrandQuery) {
+                return PROMPT_TEMPLATES.AGENCY_AUTHORITY(query, context);
+            }
+
+            return PROMPT_TEMPLATES.FACTUAL_RESPONSE(query, context);
         }
 
-        return "I'm checking our knowledge base, but I'll have a human specialist confirm the exact details for you.";
+        return "I couldn't find specific details on that in my knowledge base. Let me look it up or connect you with an expert.";
     } catch (e: any) {
         console.error('[VAPI-LLM RAG] Error:', e.message);
         return "Error searching knowledge base.";
@@ -208,7 +255,9 @@ CURRENT LEAD PROFILE:
 - Location: ${leadData.location || "Unknown"}
 - Property Type: ${leadData.property_type || "Unknown"}
 - Timeline: ${leadData.timeline || "Unknown"}
+- Financing: ${leadData.financing || "Unknown"}
 - Interest: ${leadData.current_listing_id || "None"}
+- Project context: ${leadData.project_id || "None"}
 - Booking: ${leadData.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";
 
@@ -385,7 +434,8 @@ RULES & BEHAVIOR:
                     // Handle RAG query with voice priority
                     const query = (call.args as any).query;
                     if (query) {
-                        const ragResult = await queryRAGForVoice(query, tenant);
+                        const currentProjectId = leadData?.project_id || body.call?.extra?.project_id || body.call?.metadata?.project_id;
+                        const ragResult = await queryRAGForVoice(query, tenant, undefined, currentProjectId);
                         console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
                     }
                 } else if (call.name === 'OFFPLAN_BOOKING') {

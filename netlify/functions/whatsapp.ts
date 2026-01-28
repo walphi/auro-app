@@ -1,5 +1,5 @@
 import { Handler } from "@netlify/functions";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, Content } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
@@ -7,6 +7,7 @@ import { searchListings, formatListingsResponse, SearchFilters, PropertyListing,
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
+import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -16,10 +17,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // RAG Query Helper - prioritizes specific folders based on intent
-async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string | string[]): Promise<string> {
+// RAG Query Helper - prioritizes specific folders based on intent
+async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string | string[], projectId?: string): Promise<string> {
     try {
         const clientId = tenant.rag_client_id || 'demo';
-        console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, query: "${query}"`);
+        console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
         const embResult = await embedModel.embedContent(query);
@@ -27,13 +29,25 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
         // Hierarchical Search Strategy
         const searchSteps = [];
+        const lowerQuery = query.toLowerCase();
 
         // 1. If folder specified, search it first
         if (filterFolderId) {
             searchSteps.push(filterFolderId);
         } else {
             // 2. Default Hierarchy based on query content
-            const lowerQuery = query.toLowerCase();
+
+            // STATE B: If we have a project context, always try campaign_docs first
+            if (projectId) {
+                searchSteps.push('campaign_docs');
+            }
+
+            // Priority 0: Agency History (High Priority if brand-related or pre-project)
+            const isBrandQuery = /provident|history|founded|ceo|office|founder|opened|since|awards|loai|who (are|is)|about/i.test(lowerQuery);
+
+            if (isBrandQuery || (tenant.id === 1 && !projectId)) {
+                searchSteps.push('agency_history');
+            }
 
             // Priority 1: Hot Topics (Urgent Promos/Offers)
             if (/promo|offer|discount|urgent|exclusive|deal|limited/i.test(lowerQuery)) {
@@ -47,6 +61,11 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
             // Priority 3: Real Estate / Project Details
             searchSteps.push(['projects', 'website', 'market_reports']);
+
+            // Fallback: If nothing else matched and it's Tenant 1, try history
+            if (tenant.id === 1 && searchSteps.indexOf('agency_history') === -1) {
+                searchSteps.push('agency_history');
+            }
         }
 
         let results: string[] = [];
@@ -56,12 +75,18 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             if (results.length >= 3) break;
 
             console.log(`[RAG] Step: Searching folders ${JSON.stringify(folders)}...`);
+
+            // Use tuned parameters based on whether this is a campaign/project folder or general agency folder
+            const isCampaign = folders === 'campaign_docs' || (Array.isArray(folders) && folders.includes('campaign_docs'));
+            const config = isCampaign ? RAG_CONFIG.campaign : RAG_CONFIG.agency;
+
             const { data } = await supabase.rpc('match_rag_chunks', {
                 query_embedding: embedding,
-                match_threshold: 0.35,
-                match_count: 5,
-                filter_client_id: clientId,
-                filter_folder_id: Array.isArray(folders) ? null : folders // Simple RPC might not support list
+                match_threshold: config.matchThreshold,
+                match_count: config.matchCount,
+                filter_tenant_id: tenant.id,
+                filter_folder_id: Array.isArray(folders) ? null : folders,
+                filter_project_id: projectId || null
             });
 
             // If RPC doesn't support list, and we have a list, we might need a different approach 
@@ -86,16 +111,40 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         if (results.length === 0) {
             const { data: allData } = await supabase.rpc('match_rag_chunks', {
                 query_embedding: embedding,
-                match_threshold: 0.3,
+                match_threshold: RAG_CONFIG.campaign.matchThreshold, // Use lower campaign threshold for fallback
                 match_count: 5,
-                filter_client_id: clientId,
-                filter_folder_id: null
+                filter_tenant_id: tenant.id,
+                filter_folder_id: null,
+                filter_project_id: projectId || null
             });
             if (allData) results = allData.map((i: any) => i.content);
         }
 
         if (results.length > 0) {
-            return results.slice(0, 3).join("\n\n");
+            const context = results.slice(0, 3).join("\n---\n");
+            const lowerQuery = query.toLowerCase();
+            const isObjection = /expensive|high|wait|think|better|cheap|reason|why|scam|trust|risk|objection/i.test(lowerQuery);
+
+            if (isObjection) {
+                // Fetch brand context for trust in objections
+                const { data: brandData } = await supabase.rpc('match_rag_chunks', {
+                    query_embedding: embedding,
+                    match_threshold: RAG_CONFIG.agency.matchThreshold,
+                    match_count: 2,
+                    filter_tenant_id: tenant.id,
+                    filter_folder_id: 'agency_history'
+                });
+                const brandContext = brandData?.map((i: any) => i.content).join('\n') || "A premier real estate agency in Dubai.";
+                return PROMPT_TEMPLATES.OBJECTION_HANDLING(query, context, brandContext);
+            }
+
+            // If query is brand-related and we have results (likely from agency_history)
+            const isBrandQuery = /provident|who are|about|history|background|founded|ceo|founder|awards/i.test(lowerQuery);
+            if (isBrandQuery) {
+                return PROMPT_TEMPLATES.AGENCY_AUTHORITY(query, context);
+            }
+
+            return PROMPT_TEMPLATES.FACTUAL_RESPONSE(query, context);
         }
 
         // Keyword fallback
@@ -216,6 +265,7 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
                     location: context?.location || "",
                     current_listing_id: context?.current_listing_id || "",
                     property_type: context?.property_type || "",
+                    financing: context?.financing || "",
                     email: context?.email || ""
                 }
             }
@@ -360,7 +410,9 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Location: ${location}
 - Property Type: ${existingLead.property_type || "Unknown"}
 - Timeline: ${timeline}
+- Financing: ${existingLead.financing || "Unknown"}
 - Currently interested in Property ID: ${currentListingId}
+- Current Project context: ${existingLead.project_id || "None"}
 - Last image index shown: ${lastImageIndex}
 `;
                 leadSource = existingLead.custom_field_1 || leadSource;
@@ -628,7 +680,31 @@ TONE & STRUCTURE:
             tools: tools as any
         });
 
-        const chat = model.startChat();
+        // --- GEMINI: History & Session Management ---
+        // Since Netlify is stateless, we fetch the last 3 messages from Supabase to maintain flow
+        let chatHistory: Content[] = [];
+        if (leadId) {
+            const { data: recentMessages } = await supabase
+                .from('messages')
+                .select('sender, content, type')
+                .eq('lead_id', leadId)
+                .order('created_at', { ascending: false })
+                .limit(4); // Last 4 interactions (including the one just logged)
+
+            if (recentMessages) {
+                // Reverse to chronological and map to Gemini format
+                chatHistory = recentMessages.reverse().map(m => ({
+                    role: m.sender === 'Lead' ? 'user' : 'model',
+                    parts: [{ text: m.content }]
+                }));
+                // Remove the one we just added to promptContent to avoid duplication if it's already in history
+                // (Though usually we add history, then sendMessage for the NEW one)
+            }
+        }
+
+        const chat = model.startChat({
+            history: chatHistory.length > 1 ? chatHistory.slice(0, -1) : [] // History excludes current incoming
+        });
 
         // Check if voice note or text
         let promptContent: any = userMessage;
@@ -703,7 +779,13 @@ TONE & STRUCTURE:
                     }
 
                     if (query) {
-                        toolResult = await queryRAG(query, tenant);
+                        // Fetch the latest project_id from the lead session to provide RAG context
+                        let currentProjectId = null;
+                        if (leadId) {
+                            const { data: lead } = await supabase.from('leads').select('project_id').eq('id', leadId).single();
+                            currentProjectId = lead?.project_id;
+                        }
+                        toolResult = await queryRAG(query, tenant, undefined, currentProjectId);
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
@@ -716,9 +798,8 @@ TONE & STRUCTURE:
                             toolResult = "Error updating lead.";
                         } else {
                             console.log("Lead updated successfully.");
-                            // Explicitly tell the model what it now knows to prevent loops
-                            const updatedFields = Object.keys(args).join(", ");
-                            toolResult = `Lead updated successfully. You now KNOW the following details: ${updatedFields}. DO NOT ask for them again. Proceed to the next missing qualification criteria.`;
+                            // Inform the model of the success and the specific field update
+                            toolResult = `System: Lead profile updated successfully (${Object.keys(args).join(", ")}). Please acknowledge this update briefly in your next response if natural, and continue helping the user.`;
                         }
                     } else {
                         toolResult = "No lead ID found.";
