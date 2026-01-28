@@ -82,55 +82,62 @@ export const handler: Handler = async (event) => {
 
         if (kbError) throw new Error(`KB Error: ${kbError.message}`);
 
-        // 4. Chunk & Embed
+        // 4. Chunk & Embed in parallel
         const chunks = chunkText(fullContent);
-        console.log(`[RAG-Ingest] Created ${chunks.length} chunks for doc: ${docId}`);
-        let insertedCount = 0;
+        console.log(`[RAG-Ingest] Created ${chunks.length} chunks for doc: ${docId}. Generating embeddings in parallel...`);
 
-        for (const chunk of chunks) {
-            console.log(`[RAG-Ingest] Embedding chunk ${chunk.index}...`);
-            const embedding = await generateEmbedding(chunk.text);
+        const chunkPromises = chunks.map(async (chunk) => {
+            try {
+                const embedding = await generateEmbedding(chunk.text);
+                if (!embedding) return null;
 
-            if (embedding) {
-                console.log(`[RAG-Ingest] Inserting chunk ${chunk.index} to DB...`);
-                const { error: chunkError } = await supabase
-                    .from('rag_chunks')
-                    .insert({
-                        chunk_id: `sync:${docId}:${chunk.index}`,
-                        tenant_id: tenant_id,
-                        client_id: tenant_id === 1 ? 'provident' : `tenant_${tenant_id}`,
-                        project_id: project_id || null,
-                        folder_id: folder_id,
-                        document_id: docId,
-                        content: chunk.text,
-                        embedding: embedding,
-                        metadata: {
-                            chunk_index: chunk.index,
-                            folder: folder_id,
-                            source_name: filename || (folder_id === 'agency_history' ? 'Agency Summary' : 'Campaign Details'),
-                            is_sync: true,
-                            ...chunk.metadata
-                        }
-                    });
+                return {
+                    chunk_id: `sync:${docId}:${chunk.index}`,
+                    tenant_id: tenant_id,
+                    client_id: tenant_id === 1 ? 'provident' : `tenant_${tenant_id}`,
+                    project_id: project_id || null,
+                    folder_id: folder_id,
+                    document_id: docId,
+                    content: chunk.text,
+                    embedding: embedding,
+                    metadata: {
+                        chunk_index: chunk.index,
+                        folder: folder_id,
+                        source_name: filename || (folder_id === 'agency_history' ? 'Agency Summary' : 'Campaign Details'),
+                        is_sync: true,
+                        ...chunk.metadata
+                    }
+                };
+            } catch (err) {
+                console.error(`[RAG-Ingest] Error processing chunk ${chunk.index}:`, err);
+                return null;
+            }
+        });
 
-                if (chunkError) {
-                    console.error(`[RAG-Ingest] Chunk DB Error:`, chunkError.message);
-                } else {
-                    insertedCount++;
-                }
-            } else {
-                console.warn(`[RAG-Ingest] Failed to generate embedding for chunk ${chunk.index}`);
+        const results = await Promise.all(chunkPromises);
+        const validChunks = results.filter((c): c is NonNullable<typeof c> => c !== null);
+
+        console.log(`[RAG-Ingest] Generated ${validChunks.length}/${chunks.length} embeddings. Batch inserting to DB...`);
+
+        if (validChunks.length > 0) {
+            const { error: batchError } = await supabase
+                .from('rag_chunks')
+                .insert(validChunks);
+
+            if (batchError) {
+                console.error(`[RAG-Ingest] Batch Insert Error:`, batchError.message);
+                throw new Error(`Batch Insert Error: ${batchError.message}`);
             }
         }
 
-        console.log(`[RAG-Ingest] Ingestion complete. Success: ${insertedCount}/${chunks.length}`);
+        console.log(`[RAG-Ingest] Ingestion complete. Success: ${validChunks.length}/${chunks.length}`);
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 success: true,
-                message: `Successfully synced ${insertedCount} chunks to ${folder_id}`,
+                message: `Successfully synced ${validChunks.length} chunks to ${folder_id}`,
                 doc_id: docId
             })
         };
