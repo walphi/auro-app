@@ -32,7 +32,8 @@ import {
     MoreHorizontal,
     Paperclip,
     Folder,
-    Aperture
+    Aperture,
+    Book
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import { clsx } from 'clsx';
