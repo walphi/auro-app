@@ -178,8 +178,15 @@ const AgentFolders = ({ currentTenant }) => {
                     setIndexingProgress(70);
 
                     // Check if content is meaningful (> 500 chars of actual content)
-                    // If not, this PDF likely contains images instead of text - use OCR
-                    const meaningfulContent = textContent.replace(/\s+/g, ' ').replace(/https?:\/\/\S+/g, '').trim();
+                    // We remove URLs, "Learn More" phrases, and whitespace to see if there's real text
+                    const meaningfulContent = textContent
+                        .replace(/\s+/g, ' ') // Collapse whitespace
+                        .replace(/https?:\/\/\S+/g, '') // Remove URLs
+                        .replace(/Learn More/gi, '') // Remove repeated "Learn More" spam
+                        .replace(/www\.providentestate\.com/gi, '')
+                        .trim();
+
+                    console.log(`[AgentFolders] Extracted text length: ${textContent.length}, Meaningful: ${meaningfulContent.length}`);
 
                     if (meaningfulContent.length < 500) {
                         console.log('[AgentFolders] Standard extraction returned minimal content, attempting OCR...');
