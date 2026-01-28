@@ -161,7 +161,9 @@ const AgentFolders = ({ currentTenant }) => {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
 
                     const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    // Copy buffer for PDF.js to prevent detaching the original if needed
+                    const pdfBuffer = arrayBuffer.slice(0);
+                    const pdf = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
 
                     setIndexingProgress(50);
 
@@ -193,12 +195,19 @@ const AgentFolders = ({ currentTenant }) => {
                         setUploadStatus('indexing');
                         setIndexingProgress(40);
 
-                        // Convert file to base64 for OCR API
-                        const base64 = btoa(
-                            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-                        );
+                        // Use a more efficient and robust way to get base64
+                        const getBase64 = (file) => new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload = () => {
+                                const base64String = reader.result.split(',')[1];
+                                resolve(base64String);
+                            };
+                            reader.onerror = error => reject(error);
+                        });
 
                         try {
+                            const base64 = await getBase64(file);
                             const ocrResponse = await axios.post('/.netlify/functions/pdf-ocr', {
                                 pdf_base64: base64,
                                 filename: filename
