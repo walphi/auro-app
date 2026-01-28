@@ -297,8 +297,8 @@ const AgentFolders = ({ currentTenant }) => {
         if (!confirm('Are you sure you want to delete this source?')) return;
 
         try {
-            // Call Backend API to delete (bypasses RLS)
-            await axios.post(`/api/v1/client/${currentTenant?.rag_client_id || 'demo'}/rag/delete_source`, {
+            // Call the rag-delete Netlify function
+            await axios.post('/.netlify/functions/rag-delete', {
                 id: sourceId
             });
 
