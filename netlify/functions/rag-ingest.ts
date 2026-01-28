@@ -36,16 +36,28 @@ export const handler: Handler = async (event) => {
         console.log(`[RAG-Ingest] Ingesting for Tenant: ${tenant_id}, Project: ${project_id}, Folder: ${folder_id}, Mode: ${isDashboardSync ? 'Dashboard' : 'Text'}`);
 
         // 1. Transactional ID logic
-        // Dashboard syncs (Identity/Campaign fields) overwrite a single stable ID
-        // Direct text/file uploads create unique IDs
-        const docId = isDashboardSync
-            ? (project_id ? `project_kb_${project_id}` : `tenant_kb_${tenant_id}`)
-            : `file_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        // Dashboard syncs (Identity/Campaign fields) use stable lookup via folder/tenant/project, not by ID
+        // Direct text/file uploads create unique UUIDs
+        const docId = crypto.randomUUID();
+        const lookupKey = isDashboardSync
+            ? (project_id ? `project_${project_id}_${folder_id}` : `tenant_${tenant_id}_${folder_id}`)
+            : null;
 
-        if (isDashboardSync) {
-            // Cleanup existing dashboard-scoped content
-            await supabase.from('knowledge_base').delete().eq('id', docId);
-            await supabase.from('rag_chunks').delete().eq('document_id', docId);
+        if (isDashboardSync && lookupKey) {
+            // Cleanup existing dashboard-scoped content by folder/tenant
+            const { data: existing } = await supabase
+                .from('knowledge_base')
+                .select('id')
+                .eq('tenant_id', tenant_id)
+                .eq('folder_id', folder_id)
+                .eq('project_id', project_id || null)
+                .limit(1)
+                .maybeSingle();
+
+            if (existing?.id) {
+                await supabase.from('rag_chunks').delete().eq('document_id', existing.id);
+                await supabase.from('knowledge_base').delete().eq('id', existing.id);
+            }
         }
 
         // 2. Synthesize sections into a single corpus
