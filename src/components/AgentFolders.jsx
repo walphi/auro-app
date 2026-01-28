@@ -208,20 +208,41 @@ const AgentFolders = ({ currentTenant }) => {
 
                         try {
                             const base64 = await getBase64(file);
-                            const ocrResponse = await axios.post('/.netlify/functions/pdf-ocr', {
+                            // Step 1: Start the job
+                            const startResponse = await axios.post('/.netlify/functions/pdf-ocr', {
                                 pdf_base64: base64,
-                                filename: filename
-                            }, { timeout: 120000 }); // 2 minute timeout for OCR
+                                filename: filename,
+                                action: 'start'
+                            });
 
-                            if (ocrResponse.data?.text && ocrResponse.data.text.length > meaningfulContent.length) {
-                                console.log(`[AgentFolders] OCR successful: ${ocrResponse.data.text.length} chars`);
-                                textContent = ocrResponse.data.text;
-                            } else {
-                                console.warn('[AgentFolders] OCR returned less content than standard extraction');
+                            if (startResponse.data?.job_id) {
+                                const jobId = startResponse.data.job_id;
+                                console.log(`[AgentFolders] OCR job started: ${jobId}`);
+
+                                // Step 2: Poll for results
+                                let attempts = 0;
+                                const maxAttempts = 20; // 20 * 3s = 60s
+                                while (attempts < maxAttempts) {
+                                    attempts++;
+                                    setIndexingProgress(40 + Math.floor((attempts / maxAttempts) * 25));
+                                    await new Promise(r => setTimeout(r, 3000));
+
+                                    const checkResponse = await axios.post('/.netlify/functions/pdf-ocr', {
+                                        job_id: jobId,
+                                        action: 'check'
+                                    });
+
+                                    if (checkResponse.data?.status === 'SUCCESS') {
+                                        console.log(`[AgentFolders] OCR successful: ${checkResponse.data.text.length} chars`);
+                                        textContent = checkResponse.data.text;
+                                        break;
+                                    } else if (checkResponse.data?.status === 'ERROR') {
+                                        throw new Error('LlamaParse reported an error');
+                                    }
+                                }
                             }
                         } catch (ocrError) {
                             console.warn('[AgentFolders] OCR fallback failed:', ocrError.message);
-                            // Continue with whatever we got from standard extraction
                         }
 
                         setIndexingProgress(70);

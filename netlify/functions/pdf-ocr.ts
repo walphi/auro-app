@@ -26,33 +26,50 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-        // Get base64-encoded PDF from request body
         const body = JSON.parse(event.body || '{}');
-        const { pdf_base64, filename } = body;
+        const { pdf_base64, filename, job_id, action = 'start' } = body;
 
-        if (!pdf_base64) {
+        // Mode 1: Polling for existing job
+        if (action === 'check' && job_id) {
+            console.log(`[PDF-OCR] Checking status for job: ${job_id}`);
+            const statusResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${job_id}`, {
+                headers: { 'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}` }
+            });
+
+            if (!statusResponse.ok) throw new Error(`Status check failed: ${statusResponse.status}`);
+            const statusResult = await statusResponse.json();
+
+            if (statusResult.status === 'SUCCESS') {
+                const resultResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${job_id}/result/text`, {
+                    headers: { 'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}` }
+                });
+                const resultData = await resultResponse.json();
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({ status: 'SUCCESS', text: resultData.text || resultData.markdown || '' })
+                };
+            }
+
             return {
-                statusCode: 400,
+                statusCode: 200,
                 headers,
-                body: JSON.stringify({ error: 'Missing pdf_base64 in request body' })
+                body: JSON.stringify({ status: statusResult.status || 'PENDING' })
             };
         }
 
-        console.log(`[PDF-OCR] Processing file: ${filename || 'unknown.pdf'}`);
+        // Mode 2: Start new job
+        if (!pdf_base64) {
+            return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing pdf_base64' }) };
+        }
 
-        // Convert base64 to buffer
         const pdfBuffer = Buffer.from(pdf_base64, 'base64');
-
-        // Upload to LlamaParse
         const formData = new FormData();
         formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), filename || 'document.pdf');
 
-        // Step 1: Upload the PDF
         const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}`
-            },
+            headers: { 'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}` },
             body: formData
         });
 
@@ -62,65 +79,10 @@ export const handler: Handler = async (event) => {
         }
 
         const uploadResult = await uploadResponse.json();
-        const jobId = uploadResult.id;
-        console.log(`[PDF-OCR] Upload successful, job ID: ${jobId}`);
-
-        // Step 2: Poll for completion
-        let attempts = 0;
-        const maxAttempts = 30; // 30 * 2s = 60 seconds max wait
-        let parsedText = '';
-
-        while (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-            attempts++;
-
-            const statusResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}`, {
-                headers: {
-                    'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}`
-                }
-            });
-
-            if (!statusResponse.ok) {
-                console.error(`[PDF-OCR] Status check failed: ${statusResponse.status}`);
-                continue;
-            }
-
-            const statusResult = await statusResponse.json();
-            console.log(`[PDF-OCR] Job status: ${statusResult.status} (attempt ${attempts})`);
-
-            if (statusResult.status === 'SUCCESS') {
-                // Step 3: Get the parsed result
-                const resultResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/text`, {
-                    headers: {
-                        'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}`
-                    }
-                });
-
-                if (resultResponse.ok) {
-                    const resultData = await resultResponse.json();
-                    parsedText = resultData.text || resultData.markdown || '';
-                    console.log(`[PDF-OCR] Extraction successful: ${parsedText.length} chars`);
-                    break;
-                }
-            } else if (statusResult.status === 'ERROR') {
-                throw new Error(`LlamaParse job failed: ${statusResult.error || 'Unknown error'}`);
-            }
-            // Otherwise keep polling (PENDING status)
-        }
-
-        if (!parsedText) {
-            throw new Error('PDF parsing timed out or returned empty content');
-        }
-
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({
-                success: true,
-                text: parsedText,
-                filename: filename,
-                chars: parsedText.length
-            })
+            body: JSON.stringify({ success: true, job_id: uploadResult.id })
         };
 
     } catch (error: any) {

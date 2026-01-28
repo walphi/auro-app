@@ -84,11 +84,15 @@ export const handler: Handler = async (event) => {
 
         // 4. Chunk & Embed
         const chunks = chunkText(fullContent);
+        console.log(`[RAG-Ingest] Created ${chunks.length} chunks for doc: ${docId}`);
         let insertedCount = 0;
 
         for (const chunk of chunks) {
+            console.log(`[RAG-Ingest] Embedding chunk ${chunk.index}...`);
             const embedding = await generateEmbedding(chunk.text);
+
             if (embedding) {
+                console.log(`[RAG-Ingest] Inserting chunk ${chunk.index} to DB...`);
                 const { error: chunkError } = await supabase
                     .from('rag_chunks')
                     .insert({
@@ -109,9 +113,17 @@ export const handler: Handler = async (event) => {
                         }
                     });
 
-                if (!chunkError) insertedCount++;
+                if (chunkError) {
+                    console.error(`[RAG-Ingest] Chunk DB Error:`, chunkError.message);
+                } else {
+                    insertedCount++;
+                }
+            } else {
+                console.warn(`[RAG-Ingest] Failed to generate embedding for chunk ${chunk.index}`);
             }
         }
+
+        console.log(`[RAG-Ingest] Ingestion complete. Success: ${insertedCount}/${chunks.length}`);
 
         return {
             statusCode: 200,
