@@ -240,14 +240,14 @@ const AgentFolders = ({ currentTenant }) => {
                                             .replace(/Learn More/gi, '')
                                             .trim();
 
-                                        console.log(`[AgentFolders] OCR finished. New Meaningful length: ${ocrMeaningful.length}`);
+                                        console.log(`[AgentFolders] OCR finished. Result length: ${ocrText.length}, Meaningful: ${ocrMeaningful.length}`);
 
-                                        // Only use OCR if it actually provided more content
-                                        if (ocrMeaningful.length > meaningfulContent.length) {
+                                        // Use OCR if it found at least SOME actual text (not just logos/links)
+                                        if (ocrMeaningful.length > 50) {
                                             textContent = ocrText;
-                                            console.log('[AgentFolders] Using OCR text for better context.');
+                                            console.log('[AgentFolders] Successfully replaced junk links with OCR content.');
                                         } else {
-                                            console.warn('[AgentFolders] OCR result was not better than standard extraction.');
+                                            console.warn('[AgentFolders] OCR finished but resulted in very little text. Keeping standard extraction.');
                                         }
                                         break;
                                     } else if (checkResponse.data?.status === 'ERROR') {

@@ -40,14 +40,32 @@ export const handler: Handler = async (event) => {
             const statusResult = await statusResponse.json();
 
             if (statusResult.status === 'SUCCESS') {
-                const resultResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${job_id}/result/text`, {
+                console.log(`[PDF-OCR] Result Success for job: ${job_id}`);
+                // Try and get markdown first as it's higher quality from LlamaParse
+                const resultResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${job_id}/result/markdown`, {
                     headers: { 'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}` }
                 });
-                const resultData = await resultResponse.json();
+
+                let resultData: any = {};
+                if (resultResponse.ok) {
+                    resultData = await resultResponse.json();
+                    console.log(`[PDF-OCR] Markdown extracted: ${resultData.markdown?.length || 0} chars`);
+                } else {
+                    // Fallback to text
+                    const txtResponse = await fetch(`https://api.cloud.llamaindex.ai/api/parsing/job/${job_id}/result/text`, {
+                        headers: { 'Authorization': `Bearer ${LLAMA_CLOUD_API_KEY}` }
+                    });
+                    resultData = await txtResponse.json();
+                    console.log(`[PDF-OCR] Text extracted: ${resultData.text?.length || 0} chars`);
+                }
+
                 return {
                     statusCode: 200,
                     headers,
-                    body: JSON.stringify({ status: 'SUCCESS', text: resultData.text || resultData.markdown || '' })
+                    body: JSON.stringify({
+                        status: 'SUCCESS',
+                        text: resultData.markdown || resultData.text || ''
+                    })
                 };
             }
 
@@ -65,7 +83,11 @@ export const handler: Handler = async (event) => {
 
         const pdfBuffer = Buffer.from(pdf_base64, 'base64');
         const formData = new FormData();
-        formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), filename || 'document.pdf');
+        // Use a file blob with a specific name and type
+        const fileBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
+        formData.append('file', fileBlob, filename || 'document.pdf');
+
+        console.log(`[PDF-OCR] Starting upload for ${filename || 'document.pdf'} (${pdfBuffer.length} bytes)`);
 
         const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
             method: 'POST',
@@ -75,10 +97,12 @@ export const handler: Handler = async (event) => {
 
         if (!uploadResponse.ok) {
             const errText = await uploadResponse.text();
+            console.error(`[PDF-OCR] Upload failed: ${uploadResponse.status}`, errText);
             throw new Error(`LlamaParse upload failed: ${uploadResponse.status} - ${errText}`);
         }
 
         const uploadResult = await uploadResponse.json();
+        console.log(`[PDF-OCR] Job created: ${uploadResult.id}`);
         return {
             statusCode: 200,
             headers,
