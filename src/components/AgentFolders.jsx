@@ -80,6 +80,17 @@ const AgentFolders = ({ currentTenant }) => {
 
             const { data, error } = await query.order('created_at', { ascending: false });
 
+            if (error) {
+                console.error("Supabase error fetching knowledge base:", error);
+                setKnowledgeBase([]);
+                return;
+            }
+
+            if (!data) {
+                setKnowledgeBase([]);
+                return;
+            }
+
             // Filter by tenant if metadata contains it
             const filteredData = data.filter(doc =>
                 !doc.metadata?.tenant_id || String(doc.metadata.tenant_id) === String(currentTenant?.id || 1)
