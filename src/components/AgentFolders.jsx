@@ -217,14 +217,14 @@ const AgentFolders = ({ currentTenant }) => {
 
                             if (startResponse.data?.job_id) {
                                 const jobId = startResponse.data.job_id;
-                                console.log(`[AgentFolders] OCR job started: ${jobId}`);
+                                console.log(`[AgentFolders] OCR job started: ${jobId}. Waiting for analysis...`);
 
-                                // Step 2: Poll for results
+                                // Step 2: Poll for results (increased to 3 minutes)
                                 let attempts = 0;
-                                const maxAttempts = 20; // 20 * 3s = 60s
+                                const maxAttempts = 60;
                                 while (attempts < maxAttempts) {
                                     attempts++;
-                                    setIndexingProgress(40 + Math.floor((attempts / maxAttempts) * 25));
+                                    setIndexingProgress(40 + Math.floor((attempts / maxAttempts) * 35));
                                     await new Promise(r => setTimeout(r, 3000));
 
                                     const checkResponse = await axios.post('/.netlify/functions/pdf-ocr', {
@@ -233,12 +233,30 @@ const AgentFolders = ({ currentTenant }) => {
                                     });
 
                                     if (checkResponse.data?.status === 'SUCCESS') {
-                                        console.log(`[AgentFolders] OCR successful: ${checkResponse.data.text.length} chars`);
-                                        textContent = checkResponse.data.text;
+                                        const ocrText = checkResponse.data.text;
+                                        const ocrMeaningful = ocrText
+                                            .replace(/\s+/g, ' ')
+                                            .replace(/https?:\/\/\S+/g, '')
+                                            .replace(/Learn More/gi, '')
+                                            .trim();
+
+                                        console.log(`[AgentFolders] OCR finished. New Meaningful length: ${ocrMeaningful.length}`);
+
+                                        // Only use OCR if it actually provided more content
+                                        if (ocrMeaningful.length > meaningfulContent.length) {
+                                            textContent = ocrText;
+                                            console.log('[AgentFolders] Using OCR text for better context.');
+                                        } else {
+                                            console.warn('[AgentFolders] OCR result was not better than standard extraction.');
+                                        }
                                         break;
                                     } else if (checkResponse.data?.status === 'ERROR') {
-                                        throw new Error('LlamaParse reported an error');
+                                        throw new Error(`LlamaParse reported an error: ${checkResponse.data.error || 'Unknown'}`);
                                     }
+                                }
+
+                                if (attempts >= maxAttempts) {
+                                    console.warn('[AgentFolders] OCR polling timed out after 3 minutes.');
                                 }
                             }
                         } catch (ocrError) {
