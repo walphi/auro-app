@@ -87,7 +87,8 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    content: { parts: [{ text: text.substring(0, 4000) }] }
+                    content: { parts: [{ text: text.substring(0, 4000) }] },
+                    output_dimensionality: 768
                 })
             }
         );
