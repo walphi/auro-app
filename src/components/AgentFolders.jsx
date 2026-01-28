@@ -176,6 +176,40 @@ const AgentFolders = ({ currentTenant }) => {
                     textContent = textParts.join('\n\n');
 
                     setIndexingProgress(70);
+
+                    // Check if content is meaningful (> 500 chars of actual content)
+                    // If not, this PDF likely contains images instead of text - use OCR
+                    const meaningfulContent = textContent.replace(/\s+/g, ' ').replace(/https?:\/\/\S+/g, '').trim();
+
+                    if (meaningfulContent.length < 500) {
+                        console.log('[AgentFolders] Standard extraction returned minimal content, attempting OCR...');
+                        setUploadStatus('indexing');
+                        setIndexingProgress(40);
+
+                        // Convert file to base64 for OCR API
+                        const base64 = btoa(
+                            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                        );
+
+                        try {
+                            const ocrResponse = await axios.post('/.netlify/functions/pdf-ocr', {
+                                pdf_base64: base64,
+                                filename: filename
+                            }, { timeout: 120000 }); // 2 minute timeout for OCR
+
+                            if (ocrResponse.data?.text && ocrResponse.data.text.length > meaningfulContent.length) {
+                                console.log(`[AgentFolders] OCR successful: ${ocrResponse.data.text.length} chars`);
+                                textContent = ocrResponse.data.text;
+                            } else {
+                                console.warn('[AgentFolders] OCR returned less content than standard extraction');
+                            }
+                        } catch (ocrError) {
+                            console.warn('[AgentFolders] OCR fallback failed:', ocrError.message);
+                            // Continue with whatever we got from standard extraction
+                        }
+
+                        setIndexingProgress(70);
+                    }
                 } catch (pdfError) {
                     console.error('PDF extraction error:', pdfError);
                     setUploadStatus('idle');
