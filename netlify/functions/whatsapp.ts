@@ -64,7 +64,14 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             }
 
             // Priority 3: Real Estate / Project Details
-            searchSteps.push(['projects', 'website', 'market_reports']);
+            const isBrandedQuery = /branded|residence|investment|yield|report/i.test(lowerQuery);
+            if (isBrandedQuery) {
+                // Elevate market reports and projects for specific searches
+                searchSteps.push(['market_reports', 'projects']);
+                searchSteps.push(['agency_history', 'website']);
+            } else {
+                searchSteps.push(['projects', 'website', 'market_reports']);
+            }
 
             // Fallback: If nothing else matched and it's Tenant 1, try history
             if (tenant.id === 1 && searchSteps.indexOf('agency_history') === -1) {
@@ -98,18 +105,21 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             // If match_rag_chunks only takes single string, we use null for multi-folder and filter results.
 
             if (data && data.length > 0) {
+                console.log(`[RAG] RPC returned ${data.length} matches for folders ${JSON.stringify(folders)}`);
                 // Client-side folder filtering if we searched "all" (folder_id = null)
                 const filtered = Array.isArray(folders)
                     ? data.filter((item: any) => folders.includes(item.folder_id))
                     : data;
 
                 filtered.forEach((i: any) => {
-                    if (results.length < 5 && !results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
+                    if (results.length < 8 && !results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
                         results.push(i.content);
                     }
                 });
             }
         }
+
+        console.log(`[RAG] Total unique chunks collected: ${results.length} for query: "${query}"`);
 
         // Final Fallback: Search everything for this client
         if (results.length === 0) {
@@ -148,6 +158,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
                 return PROMPT_TEMPLATES.AGENCY_AUTHORITY(query, context);
             }
 
+            console.log(`[RAG] Retrieval Success. Found ${results.length} chunks. Context snippet: "${context.substring(0, 150)}..."`);
             return PROMPT_TEMPLATES.FACTUAL_RESPONSE(query, context);
         }
 
@@ -1096,11 +1107,11 @@ Description: ${listing.description || 'No detailed description available.'}
         const escapeXml = (unsafe: string) => {
             return unsafe.replace(/[<>&'"]/g, (c) => {
                 switch (c) {
-                    case '<': return '<';
-                    case '>': return '>';
-                    case '&': return '&';
-                    case "'": return "'";
-                    case '"': return '"';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '&': return '&amp;';
+                    case "'": return '&apos;';
+                    case '"': return '&quot;';
                     default: return c;
                 }
             });
