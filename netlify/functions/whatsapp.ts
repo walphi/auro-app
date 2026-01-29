@@ -542,8 +542,9 @@ BEHAVIOR RULES:
 2. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, or market trends from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN.
 3. MIRROR & QUALIFY: After providing facts from the Knowledge Base, reflect the user's interest and ask 1 qualification question (Budget, Area, Type, Timeline, or Financing).
 4. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
-5. BRANDED RESIDENCES: If asked about branded residences, you MUST search the 'market_reports' folder specifically.
-6. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
+5. BRANDED RESIDENCES & OFF-PLAN: If asked about branded residences or "off-plan" projects, you MUST search the 'market_reports' folder specifically.
+6. PAYMENT PLANS: For any question about "payment plans", "installments", "down payment" or "handover", you MUST use RAG_QUERY_TOOL first.
+7. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
 7. NO HARD-CODING: Never say "Provident" or "Auro" unless using the variable ${tenant.system_prompt_identity}.
 8. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
 `;
@@ -553,11 +554,11 @@ BEHAVIOR RULES:
                 functionDeclarations: [
                     {
                         name: "RAG_QUERY_TOOL",
-                        description: "Search the internal knowledge base for specific factual information about projects, branded residences, market reports, pricing, and payment plans.",
+                        description: "Search the knowledge base for project-specific facts: payment plans (e.g. 50/50, 60/40), ROI estimates, handover dates, down payments, and structural details not found in standard listings.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
-                                query: { type: "STRING", description: "The search query" }
+                                query: { type: "STRING", description: "The search query (e.g. 'Chelsea Residences payment plan')" }
                             },
                             required: ["query"]
                         }
@@ -601,7 +602,7 @@ BEHAVIOR RULES:
                     },
                     {
                         name: "SEARCH_LISTINGS",
-                        description: "Search for property listings based on user criteria. Use this when the user asks about available properties, apartments, villas, or any real estate listings for sale or rent.",
+                        description: "Search for specific property listings for sale or rent. Use this only when the user wants to see available units/apartments. For project-level questions (structure, payment plans), use RAG_QUERY_TOOL.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
