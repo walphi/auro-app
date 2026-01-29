@@ -91,14 +91,24 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             const isCampaign = folders === 'campaign_docs' || (Array.isArray(folders) && folders.includes('campaign_docs'));
             const config = isCampaign ? RAG_CONFIG.campaign : RAG_CONFIG.agency;
 
-            const { data } = await supabase.rpc('match_rag_chunks', {
+            const rpcParams: any = {
                 query_embedding: embedding,
                 match_threshold: config.matchThreshold,
                 match_count: config.matchCount,
                 filter_tenant_id: tenant.id,
-                filter_folder_id: Array.isArray(folders) ? null : folders,
                 filter_project_id: projectId || null
-            });
+            };
+
+            if (Array.isArray(folders)) {
+                rpcParams.filter_folders = folders;
+            } else {
+                rpcParams.filter_folder_id = folders;
+            }
+
+            const { data, error } = await supabase.rpc('match_rag_chunks', rpcParams);
+            if (error) {
+                console.error(`[RAG] RPC Error for folders ${JSON.stringify(folders)}:`, error);
+            }
 
             // If RPC doesn't support list, and we have a list, we might need a different approach 
             // but for now let's assume we can filter client-side or we'll update SQL later.
@@ -324,6 +334,9 @@ const handler: Handler = async (event) => {
         const fromNumber = (body.From as string).replace('whatsapp:', '');
         const toNumber = (body.To as string);
         const host = event.headers.host || "auro-app.netlify.app";
+        // If we are on a custom domain, use it, otherwise fallback to known good netlify URL for media
+        const mediaHost = host.includes('netlify.app') ? host : (process.env.PUBLIC_URL?.replace('https://', '') || host);
+        console.log(`[WhatsApp] Incoming request host: ${host}, mediaHost selection: ${mediaHost}`);
 
         // --- TENANT RESOLUTION ---
         let tenant = await getTenantByTwilioNumber(toNumber);
@@ -955,7 +968,7 @@ Description: ${listing.description || 'No detailed description available.'}
                             const images = Array.isArray(listing.images) ? listing.images : [];
                             const hasImage = requestedIndex === 0 || requestedIndex < images.length;
 
-                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, host);
+                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
                             if (imageUrl && hasImage) {
                                 responseImages.push(imageUrl);
                                 console.log(`[Details] Attaching proxy image (index ${requestedIndex}) for: ${listing.id}`);
@@ -1123,7 +1136,7 @@ Description: ${listing.description || 'No detailed description available.'}
     <Body>${escapeXml(responseText)}</Body>`;
 
         if (isVoiceResponse) {
-            const ttsUrl = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+            const ttsUrl = `https://${mediaHost}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             twiml += `
     <Media>${ttsUrl}</Media>`;
         }
