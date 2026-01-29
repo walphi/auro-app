@@ -325,7 +325,11 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
 const handler: Handler = async (event) => {
     try {
         if (event.httpMethod !== "POST") {
-            return { statusCode: 405, body: "Method Not Allowed" };
+            return {
+                statusCode: 405,
+                body: "Method Not Allowed",
+                headers: { "Content-Type": "text/plain" }
+            };
         }
 
         const body = querystring.parse(event.body || "");
@@ -334,9 +338,10 @@ const handler: Handler = async (event) => {
         const fromNumber = (body.From as string).replace('whatsapp:', '');
         const toNumber = (body.To as string);
         const host = event.headers.host || "auro-app.netlify.app";
-        // If we are on a custom domain, use it, otherwise fallback to known good netlify URL for media
-        const mediaHost = host.includes('netlify.app') ? host : (process.env.PUBLIC_URL?.replace('https://', '') || host);
-        console.log(`[WhatsApp] Incoming request host: ${host}, mediaHost selection: ${mediaHost}`);
+        // CRITICAL: Always use the netlify.app domain for media if available to ensure Twilio deliverability
+        // Twilio often fails to fetch media from custom domains with complex SSL/DNS setups.
+        const mediaHost = "auro-app.netlify.app";
+        console.log(`[WhatsApp] Incoming request host: ${host}, mediaHost (forced for delivery): ${mediaHost}`);
 
         // --- TENANT RESOLUTION ---
         let tenant = await getTenantByTwilioNumber(toNumber);
@@ -533,13 +538,14 @@ Capture these missing details (Ask 1-2 per message MAX):
 5. Financing: Cash vs. Mortgage (and pre-approval status).
 
 BEHAVIOR RULES:
-1. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, or market trends from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN. Do not wait for the next turn.
-2. MIRROR & QUALIFY: After providing facts from the Knowledge Base, reflect the user's interest and ask 1 qualification question (Budget, Area, Type, Timeline, or Financing).
-3. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
-4. BRANDED RESIDENCES: If asked about branded residences, you MUST search the 'market_reports' folder specifically.
-5. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
-6. NO HARD-CODING: Never say "Provident" or "Auro" unless using the variable ${tenant.system_prompt_identity}.
-7. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
+1. GREETING & ORIENTATION: If the user says "Hi", "Hello", or "Hi there", you MUST start with a warm welcome: "Hi! I'm ${tenant.system_prompt_identity}, your luxury property specialist at Provident Real Estate. How can I help you today?" 
+2. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, or market trends from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN.
+3. MIRROR & QUALIFY: After providing facts from the Knowledge Base, reflect the user's interest and ask 1 qualification question (Budget, Area, Type, Timeline, or Financing).
+4. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
+5. BRANDED RESIDENCES: If asked about branded residences, you MUST search the 'market_reports' folder specifically.
+6. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
+7. NO HARD-CODING: Never say "Provident" or "Auro" unless using the variable ${tenant.system_prompt_identity}.
+8. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
 `;
 
         const tools = [
@@ -1160,12 +1166,18 @@ Description: ${listing.description || 'No detailed description available.'}
         return {
             statusCode: 200,
             body: twiml.trim(),
-            headers: { "Content-Type": "text/xml" }
+            headers: {
+                "Content-Type": "text/xml"
+            }
         };
 
     } catch (error) {
         console.error("Error processing WhatsApp request:", error);
-        return { statusCode: 500, body: "<Response><Message>Error processing request</Message></Response>", headers: { "Content-Type": "text/xml" } };
+        return {
+            statusCode: 500,
+            body: "<Response><Message>Error processing request</Message></Response>",
+            headers: { "Content-Type": "text/xml" }
+        };
     }
 };
 
