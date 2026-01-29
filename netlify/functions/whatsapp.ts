@@ -23,6 +23,15 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         const clientId = tenant.rag_client_id || 'demo';
         console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
+        // Smart Routing Logic
+        let effectiveFolderId = filterFolderId;
+        const lowerQ = query.toLowerCase();
+
+        if (!effectiveFolderId && (lowerQ.includes('market') || lowerQ.includes('report') || lowerQ.includes('outlook') || lowerQ.includes('trend'))) {
+            effectiveFolderId = 'market_reports';
+            console.log(`[RAG] Auto-routing to Market Reports for query: "${query}"`);
+        }
+
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
         const embResult = await embedModel.embedContent({
             content: { role: 'user', parts: [{ text: query }] },
@@ -35,9 +44,9 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         const searchSteps = [];
         const lowerQuery = query.toLowerCase();
 
-        // 1. If folder specified, search it first
-        if (filterFolderId) {
-            searchSteps.push(filterFolderId);
+        // 1. If folder specified (or auto-routed), search it first
+        if (effectiveFolderId) {
+            searchSteps.push(effectiveFolderId);
         } else {
             // 2. Default Hierarchy based on query content
 
