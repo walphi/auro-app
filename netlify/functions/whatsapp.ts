@@ -508,7 +508,7 @@ BEHAVIOR RULES:
 1. DRIP FEED: Ask at most 1–2 questions per message. Never interrogate.
 2. MIRROR PRINCIPLE: Always reflect the user's input before asking the next question (e.g., "Since you're looking for a 3M budget in the Marina...").
 3. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
-4. TRUST INJECTION: Use RAG to share 1 specific market insight or capital appreciation stat while qualifying.
+4. TRUST INJECTION: Use RAG_QUERY_TOOL to share specific insights, pricing, or capital appreciation stats from the Knowledge Base. For queries about 'branded residences', you MUST search the 'market_reports' folder.
 5. INTENT PRIORITY: If the user explicitly asks for a call ("Call me", "Can someone call?"), PRIORITIZE calling them immediately using 'INITIATE_CALL'. Skip remaining questions.
 6. NO HARD-CODING: Never say "Provident" or "Auro". Use "${tenant.system_prompt_identity}".
 7. COMMITMENT: Once 3+ points are qualified, offer a 30-min consultation via "${tenant.booking_cal_link}" or a voice call check.
@@ -524,7 +524,7 @@ TONE & STRUCTURE:
                 functionDeclarations: [
                     {
                         name: "RAG_QUERY_TOOL",
-                        description: "Search the knowledge base for specific factual information about projects, pricing, payment plans, etc.",
+                        description: "Search the internal knowledge base for specific factual information about projects, branded residences, market reports, pricing, and payment plans.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
@@ -681,7 +681,7 @@ TONE & STRUCTURE:
         });
 
         // --- GEMINI: History & Session Management ---
-        // Since Netlify is stateless, we fetch the last 3 messages from Supabase to maintain flow
+        // Since Netlify is stateless, we fetch the last interaction from Supabase to maintain flow
         let chatHistory: Content[] = [];
         if (leadId) {
             const { data: recentMessages } = await supabase
@@ -689,21 +689,41 @@ TONE & STRUCTURE:
                 .select('sender, content, type')
                 .eq('lead_id', leadId)
                 .order('created_at', { ascending: false })
-                .limit(4); // Last 4 interactions (including the one just logged)
+                .limit(6);
 
-            if (recentMessages) {
-                // Reverse to chronological and map to Gemini format
-                chatHistory = recentMessages.reverse().map(m => ({
+            if (recentMessages && recentMessages.length > 0) {
+                // The most recent message (index 0) is the one we just saved above.
+                // We want to skip it in history because it's the 'current message' passed to sendMessage.
+                const historyRaw = recentMessages.slice(1).reverse();
+
+                let geminiHistory = historyRaw.map(m => ({
                     role: m.sender === 'Lead' ? 'user' : 'model',
-                    parts: [{ text: m.content }]
+                    parts: [{ text: m.content || "" }]
                 }));
-                // Remove the one we just added to promptContent to avoid duplication if it's already in history
-                // (Though usually we add history, then sendMessage for the NEW one)
+
+                // Gemini Requirement: History MUST start with a 'user' message
+                const firstUserIndex = geminiHistory.findIndex(h => h.role === 'user');
+                if (firstUserIndex !== -1) {
+                    geminiHistory = geminiHistory.slice(firstUserIndex);
+                } else {
+                    geminiHistory = [];
+                }
+
+                // Gemini Requirement: Roles MUST alternate user/model/user
+                const filteredHistory: Content[] = [];
+                let lastRole: string | null = null;
+                for (const msg of geminiHistory) {
+                    if (msg.role !== lastRole) {
+                        filteredHistory.push(msg as Content);
+                        lastRole = msg.role;
+                    }
+                }
+                chatHistory = filteredHistory;
             }
         }
 
         const chat = model.startChat({
-            history: chatHistory.length > 1 ? chatHistory.slice(0, -1) : [] // History excludes current incoming
+            history: chatHistory
         });
 
         // Check if voice note or text
