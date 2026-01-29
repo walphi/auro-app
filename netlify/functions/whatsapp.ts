@@ -24,7 +24,11 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const embResult = await embedModel.embedContent(query);
+        const embResult = await embedModel.embedContent({
+            content: { role: 'user', parts: [{ text: query }] },
+            taskType: 'RETRIEVAL_QUERY' as any,
+            outputDimensionality: 768
+        } as any);
         const embedding = embResult.embedding.values;
 
         // Hierarchical Search Strategy
@@ -505,18 +509,13 @@ Capture these missing details (Ask 1-2 per message MAX):
 5. Financing: Cash vs. Mortgage (and pre-approval status).
 
 BEHAVIOR RULES:
-1. DRIP FEED: Ask at most 1–2 questions per message. Never interrogate.
-2. MIRROR PRINCIPLE: Always reflect the user's input before asking the next question (e.g., "Since you're looking for a 3M budget in the Marina...").
+1. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, or market trends from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN. Do not wait for the next turn.
+2. MIRROR & QUALIFY: After providing facts from the Knowledge Base, reflect the user's interest and ask 1 qualification question (Budget, Area, Type, Timeline, or Financing).
 3. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
-4. TRUST INJECTION: Use RAG_QUERY_TOOL to share specific insights, pricing, or capital appreciation stats from the Knowledge Base. For queries about 'branded residences', you MUST search the 'market_reports' folder.
-5. INTENT PRIORITY: If the user explicitly asks for a call ("Call me", "Can someone call?"), PRIORITIZE calling them immediately using 'INITIATE_CALL'. Skip remaining questions.
-6. NO HARD-CODING: Never say "Provident" or "Auro". Use "${tenant.system_prompt_identity}".
-7. COMMITMENT: Once 3+ points are qualified, offer a 30-min consultation via "${tenant.booking_cal_link}" or a voice call check.
-
-TONE & STRUCTURE:
-- Concise, professional, luxury-market aligned.
-- Use bullet points for property lists.
-- END EVERY MESSAGE with a clear next step or question.
+4. BRANDED RESIDENCES: If asked about branded residences, you MUST search the 'market_reports' folder specifically.
+5. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
+6. NO HARD-CODING: Never say "Provident" or "Auro" unless using the variable ${tenant.system_prompt_identity}.
+7. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
 `;
 
         const tools = [
@@ -677,7 +676,12 @@ TONE & STRUCTURE:
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             systemInstruction: systemInstruction,
-            tools: tools as any
+            tools: tools as any,
+            toolConfig: {
+                functionCallingConfig: {
+                    mode: "AUTO" // We keep it auto but the prompt now mandates use
+                }
+            } as any
         });
 
         // --- GEMINI: History & Session Management ---
@@ -751,6 +755,8 @@ TONE & STRUCTURE:
 
         let functionCalls = response.functionCalls();
         let textResponse = response.text();
+
+        console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length}`);
 
         // Handle function calls loop (max 3 turns)
         let turns = 0;

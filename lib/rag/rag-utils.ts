@@ -81,25 +81,13 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
     }
 
     try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: { parts: [{ text: text.substring(0, 4000) }] },
-                    output_dimensionality: 768
-                })
-            }
-        );
+        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const result = await model.embedContent({
+            content: { role: 'user', parts: [{ text: text.substring(0, 8000) }] },
+            taskType: 'RETRIEVAL_DOCUMENT' as any,
+            outputDimensionality: 768
+        } as any);
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error(`[RAG-Utils] Gemini API error: ${response.status} - ${errText}`);
-            return null;
-        }
-
-        const result = await response.json();
         return result.embedding?.values || null;
     } catch (err: any) {
         console.error('[RAG-Utils] Embedding error:', err.message);
