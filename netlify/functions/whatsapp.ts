@@ -76,10 +76,10 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             const isBrandedQuery = /branded|residence|investment|yield|report/i.test(lowerQuery);
             if (isBrandedQuery) {
                 // Elevate market reports and projects for specific searches
-                searchSteps.push(['market_reports', 'projects']);
+                searchSteps.push(['market_reports', 'projects', 'campaign_docs']);
                 searchSteps.push(['agency_history', 'website']);
             } else {
-                searchSteps.push(['projects', 'website', 'market_reports']);
+                searchSteps.push(['campaign_docs', 'projects', 'website', 'market_reports']);
             }
 
             // Fallback: If nothing else matched and it's Tenant 1, try history
