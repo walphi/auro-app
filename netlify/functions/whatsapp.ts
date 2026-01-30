@@ -20,7 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // RAG Query Helper - prioritizes specific folders based on intent
 async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string | string[], projectId?: string): Promise<string> {
     try {
-        const clientId = tenant.rag_client_id || 'demo';
+        const clientId = tenant.rag_client_id || (tenant.id === 1 ? 'provident' : 'demo');
         console.log(`[RAG] Searching client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
         // Smart Routing Logic
