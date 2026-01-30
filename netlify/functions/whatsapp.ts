@@ -225,30 +225,22 @@ async function searchWeb(query: string): Promise<string> {
 
     try {
         console.log('[Web] Searching:', query);
-        const response = await fetch('https://api.perplexity.ai/chat/completions', {
-            method: 'POST',
+        const response = await axios.post('https://api.perplexity.ai/chat/completions', {
+            model: 'sonar',
+            messages: [
+                { role: 'system', content: 'You are a search assistant. Provide concise, factual answers with sources.' },
+                { role: 'user', content: query }
+            ],
+            max_tokens: 500,
+            temperature: 0.2
+        }, {
             headers: {
                 'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'sonar',
-                messages: [
-                    { role: 'system', content: 'You are a search assistant. Provide concise, factual answers with sources.' },
-                    { role: 'user', content: query }
-                ],
-                max_tokens: 500,
-                temperature: 0.2
-            })
+            }
         });
 
-        if (!response.ok) {
-            console.error('[Web] API error:', response.status);
-            return "Error searching the web.";
-        }
-
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "No results found.";
+        const content = response.data.choices?.[0]?.message?.content || "No results found.";
         console.log('[Web] Result length:', content.length);
         return content;
     } catch (e: any) {
