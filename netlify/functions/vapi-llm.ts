@@ -40,56 +40,80 @@ const supabase = createClient(
 );
 const VAPI_SECRET = process.env.VAPI_SECRET;
 
+// Web Search Helper (Perplexity API)
+async function searchWeb(query: string): Promise<string> {
+    const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+    if (!PERPLEXITY_API_KEY) return "Web search is disabled (API key missing).";
+
+    try {
+        console.log('[Web] Searching:', query);
+        const response = await fetch('https://api.perplexity.ai/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'sonar',
+                messages: [
+                    { role: 'system', content: 'You are a search assistant. Provide concise, factual answers with sources.' },
+                    { role: 'user', content: query }
+                ],
+                max_tokens: 500,
+                temperature: 0.2
+            })
+        });
+
+        if (!response.ok) {
+            console.error('[Web] API error:', response.status);
+            return "Error searching the web.";
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "No results found.";
+        console.log('[Web] Result length:', content.length);
+        return content;
+    } catch (e: any) {
+        console.error('[Web] Exception:', e.message);
+        return "Error searching the web.";
+    }
+}
+
 // RAG Query with Vapi Priority Boost - prioritizes voice patterns over static uploads
 async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: string | string[], projectId?: string): Promise<string> {
     try {
-        const clientId = tenant.rag_client_id || 'demo';
+        const clientId = tenant.rag_client_id || (tenant.id === 1 ? 'provident' : 'demo');
         console.log(`[VAPI-LLM RAG] Querying client: ${clientId}, folder: ${filterFolderId}, project: ${projectId}, query: "${query}"`);
 
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const embResult = await embedModel.embedContent(query);
+        const embResult = await embedModel.embedContent({
+            content: { role: 'user', parts: [{ text: query }] },
+            taskType: 'RETRIEVAL_QUERY' as any,
+            outputDimensionality: 768
+        } as any);
         const embedding = embResult.embedding.values;
 
         // Hierarchical Search Strategy (Voice Optimized)
         const searchSteps = [];
-        const lowerQuery = query.toLowerCase();
+        const lowerQ = query.toLowerCase();
 
-        // Priority 1: Specific Folder if requested
+        // Auto-route to market reports
+        if (!filterFolderId && (lowerQ.includes('market') || lowerQ.includes('report') || lowerQ.includes('outlook') || lowerQ.includes('trend'))) {
+            searchSteps.push('market_reports');
+        }
+
         if (filterFolderId) {
             searchSteps.push(filterFolderId);
         } else {
-            // STATE B: If we have a project context, always try campaign_docs first
-            if (projectId) {
-                searchSteps.push('campaign_docs');
-            }
+            if (projectId) searchSteps.push('campaign_docs');
 
-            // Priority 0: Agency History (High Priority if brand-related or pre-project)
-            const isBrandQuery = /provident|history|founded|ceo|office|founder|opened|since|awards|loai|who (are|is)|about/i.test(lowerQuery);
-
+            const isBrandQuery = /provident|history|founded|ceo|office|founder|opened|since|awards|loai|who (are|is)|about/i.test(lowerQ);
             if (isBrandQuery || (tenant.id === 1 && !projectId)) {
                 searchSteps.push('agency_history');
             }
 
-            // Priority 2: Hot Topics (Urgent Promos/Offers)
-            if (/promo|offer|discount|urgent|exclusive|deal|limited/i.test(lowerQuery)) {
-                searchSteps.push('hot_topics');
-            }
-
-            // Priority 3: Winning Scripts & Conversation Patterns (Voice Priority)
             searchSteps.push('conversation_learning');
-
-            // Priority 4: Agency Knowledge (SOPs/FAQs)
-            if (/how|sop|process|procedure|policy|faq|question|answer|agency/i.test(lowerQuery)) {
-                searchSteps.push(['faqs', 'sops']);
-            }
-
-            // Priority 5: Real Estate / Project Details
-            searchSteps.push(['projects', 'website', 'market_reports']);
-
-            // Fallback for Tenant 1
-            if (tenant.id === 1 && searchSteps.indexOf('agency_history') === -1) {
-                searchSteps.push('agency_history');
-            }
+            searchSteps.push(['campaign_docs', 'projects', 'website', 'market_reports']);
         }
 
         let results: string[] = [];
@@ -98,7 +122,6 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
         for (const folders of searchSteps) {
             if (results.length >= 3) break;
 
-            // Use tuned parameters
             const isCampaign = folders === 'campaign_docs' || (Array.isArray(folders) && folders.includes('campaign_docs'));
             const config = isCampaign ? RAG_CONFIG.campaign : RAG_CONFIG.agency;
 
@@ -109,18 +132,11 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
                 filter_tenant_id: tenant.id,
                 filter_folder_id: Array.isArray(folders) ? null : folders,
                 filter_project_id: projectId || null,
-                filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload'],
-                weight_outcome_correlation: 1.5,
-                weight_feedback: 1.2,
-                weight_conversion: 1.5
+                filter_source_types: ['conversation_learning', 'winning_script', 'hot_topic', 'upload']
             });
 
             if (data && data.length > 0) {
-                const filtered = Array.isArray(folders)
-                    ? data.filter((item: any) => folders.includes(item.folder_id))
-                    : data;
-
-                filtered.forEach((i: any) => {
+                data.forEach((i: any) => {
                     if (results.length < 5 && !results.some(existing => existing.substring(0, 50) === i.content.substring(0, 50))) {
                         results.push(i.content);
                     }
@@ -136,7 +152,8 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
                 match_count: 5,
                 filter_tenant_id: tenant.id,
                 filter_folder_id: null,
-                filter_project_id: projectId || null
+                filter_project_id: projectId || null,
+                client_filter: clientId
             });
             if (ragData) results = ragData.map((i: any) => i.content);
         }
@@ -166,6 +183,13 @@ async function queryRAGForVoice(query: string, tenant: Tenant, filterFolderId?: 
             }
 
             return PROMPT_TEMPLATES.FACTUAL_RESPONSE(query, context);
+        }
+
+        // --- NEW: FALLBACK TO WEB SEARCH (PERPLEXITY) ---
+        console.log(`[VAPI-LLM RAG] No internal results found for "${query}". Falling back to Perplexity web search...`);
+        const webResult = await searchWeb(query); // We need to define or import searchWeb in vapi-llm
+        if (webResult && !webResult.includes("Error") && !webResult.includes("disabled")) {
+            return `INFO FROM LIVE WEB SEARCH (Use this as the source of truth): ${webResult}`;
         }
 
         return "I couldn't find specific details on that in my knowledge base. Let me look it up or connect you with an expert.";
@@ -286,7 +310,12 @@ RULES & BEHAVIOR:
    - If Local (+971), prioritize **Sales Centre Visit**.
    - ALWAYS offer the 3-path option: 1. Sales Centre Visit, 2. Video Call, 3. Quick Voice Booking.
 
-5. TONE:
+5. KNOW YOUR FACTS (MANDATORY):
+   - NEVER answer questions about specific projects, branded residences, pricing, payment plans, market trends, or agency history from memory.
+   - You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding to any factual inquiry.
+   - If the Knowledge Base is empty, state: "I don't have the specific details on that yet, but I can have a specialist find out for you."
+
+6. TONE:
    - Warm, professional, conversational.
    - Do not read long lists. Summarize. "I found a few apartments in Creek Beach starting around 3.4 million."
    - Always end with a question to keep the conversation moving.
@@ -382,12 +411,16 @@ RULES & BEHAVIOR:
         const response = await result.response;
 
         // 3. Process Response
-        const text = response.text();
+        let text = response.text();
         const functionCalls = response.functionCalls();
 
-        // Handle Tool Calls Logic for Vapi (simplified: we just perform side effects, Vapi expects text back usually)
         if (functionCalls && functionCalls.length > 0) {
+            console.log(`[VAPI-LLM] Processing ${functionCalls.length} tool calls...`);
+            const responses: any[] = [];
+
             for (const call of functionCalls) {
+                let toolResult = "";
+
                 if (call.name === 'BOOK_VIEWING') {
                     const { property_id, resolved_datetime, property_name } = call.args as any;
                     if (property_id && resolved_datetime && leadId) {
@@ -397,20 +430,17 @@ RULES & BEHAVIOR:
                             current_listing_id: property_id
                         }).eq('id', leadId);
 
-                        // Fetch property details for confirmation
                         let listingTitle = property_name || "Property";
                         if (!property_name && property_id) {
                             const listing = await getListingById(property_id);
                             if (listing) listingTitle = listing.title;
                         }
 
-                        // Format Date for Dubai
                         const dateObj = new Date(resolved_datetime);
                         const formattedDate = dateObj.toLocaleString('en-US', {
                             weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai'
                         }) + " Dubai time";
 
-                        // Send WhatsApp Confirmation
                         const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
                         const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
 
@@ -418,7 +448,6 @@ RULES & BEHAVIOR:
                             await sendWhatsAppMessage(phoneNumber, messageText, tenant);
                         }
 
-                        // Log message
                         await logLeadIntent(leadId, 'booking_confirmed', {
                             property_id,
                             property_title: listingTitle,
@@ -427,42 +456,44 @@ RULES & BEHAVIOR:
                             source: 'vapi-llm'
                         });
 
-                        // Trigger RAG learning for successful booking
                         await triggerRAGLearning(leadId, 'booking_confirmed', tenant);
+                        toolResult = "Booking confirmed and notification sent via WhatsApp.";
                     }
                 } else if (call.name === 'RAG_QUERY_TOOL') {
-                    // Handle RAG query with voice priority
                     const query = (call.args as any).query;
                     if (query) {
                         const currentProjectId = leadData?.project_id || body.call?.extra?.project_id || body.call?.metadata?.project_id;
-                        const ragResult = await queryRAGForVoice(query, tenant, undefined, currentProjectId);
-                        console.log('[VAPI-LLM] RAG result:', ragResult.substring(0, 100) + '...');
+                        toolResult = await queryRAGForVoice(query, tenant, undefined, currentProjectId);
                     }
                 } else if (call.name === 'OFFPLAN_BOOKING') {
                     const { property_id, property_name, community, developer, preferred_option } = call.args as any;
-
-                    // Logic to handle assignment/logging (similar to WhatsApp but for voice)
                     if (leadId) {
-                        let agentInfo = "";
-                        try {
-                            const { data: agent } = await supabase.rpc('get_next_sales_agent', {
-                                filter_community: community,
-                                filter_developer: developer
-                            });
-                            if (agent && agent.length > 0) agentInfo = `Assigned agent: ${agent[0].agent_name}`;
-                        } catch (e) { }
-
                         await logLeadIntent(leadId, 'offplan_flow_triggered', {
-                            property_id,
-                            property_name,
-                            community,
-                            developer,
-                            preferred_option,
-                            source: 'vapi-llm'
+                            property_id, property_name, community, developer, preferred_option, source: 'vapi-llm'
                         });
+                        toolResult = "Offplan booking flow initiated.";
+                    }
+                } else if (call.name === 'UPDATE_LEAD') {
+                    const args = call.args as any;
+                    if (leadId) {
+                        await supabase.from('leads').update(args).eq('id', leadId);
+                        toolResult = "Lead updated.";
                     }
                 }
+
+                responses.push({
+                    functionResponse: {
+                        name: call.name,
+                        response: { result: toolResult }
+                    }
+                });
+                console.log(`[VAPI-LLM] Tool ${call.name} result:`, toolResult.substring(0, 100) + '...');
             }
+
+            // Call model again with tool results
+            const result2 = await chat.sendMessage(responses);
+            text = (await result2.response).text();
+            console.log(`[VAPI-LLM] Final response after tools:`, text.substring(0, 100) + '...');
         }
 
         // 4. Stream Response
@@ -492,12 +523,15 @@ RULES & BEHAVIOR:
         };
 
     } catch (error: any) {
-        console.error("[VAPI-LLM] Error:", error.message);
+        console.error("[VAPI-LLM] Global Error:", error);
+        console.error("[VAPI-LLM] Error Message:", error.message);
+        if (error.stack) console.error("[VAPI-LLM] Stack trace:", error.stack);
+
         const fallbackChunk = {
             id: "err-" + Date.now(),
             object: "chat.completion.chunk",
             created: Math.floor(Date.now() / 1000),
-            choices: [{ delta: { content: "Sorry, I can't process that right now." }, finish_reason: null }]
+            choices: [{ delta: { content: "Sorry, I encountered an internal error. Please try again or ask for a specialist." }, finish_reason: "error" }]
         };
         return {
             statusCode: 200,
