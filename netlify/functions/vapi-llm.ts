@@ -245,7 +245,7 @@ const handler: Handler = async (event) => {
 
         // 1. Context Loading
         let phoneNumber = call?.customer?.number;
-        let leadId = call?.extra?.lead_id || call?.metadata?.lead_id;
+        let leadId = call?.extra?.lead_id || call?.metadata?.lead_id || call?.assistantOverrides?.variableValues?.lead_id;
         let leadData: any = null;
 
         if (phoneNumber) {
@@ -262,17 +262,28 @@ const handler: Handler = async (event) => {
         }
         leadId = leadData?.id;
 
-        const contextString = leadData ? `
+        // Fallback for name and email from Vapi variables if missing in DB
+        const nameFromVars = call?.assistantOverrides?.variableValues?.name;
+        const emailFromVars = call?.assistantOverrides?.variableValues?.email;
+
+        if (leadData) {
+            if (!leadData.name && nameFromVars) leadData.name = nameFromVars;
+            if (!leadData.email && emailFromVars) leadData.email = emailFromVars;
+        }
+
+        const contextString = (leadData || nameFromVars || emailFromVars) ? `
 CURRENT LEAD PROFILE:
-- Name: ${leadData.name || "Unknown"}
-- Budget: ${leadData.budget || "Unknown"}
-- Location: ${leadData.location || "Unknown"}
-- Property Type: ${leadData.property_type || "Unknown"}
-- Timeline: ${leadData.timeline || "Unknown"}
-- Financing: ${leadData.financing || "Unknown"}
-- Interest: ${leadData.current_listing_id || "None"}
-- Project context: ${leadData.project_id || "None"}
-- Booking: ${leadData.viewing_datetime || "None"}
+- Name: ${leadData?.name || nameFromVars || "Unknown"}
+- Phone: ${leadData?.phone || phoneNumber || "Unknown"}
+- Email: ${leadData?.email || emailFromVars || "Unknown"}
+- Budget: ${leadData?.budget || "Unknown"}
+- Location: ${leadData?.location || "Unknown"}
+- Property Type: ${leadData?.property_type || "Unknown"}
+- Timeline: ${leadData?.timeline || "Unknown"}
+- Financing: ${leadData?.financing || "Unknown"}
+- Interest: ${leadData?.current_listing_id || "None"}
+- Project context: ${leadData?.project_id || "None"}
+- Booking: ${leadData?.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";
 
         const systemInstruction = `You are Morgan, a Senior Offplan Specialist for ${tenant.system_prompt_identity}.

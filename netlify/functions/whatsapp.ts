@@ -350,7 +350,7 @@ const handler: Handler = async (event) => {
         const body = querystring.parse(event.body || "");
         const userMessage = (body.Body as string) || "";
         const numMedia = parseInt((body.NumMedia as string) || "0");
-        const fromNumber = (body.From as string).replace('whatsapp:', '');
+        const fromNumber = (body.From as string).replace("whatsapp:", "").trim();
         const toNumber = (body.To as string);
         const host = event.headers.host || "auro-app.netlify.app";
         // CRITICAL: Always use the netlify.app domain for media if available to ensure Twilio deliverability
