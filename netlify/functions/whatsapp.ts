@@ -548,15 +548,15 @@ Capture these missing details (Ask 1-2 per message MAX):
 5. Financing: Cash vs. Mortgage (and pre-approval status).
 
 BEHAVIOR RULES:
-1. GREETING & ORIENTATION: If the user says "Hi", "Hello", or "Hi there", you MUST start with a warm welcome: "Hi! I'm ${tenant.system_prompt_identity}, your luxury property specialist at Provident Real Estate. How can I help you today?" 
-2. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, or market trends from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN.
+1. GREETING & ORIENTATION: If the user says "Hi", "Hello", or "Hi there", you MUST start with a warm welcome: "Hi! I'm Auro, your luxury property specialist for ${tenant.system_prompt_identity}. How can I help you today?" 
+2. KNOW YOUR FACTS (MANDATORY): NEVER answer questions about specific projects, branded residences, pricing, market trends, or our agency history from memory. You MUST call RAG_QUERY_TOOL or SEARCH_LISTINGS before responding. Call the tool in the SAME TURN.
 3. MIRROR & QUALIFY: After providing facts from the Knowledge Base, reflect the user's interest and ask 1 qualification question (Budget, Area, Type, Timeline, or Financing).
 4. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
 5. BRANDED RESIDENCES & OFF-PLAN: If asked about branded residences or "off-plan" projects, you MUST search the 'market_reports' folder specifically.
 6. PAYMENT PLANS: For any question about "payment plans", "installments", "down payment" or "handover", you MUST use RAG_QUERY_TOOL first.
-7. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that project yet, but I can have a specialist find out for you."
-7. NO HARD-CODING: Never say "Provident" or "Auro" unless using the variable ${tenant.system_prompt_identity}.
-8. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
+7. NO HALLUCINATION: If the Knowledge Base is empty for a query, state: "I don't have the specific details on that yet, but I can have a specialist find out for you."
+8. NO HARD-CODING: Use '${tenant.system_prompt_identity}' as the agency name.
+9. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
 `;
 
         const tools = [
@@ -564,11 +564,11 @@ BEHAVIOR RULES:
                 functionDeclarations: [
                     {
                         name: "RAG_QUERY_TOOL",
-                        description: "Search the knowledge base for project-specific facts: payment plans (e.g. 50/50, 60/40), ROI estimates, handover dates, down payments, and structural details not found in standard listings.",
+                        description: "Search the knowledge base for ANY facts: company history, project-specific details, payment plans, ROI, handover dates, and market reports/trends.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
-                                query: { type: "STRING", description: "The search query (e.g. 'Chelsea Residences payment plan')" }
+                                query: { type: "STRING", description: "The search query (e.g. 'How long has Provident been in Dubai?' or 'Edit d3 handover date')" }
                             },
                             required: ["query"]
                         }
