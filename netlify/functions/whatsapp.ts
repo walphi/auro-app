@@ -852,13 +852,8 @@ BEHAVIOR RULES:
                     }
 
                     if (query) {
-                        // Fetch the latest project_id from the lead session to provide RAG context
-                        let currentProjectId = null;
-                        if (leadId) {
-                            const { data: lead } = await supabase.from('leads').select('project_id').eq('id', leadId).single();
-                            currentProjectId = lead?.project_id;
-                        }
-                        toolResult = await queryRAG(query, tenant, undefined, currentProjectId);
+                        // Standard RAG query across relevant folders
+                        toolResult = await queryRAG(query, tenant, undefined, undefined);
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
