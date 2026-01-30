@@ -142,7 +142,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         console.log(`[RAG] Total unique chunks collected: ${results.length} for query: "${query}"`);
 
         if (query.startsWith('DEBUGRAG:')) {
-            return `DEBUG: Found ${results.length} results. Folders: ${JSON.stringify(searchSteps)}. Client: ${clientId}. Tenant: ${tenant.id}. Results: ${results.slice(0, 2).map(r => r.substring(0, 50)).join(' | ')}`;
+            return `DEBUG: Found ${results.length} results for "${query}". Folders: ${JSON.stringify(searchSteps)}. Client: ${clientId}. Tenant: ${tenant.id}.`;
         }
 
         // Final Fallback: Search everything for this client
