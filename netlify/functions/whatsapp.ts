@@ -149,7 +149,8 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
                 match_count: 5,
                 filter_tenant_id: tenant.id,
                 filter_folder_id: null,
-                filter_project_id: projectId || null
+                filter_project_id: projectId || null,
+                client_filter: clientId
             });
             if (allData) results = allData.map((i: any) => i.content);
         }
