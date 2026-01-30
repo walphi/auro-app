@@ -105,7 +105,8 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
                 match_threshold: config.matchThreshold,
                 match_count: config.matchCount,
                 filter_tenant_id: tenant.id,
-                filter_project_id: projectId || null
+                filter_project_id: projectId || null,
+                client_filter: clientId
             };
 
             if (Array.isArray(folders)) {
