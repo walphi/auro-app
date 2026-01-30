@@ -203,7 +203,15 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             }
         }
 
-        return "No specific details found in the knowledge base, but I'd be happy to have an agent discuss this with you directly.";
+        // --- NEW: FALLBACK TO WEB SEARCH (PERPLEXITY) ---
+        console.log(`[RAG] No internal results found for "${query}". Falling back to Perplexity web search...`);
+        const webResult = await searchWeb(query);
+        if (webResult && !webResult.includes("Error") && !webResult.includes("disabled")) {
+            console.log(`[RAG] Perplexity fallback successful. Result length: ${webResult.length}`);
+            return `INFO FROM LIVE WEB SEARCH (Use this as the source of truth): ${webResult}`;
+        }
+
+        return "No specific details found in the knowledge base or web, but I'd be happy to have an agent discuss this with you directly.";
     } catch (e: any) {
         console.error('[RAG] Exception:', e.message);
         return "Error searching knowledge base.";
