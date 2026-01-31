@@ -159,27 +159,33 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             if (allData) results = allData.map((i: any) => i.content);
         }
 
-        // PROJECT NAME KEYWORD BOOST: If query mentions a specific project name but results are thin, try keyword search
+        // PROJECT NAME KEYWORD BOOST: If query mentions a specific project name...
         const knownProjects = ['PASSO', 'Hado', 'Talea', 'LOOM', 'Edit', 'AVENEW'];
         const mentionedProject = knownProjects.find(p => query.toLowerCase().includes(p.toLowerCase()));
 
-        if (mentionedProject && results.length < 2) {
-            console.log(`[RAG] Keyword boost: Query mentions "${mentionedProject}" but only ${results.length} semantic results. Trying keyword search...`);
+        if (mentionedProject) {
+            // Check if the current results actually contain the project name
+            const hasRelevantChunks = results.some(content => content.toLowerCase().includes(mentionedProject.toLowerCase()));
 
-            const { data: keywordData, error: kwError } = await supabase
-                .from('rag_chunks')
-                .select('content')
-                .eq('client_id', clientId)
-                .ilike('content', `%${mentionedProject}%`)
-                .limit(5);
+            // Trigger if no relevant chunks found OR if results are very few
+            if (!hasRelevantChunks || results.length < 3) {
+                console.log(`[RAG] Keyword boost: Query mentions "${mentionedProject}" but proper context is missing (hasRelevant=${hasRelevantChunks}, count=${results.length}). Executing keyword search...`);
 
-            if (!kwError && keywordData && keywordData.length > 0) {
-                console.log(`[RAG] Keyword boost found ${keywordData.length} chunks for "${mentionedProject}"`);
-                keywordData.forEach((item: any) => {
-                    if (!results.some(existing => existing.substring(0, 100) === item.content.substring(0, 100))) {
-                        results.push(item.content);
+                const { data: keywordData, error: kwError } = await supabase
+                    .from('rag_chunks')
+                    .select('content')
+                    .eq('client_id', clientId)
+                    .ilike('content', `%${mentionedProject}%`)
+                    .limit(5);
+
+                if (!kwError && keywordData && keywordData.length > 0) {
+                    console.log(`[RAG] Keyword boost found ${keywordData.length} chunks for "${mentionedProject}"`);
+                    // Prepend unique chunks to the START of results to prioritize them
+                    const newChunks = keywordData.map((k: any) => k.content).filter((c: string) => !results.includes(c));
+                    if (newChunks.length > 0) {
+                        results.unshift(...newChunks);
                     }
-                });
+                }
             }
         }
 
