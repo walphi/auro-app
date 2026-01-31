@@ -186,6 +186,15 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
                         results.unshift(...newChunks);
                     }
                 }
+
+                // SUPER FALLBACK: If we still have poor results for a named project, FORCE web search
+                if (results.length < 3) {
+                    console.log(`[RAG] Results still thin for "${mentionedProject}". Auto-triggering Web Search...`);
+                    const webData = await searchWeb(query);
+                    if (webData && !webData.includes("Error")) {
+                        results.unshift(`WEB SEARCH RESULT (High Priority): ${webData}`);
+                    }
+                }
             }
         }
 
