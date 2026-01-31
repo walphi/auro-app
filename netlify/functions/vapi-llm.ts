@@ -271,6 +271,16 @@ const handler: Handler = async (event) => {
             if (!leadData.email && emailFromVars) leadData.email = emailFromVars;
         }
 
+        let propertyContext = "None";
+        if (leadData?.current_listing_id) {
+            const listing = await getListingById(leadData.current_listing_id);
+            if (listing) {
+                propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
+            } else {
+                propertyContext = leadData.current_listing_id;
+            }
+        }
+
         const contextString = (leadData || nameFromVars || emailFromVars) ? `
 CURRENT LEAD PROFILE:
 - Name: ${leadData?.name || nameFromVars || "Unknown"}
@@ -281,7 +291,7 @@ CURRENT LEAD PROFILE:
 - Property Type: ${leadData?.property_type || "Unknown"}
 - Timeline: ${leadData?.timeline || "Unknown"}
 - Financing: ${leadData?.financing || "Unknown"}
-- Interest: ${leadData?.current_listing_id || "None"}
+- Most recent property interest: ${propertyContext}
 - Project context: ${leadData?.project_id || "None"}
 - Booking: ${leadData?.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";

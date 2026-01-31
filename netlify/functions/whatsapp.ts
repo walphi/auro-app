@@ -159,6 +159,30 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             if (allData) results = allData.map((i: any) => i.content);
         }
 
+        // PROJECT NAME KEYWORD BOOST: If query mentions a specific project name but results are thin, try keyword search
+        const knownProjects = ['PASSO', 'Hado', 'Talea', 'LOOM', 'Edit', 'AVENEW'];
+        const mentionedProject = knownProjects.find(p => query.toLowerCase().includes(p.toLowerCase()));
+
+        if (mentionedProject && results.length < 2) {
+            console.log(`[RAG] Keyword boost: Query mentions "${mentionedProject}" but only ${results.length} semantic results. Trying keyword search...`);
+
+            const { data: keywordData, error: kwError } = await supabase
+                .from('rag_chunks')
+                .select('content')
+                .eq('client_id', clientId)
+                .ilike('content', `%${mentionedProject}%`)
+                .limit(5);
+
+            if (!kwError && keywordData && keywordData.length > 0) {
+                console.log(`[RAG] Keyword boost found ${keywordData.length} chunks for "${mentionedProject}"`);
+                keywordData.forEach((item: any) => {
+                    if (!results.some(existing => existing.substring(0, 100) === item.content.substring(0, 100))) {
+                        results.push(item.content);
+                    }
+                });
+            }
+        }
+
         if (results.length > 0) {
             const context = results.slice(0, 3).join("\n---\n");
             const lowerQuery = query.toLowerCase();
@@ -445,10 +469,18 @@ const handler: Handler = async (event) => {
                 const email = existingLead.email || "Unknown";
                 const location = existingLead.location || "Unknown";
                 const timeline = existingLead.timeline || "Unknown";
-                const currentListingId = existingLead.current_listing_id || "None";
-                const lastImageIndex = existingLead.last_image_index || 0;
+                const currentListingId = existingLead.current_listing_id;
+                let propertyContext = "None";
+                if (currentListingId) {
+                    const listing = await getListingById(currentListingId);
+                    if (listing) {
+                        propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
+                    } else {
+                        propertyContext = currentListingId;
+                    }
+                }
 
-                console.log(`[Lead Context] Fetched for ${fromNumber}: ID=${leadId}, current_listing_id=${currentListingId}, last_image_index=${lastImageIndex}`);
+                console.log(`[Lead Context] Fetched for ${fromNumber}: ID=${leadId}, propertyContext=${propertyContext}`);
 
                 leadContext = `
 CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
@@ -459,9 +491,9 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 - Property Type: ${existingLead.property_type || "Unknown"}
 - Timeline: ${timeline}
 - Financing: ${existingLead.financing || "Unknown"}
-- Currently interested in Property ID: ${currentListingId}
+- Most recent property interest: ${propertyContext}
 - Current Project context: ${existingLead.project_id || "None"}
-- Last image index shown: ${lastImageIndex}
+- Last image index shown: ${existingLead.last_image_index || 0}
 `;
                 leadSource = existingLead.custom_field_1 || leadSource;
             } else {
@@ -748,7 +780,7 @@ BEHAVIOR RULES:
                 .select('sender, content, type')
                 .eq('lead_id', leadId)
                 .order('created_at', { ascending: false })
-                .limit(6);
+                .limit(12);
 
             if (recentMessages && recentMessages.length > 0) {
                 // The most recent message (index 0) is the one we just saved above.
