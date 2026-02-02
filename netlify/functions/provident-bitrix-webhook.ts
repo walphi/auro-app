@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { getLeadById, addLeadComment } from '../../lib/bitrixClient';
+import { getLeadById, addLeadComment, updateLead } from '../../lib/bitrixClient';
 import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
 
 /**
@@ -65,6 +65,7 @@ export const handler: Handler = async (event, context) => {
         const phone = bitrixLead.PHONE?.[0]?.VALUE;
         const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
         const projectName = bitrixLead.TITLE || 'off-plan opportunities';
+        const responsibleId = bitrixLead.ASSIGNED_BY_ID;
 
         if (!phone) {
             console.warn(`[Webhook] Lead ${leadId} has no phone number. Skipping WhatsApp engagement.`);
@@ -95,9 +96,18 @@ export const handler: Handler = async (event, context) => {
 
         // 7. Success response
         try {
-            await addLeadComment(leadId, `AURO - status: Test from Auro\nStaging write-back OK for lead ${leadId}`);
+            // Updated comment format as per Ayham's request
+            const comment = `AURO - status: Accepted and qualification initiated\nInitial contact triggered via WhatsApp.\nResponsible: ${responsibleId || 'Unknown'}`;
+            await addLeadComment(leadId, comment);
+
+            // Write back responsible ID to custom field if available
+            if (responsibleId) {
+                await updateLead(leadId, {
+                    UF_AURO_RESPONSIBLE_ID: responsibleId
+                });
+            }
         } catch (commentError: any) {
-            console.error(`[Webhook] Failed to add comment for lead ${leadId}:`, commentError.message);
+            console.error(`[Webhook] Failed to write back to lead ${leadId}:`, commentError.message);
         }
 
         return {

@@ -14,6 +14,7 @@ export interface BitrixLead {
     LAST_NAME?: string;
     PHONE?: Array<{ VALUE: string; VALUE_TYPE: string }>;
     EMAIL?: Array<{ VALUE: string; VALUE_TYPE: string }>;
+    ASSIGNED_BY_ID?: string;
     [key: string]: any;
 }
 
