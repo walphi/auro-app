@@ -912,6 +912,22 @@ BEHAVIOR RULES:
                     if (query) {
                         // Standard RAG query across relevant folders
                         toolResult = await queryRAG(query, tenant, undefined, undefined);
+
+                        // --- AUTO-UPDATE PROJECT INTEREST ---
+                        // If RAG found info, and query mentions a name, save as intent
+                        if (leadId && toolResult && !toolResult.includes("No relevant information found")) {
+                            const projectWords = query.match(/[A-Z][a-z]+(\s[A-Z][a-z]+)*/g);
+                            if (projectWords && projectWords.length > 0) {
+                                // Find the longest match (likely the project name)
+                                const detectedProject = projectWords.reduce((a: string, b: string) => a.length > b.length ? a : b);
+                                if (detectedProject.length > 3) {
+                                    console.log(`[WhatsApp RAG] Auto-updating lead intent with project: ${detectedProject}`);
+                                    await supabase.from('leads').update({
+                                        custom_field_1: `Recent Interest: ${detectedProject}`
+                                    }).eq('id', leadId);
+                                }
+                            }
+                        }
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);

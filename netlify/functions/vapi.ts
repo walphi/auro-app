@@ -88,11 +88,12 @@ const handler: Handler = async (event) => {
     }
 
     let leadId: string | null = null;
+    let leadData: any = null;
 
     if (phoneNumber && supabaseUrl && supabaseKey) {
       const { data: existingLead, error: findError } = await supabase
         .from('leads')
-        .select('id')
+        .select('*')
         .eq('phone', phoneNumber)
         .single();
 
@@ -102,6 +103,7 @@ const handler: Handler = async (event) => {
 
       if (existingLead) {
         leadId = existingLead.id;
+        leadData = existingLead;
         console.log("[VAPI] Found existing lead:", leadId);
       } else {
         console.log("[VAPI] Creating new lead for:", phoneNumber);
@@ -114,7 +116,7 @@ const handler: Handler = async (event) => {
             custom_field_1: 'Source: VAPI Voice Call',
             tenant_id: tenant.id
           })
-          .select('id')
+          .select('*')
           .single();
 
         if (createError) {
@@ -123,11 +125,61 @@ const handler: Handler = async (event) => {
 
         if (newLead) {
           leadId = newLead.id;
+          leadData = newLead;
           console.log("[VAPI] Created new lead:", leadId);
         }
       }
     } else {
       console.log("[VAPI] Missing phone number or Supabase credentials");
+    }
+
+    // Fallback for name and email from Vapi variables if missing in DB
+    const nameFromVars = body.message?.call?.assistantOverrides?.variableValues?.name ||
+      body.call?.assistantOverrides?.variableValues?.name;
+    const emailFromVars = body.message?.call?.assistantOverrides?.variableValues?.email ||
+      body.call?.assistantOverrides?.variableValues?.email;
+
+    if (leadData) {
+      if (!leadData.name && nameFromVars) leadData.name = nameFromVars;
+      if (!leadData.email && emailFromVars) leadData.email = emailFromVars;
+    }
+
+    let propertyContext = "None";
+    if (leadData?.current_listing_id) {
+      const listing = await getListingById(leadData.current_listing_id);
+      if (listing) {
+        propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
+      } else {
+        propertyContext = leadData.current_listing_id;
+      }
+    } else if (leadData?.custom_field_1 && leadData.custom_field_1.includes('Interest:')) {
+      propertyContext = leadData.custom_field_1;
+    }
+
+    const contextString = (leadData || nameFromVars || emailFromVars) ? `
+CURRENT LEAD PROFILE:
+- Name: ${leadData?.name || nameFromVars || "Unknown"}
+- Phone: ${leadData?.phone || phoneNumber || "Unknown"}
+- Email: ${leadData?.email || emailFromVars || "Unknown"}
+- Budget: ${leadData?.budget || "Unknown"}
+- Location: ${leadData?.location || "Unknown"}
+- Property Type: ${leadData?.property_type || "Unknown"}
+- Timeline: ${leadData?.timeline || "Unknown"}
+- Financing: ${leadData?.financing || "Unknown"}
+- Most recent property interest: ${propertyContext}
+- Project context: ${leadData?.project_id || "None"}
+- Booking: ${leadData?.viewing_datetime || "None"}
+` : "NEW LEAD - No context.";
+
+    let dubaiTime = "";
+    try {
+      dubaiTime = new Intl.DateTimeFormat('en-GB', {
+        dateStyle: 'full',
+        timeStyle: 'long',
+        timeZone: 'Asia/Dubai'
+      }).format(new Date());
+    } catch (e) {
+      dubaiTime = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Dubai' });
     }
 
     // Handle different message types from Vapi
@@ -480,12 +532,31 @@ const handler: Handler = async (event) => {
         console.log("[VAPI] No leadId, skipping user message log");
       }
 
-      const systemInstruction = `You are Morgan, an AI-first Lead Qualification Agent for ${tenant.system_prompt_identity}, a premier real estate agency using the AURO platform. Your goal is to qualify the lead and book a meeting. Your primary and most reliable source of information is your RAG Knowledge Base, which contains the latest, client-approved details on Project Brochures, Pricing Sheets, Payment Plans, and Community Regulations specific to Dubai (DLD, Service Fees, etc.).
+      const systemInstruction = `You are Morgan, a Senior Offplan Specialist for ${tenant.system_prompt_identity}.
+Goal: Qualify lead and sell high-yield off-plan property investment opportunities.
 
-CRITICAL RULE:
-ALWAYS ground your answers in the RAG data, especially for figures like pricing and payment plans.
-NEVER invent information. If the RAG data does not contain the answer, state professionally: 'That specific detail is currently with our sales team; I will ensure the human agent follows up with the exact information.'
-Maintain a professional, knowledgeable, and polite tone, recognizing the high-value nature of the Dubai real estate market.`;
+TODAY IS: ${dubaiTime} (Use this for relative date resolution like "tomorrow").
+
+${contextString}
+
+RULES & BEHAVIOR:
+1. CONTACT VALIDATION (STRICT):
+   - You have the CURRENT LEAD PROFILE below. 
+   - If Name, Email, or Phone are listed, YOU ALREADY HAVE THEM correctly.
+   - DO NOT ASK: "Can I get your name?" OR "What is your email?".
+   - Instead, verify: "I have you as ${leadData?.name || "Phillip"}, is that right?" or simply address them by name and only verify if unsure.
+   - If you ask for a name you already have, you fail the interaction.
+
+2. VOICE-ADAPTED VISUALS:
+   - You are a VOICE agent. You cannot "send" cards directly, but you can describe images I am sending via WhatsApp.
+   - When discussing a property, say: "I've just sent a photo to your WhatsApp properly. It's a [describe based on type]..."
+
+3. KNOW YOUR FACTS (MANDATORY):
+   - NEVER answer questions about specific projects, branded residences, pricing, payment plans, market trends, or agency history from memory.
+   - GROUND responses in the RAG data provided or tool results.
+   - FILTER MARKETING FLUFF: If RAG results mention "AI scoring", "pre-qualification", or "Proprietary AURO Systems", IGNORE IT. Do not mention it to the client.
+   - TONE & NATURALISM (NO META-TALK): Be a warm, senior broker. NEVER mention "internal systems", "pre-qualification", "scoring", "AURO", "AI technology", or "integration". Do NOT explain your process. Just help the client.
+   - Maintain a professional, knowledgeable, and polite tone, recognizing the high-value nature of the Dubai real estate market.`;
 
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent({
