@@ -296,11 +296,27 @@ CURRENT LEAD PROFILE:
 - Booking: ${leadData?.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";
 
+        const now = new Date();
+        const dubaiTime = new Intl.DateTimeFormat('en-GB', {
+            dateStyle: 'full',
+            timeStyle: 'long',
+            timeZone: 'Asia/Dubai'
+        }).format(now);
+
         const systemInstruction = `You are Morgan, a Senior Offplan Specialist for ${tenant.system_prompt_identity}.
 Goal: Qualify lead and sell high-yield off-plan property investment opportunities.
+
+TODAY IS: ${dubaiTime} (Use this for relative date resolution like "tomorrow").
+
 ${contextString}
+
 RULES & BEHAVIOR:
-1. VOICE-ADAPTED VISUALS:
+1. CONTACT VALIDATION & BACKGROUND NOISE:
+   - If Name, Email, or Phone are provided in the CURRENT LEAD PROFILE above, DO NOT ask for them from scratch.
+   - Instead, simply verify them early in the call: "I have your contact as ${leadData?.name || "the name on record"} and email as ${leadData?.email || "the one on file"}, is that still correct?"
+   - This is especially important for noisy environments - confirm what you know, don't make them repeat it.
+
+2. VOICE-ADAPTED VISUALS:
    - You are a VOICE agent. You cannot "send" cards directly, but you can describe images I am sending via WhatsApp.
    - When discussing a property, say: "I've just sent a photo to your WhatsApp properly. It's a [describe based on type]..."
    - Use 'SEARCH_LISTINGS' to finding matching properties, then describe the top 1-2 options verbally while I send the full list to WhatsApp.
@@ -454,7 +470,8 @@ RULES & BEHAVIOR:
                             weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai'
                         }) + " Dubai time";
 
-                        const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+                        const emailParam = leadData?.email ? `&email=${encodeURIComponent(leadData.email)}` : '';
+                        const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}${emailParam}`;
                         const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
 
                         if (phoneNumber) {
