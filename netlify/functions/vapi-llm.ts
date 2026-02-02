@@ -296,12 +296,16 @@ CURRENT LEAD PROFILE:
 - Booking: ${leadData?.viewing_datetime || "None"}
 ` : "NEW LEAD - No context.";
 
-        const now = new Date();
-        const dubaiTime = new Intl.DateTimeFormat('en-GB', {
-            dateStyle: 'full',
-            timeStyle: 'long',
-            timeZone: 'Asia/Dubai'
-        }).format(now);
+        let dubaiTime = "";
+        try {
+            dubaiTime = new Intl.DateTimeFormat('en-GB', {
+                dateStyle: 'full',
+                timeStyle: 'long',
+                timeZone: 'Asia/Dubai'
+            }).format(new Date());
+        } catch (e) {
+            dubaiTime = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Dubai' });
+        }
 
         const systemInstruction = `You are Morgan, a Senior Offplan Specialist for ${tenant.system_prompt_identity}.
 Goal: Qualify lead and sell high-yield off-plan property investment opportunities.

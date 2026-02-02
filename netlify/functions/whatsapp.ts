@@ -362,6 +362,9 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
             }
         );
 
+        console.log("[VAPI CALL] Response Status:", response.status);
+        console.log("[VAPI CALL] Response Data:", JSON.stringify(response.data, null, 2));
+
         return response.status === 201;
     } catch (error: any) {
         console.error("[VAPI CALL] Error initiating VAPI call details:");
