@@ -123,14 +123,19 @@ export async function getListingById(id: string): Promise<{ data: PropertyListin
             .from('property_listings')
             .select('*')
             .eq('id', id)
-            .single();
+            .limit(1);
 
         if (error) {
             console.error(`[Listings] Error fetching listing ${id}:`, error);
             return { data: null, error: error.message };
         }
 
-        return { data: data as PropertyListing, error: null };
+        if (!data || data.length === 0) {
+            return { data: null, error: null };
+        }
+
+        // Return the first match
+        return { data: data[0] as PropertyListing, error: null };
     } catch (e: any) {
         console.error(`[Listings] Exception fetching listing ${id}:`, e.message);
         return { data: null, error: e.message };
