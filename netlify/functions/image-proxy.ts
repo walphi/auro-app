@@ -5,64 +5,69 @@ import { getListingById, getListingImageUrl } from "./listings-helper";
 const handler: Handler = async (event) => {
     let src: string | undefined;
     try {
-        let { listingId, index: indexStr } = event.queryStringParameters || {};
-        src = event.queryStringParameters?.src;
+        let { listingId, index: indexStr, src: querySrc } = event.queryStringParameters || {};
+        src = querySrc;
 
-        // Robust Path-based extraction (handles /property-image/ID/INDEX.jpg)
-        const originalPath = event.headers['x-nf-original-path'] || event.headers['x-rewrite-original-path'] || event.path;
-        console.log(`[Image Proxy] Requested Path: ${originalPath} (event.path: ${event.path})`);
+        // Diagnostic Path Logging
+        const xnf = event.headers['x-nf-original-path'];
+        const xrew = event.headers['x-rewrite-original-path'];
+        const originalPath = xnf || xrew || event.path;
+
+        console.log(`[Image Proxy DEBUG] Paths: xnf=${xnf}, xrew=${xrew}, event.path=${event.path}`);
+        console.log(`[Image Proxy DEBUG] Initial Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
 
         const pathParts = originalPath.split('/').filter(p => !!p);
         const piIndex = pathParts.indexOf('property-image');
         if (piIndex !== -1 && pathParts.length > piIndex + 1) {
             listingId = listingId || pathParts[piIndex + 1];
             indexStr = indexStr || pathParts[piIndex + 2];
+            console.log(`[Image Proxy DEBUG] Resolved from path: listingId=${listingId}, indexStr=${indexStr}`);
         }
-
-        console.log(`[Image Proxy] Resolved Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
 
         // Clean up index (remove .jpg/.jpeg/.webp if present)
         const index = parseInt((indexStr || "0").replace(/\.(jpg|jpeg|webp)$/i, '')) || 0;
 
         // If listingId is provided, resolve it from DB
-        if (listingId) {
-            console.log(`[Image Proxy] Fetching listing ${listingId}, index ${index}`);
+        if (listingId && !src) {
+            console.log(`[Image Proxy] Fetching listing ${listingId}`);
             const listing = await getListingById(listingId);
 
             if (listing) {
+                console.log(`[Image Proxy DEBUG] Listing found: ${listing.title}`);
                 if (index > 0) {
-                    // Gallery images
                     const images = Array.isArray(listing.images) ? listing.images : [];
+                    console.log(`[Image Proxy DEBUG] Gallery size: ${images.length}`);
                     if (index < images.length) {
                         const candidate = images[index]?.url || images[index];
                         if (typeof candidate === 'string') {
                             src = candidate;
                         }
                     }
-
-                    if (!src) {
-                        console.log(`[Image Proxy] Index ${index} out of bounds for listing ${listingId}`);
-                        return { statusCode: 404, body: "Image index out of bounds" };
-                    }
                 } else {
-                    // Hero image (Index 0)
                     src = getListingImageUrl(listing) || undefined;
+                    console.log(`[Image Proxy DEBUG] Hero image candidate from getListingImageUrl: ${src}`);
                 }
+            } else {
+                console.warn(`[Image Proxy DEBUG] Listing NOT FOUND in DB: ${listingId}`);
             }
         }
 
         if (!src) {
-            console.error("[Image Proxy] No source URL found");
-            return { statusCode: 404, body: "Not Found" };
+            console.error("[Image Proxy] No source URL found. Final params:", { listingId, index, src });
+            return {
+                statusCode: 404,
+                headers: { "Content-Type": "text/plain" },
+                body: `Not Found: No image source resolved for listing ${listingId}, index ${index}`
+            };
         }
 
-        // Final check: resolve the URL just in case it's still a blocked CloudFront one
-        // (getListingImageUrl already does this, but if we picked from images[] we need it)
+        // URL Normalization
         if (src.includes('cloudfront.net')) {
-            // We use the same logic as in listings-helper to resolve
+            const oldSrc = src;
             src = src.replace('d3h330vgpwpjr8.cloudfront.net/x/', 'ggfx-providentestate.s3.eu-west-2.amazonaws.com/i/')
                 .replace(/\/\d+x\d+\//, '/')
                 .replace(/\.webp$/i, '.jpg');
+            if (oldSrc !== src) console.log(`[Image Proxy DEBUG] CloudFront normalization: ${oldSrc} -> ${src}`);
         }
 
         console.log(`[Image Proxy] Fetching upstream: ${src}`);
@@ -94,7 +99,7 @@ const handler: Handler = async (event) => {
             let success = false;
             for (const fallbackSrc of fallbacks) {
                 try {
-                    console.log(`[Image Proxy] Retrying with fallback: ${fallbackSrc}`);
+                    console.log(`[Image Proxy] Retrying fallback: ${fallbackSrc}`);
                     response = await fetchImage(fallbackSrc);
                     src = fallbackSrc;
                     success = true;
@@ -105,7 +110,7 @@ const handler: Handler = async (event) => {
         }
 
         if (!response || !response.headers) {
-            throw new Error("Failed to capture valid response during fetch");
+            throw new Error("Invalid upstream response structure");
         }
 
         const upstreamContentType = response.headers['content-type'];
@@ -113,27 +118,30 @@ const handler: Handler = async (event) => {
             ? 'image/jpeg'
             : (upstreamContentType?.startsWith('image/') ? upstreamContentType : 'image/jpeg');
 
-        console.log(`[Image Proxy] Success. Upstream Type: ${upstreamContentType}, Final Type: ${contentType}`);
-
-        const filename = `${listingId || 'image'}-${index}.jpg`;
+        console.log(`[Image Proxy] Stream Success. Final Type: ${contentType}, Size: ${response.data.length}`);
 
         return {
             statusCode: 200,
             headers: {
                 "Content-Type": contentType,
-                "Content-Disposition": `inline; filename="${filename}"`,
+                "Content-Disposition": `inline; filename="listing-${listingId || 'image'}-${index}.jpg"`,
                 "Cache-Control": "public, max-age=86400",
                 "Access-Control-Allow-Origin": "*"
-            },
+            } as Record<string, string>,
             body: Buffer.from(response.data).toString('base64'),
             isBase64Encoded: true
         };
 
     } catch (error: any) {
         console.error("[Image Proxy] Error fetching upstream:", src, error.message);
+        // Returning a 200 with a tiny transparent pixel to prevent Netlify SPA catch-all from triggering on error headers
+        // This ensures Twilio at least gets a valid response, although it won't show the real image.
+        const transparentPixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
         return {
-            statusCode: 502,
-            body: "Error fetching image from upstream source."
+            statusCode: 200,
+            headers: { "Content-Type": "image/png" } as Record<string, string>,
+            body: transparentPixel,
+            isBase64Encoded: true
         };
     }
 };

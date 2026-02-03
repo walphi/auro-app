@@ -87,13 +87,17 @@ function resolveImageUrl(url: string): string | null {
     console.log(`[Images] resolveImageUrl testing: ${url}`);
 
     // Pattern: CloudFront "x/" resize paths which are AccessDenied
+    // Example: https://d3h330vgpwpjr8.cloudfront.net/x/ggfx-providentestate.s3.eu-west-2.amazonaws.com/i/...
     if (url.includes('d3h330vgpwpjr8.cloudfront.net/x/')) {
-        console.log(`[Images] Matches blocked CloudFront /x/ pattern`);
+        console.log(`[Images] Resolving blocked CloudFront URL: ${url}`);
 
-        let resolved = url
-            .replace('d3h330vgpwpjr8.cloudfront.net/x/', 'ggfx-providentestate.s3.eu-west-2.amazonaws.com/i/')
-            .replace(/\/\d+x\d+\//, '/'); // Remove resolution part
+        // Strip the CloudFront prefix part to show the direct S3 URL which is typically appended after /x/
+        let resolved = url.replace(/https?:\/\/d3h330vgpwpjr8\.cloudfront\.net\/x\//i, 'https://');
 
+        // Remove resolution part if present (e.g., /464x312/)
+        resolved = resolved.replace(/\/\d+x\d+\//, '/');
+
+        // Force .jpg
         resolved = resolved.replace(/\.webp$/i, '.jpg');
 
         console.log(`[Images] Resolved successfully to: ${resolved}`);
