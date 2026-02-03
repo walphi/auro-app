@@ -67,7 +67,7 @@ const handler: Handler = async (event) => {
 
         console.log(`[Image Proxy] Fetching upstream: ${src}`);
 
-        let response;
+        let response: any = null;
         const fetchImage = async (url: string) => {
             return await axios.get(url, {
                 responseType: 'arraybuffer',
@@ -104,8 +104,8 @@ const handler: Handler = async (event) => {
             if (!success) throw error;
         }
 
-        if (!response) {
-            throw new Error("Failed to capture response during fetch");
+        if (!response || !response.headers) {
+            throw new Error("Failed to capture valid response during fetch");
         }
 
         const upstreamContentType = response.headers['content-type'];
