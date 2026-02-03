@@ -74,6 +74,7 @@ const handler: Handler = async (event) => {
                 originalPath,
                 env: {
                     hasUrl: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+                    urlPrefix: (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "").substring(0, 25),
                     hasKey: !!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY)
                 },
                 timestamp: new Date().toISOString()
