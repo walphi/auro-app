@@ -1,0 +1,26 @@
+# The Edit at d3 by Meraas - Pricing and Handover Update
+
+## Handover Details
+- **Expected Handover Date:** January 2030
+
+## Pricing and Sizes
+
+### 1-Bedroom Apartments
+- **Price:** Starting from 2,000,000 AED
+- **Average Size:** 754 sqft
+
+### 2-Bedroom Apartments
+- **Price:** Starting from 4,000,000 AED
+- **Size Range:** 1,266 – 1,549 sqft
+
+### 3-Bedroom Apartments
+- **Price:** Starting from 7,700,000 AED
+- **Size Range:** 2,127 – 2,267 sqft
+
+### 4-Bedroom Apartments
+- **Price:** Starting from 11,000,000 AED
+- **Size Range:** 2,771 – 2,975 sqft
+
+### 5-Bedroom Apartments (Penthouses)
+- **Price:** Starting from 34,000,000 AED
+- **Average Size:** 9,398 sqft

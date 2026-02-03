@@ -8,21 +8,21 @@ const handler: Handler = async (event) => {
         let { listingId, index: indexStr } = event.queryStringParameters || {};
         src = event.queryStringParameters?.src;
 
-        // Path-based extraction fallback (for /property-image/ID/INDEX.jpg)
-        // event.path is usually like "/.netlify/functions/image-proxy" 
-        // but if redirect is from "/property-image/*", we might see the rewritten path.
-        // Better yet, just check the original path if available or parse splat.
-        const pathParts = event.path.split('/').filter(p => !!p);
-        // If the path is /property-image/ID/INDEX
-        if (pathParts[0] === 'property-image') {
-            listingId = listingId || pathParts[1];
-            indexStr = indexStr || pathParts[2];
+        // Robust Path-based extraction (handles /property-image/ID/INDEX.jpg)
+        const originalPath = event.headers['x-nf-original-path'] || event.headers['x-rewrite-original-path'] || event.path;
+        console.log(`[Image Proxy] Requested Path: ${originalPath} (event.path: ${event.path})`);
+
+        const pathParts = originalPath.split('/').filter(p => !!p);
+        const piIndex = pathParts.indexOf('property-image');
+        if (piIndex !== -1 && pathParts.length > piIndex + 1) {
+            listingId = listingId || pathParts[piIndex + 1];
+            indexStr = indexStr || pathParts[piIndex + 2];
         }
 
-        console.log(`[Image Proxy] Path: ${event.path} | Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
+        console.log(`[Image Proxy] Resolved Params: listingId=${listingId}, indexStr=${indexStr}, src=${src}`);
 
-        // Clean up index (remove .jpg if present from redirect)
-        const index = parseInt((indexStr || "0").replace(/\.jpg$/i, '')) || 0;
+        // Clean up index (remove .jpg/.jpeg/.webp if present)
+        const index = parseInt((indexStr || "0").replace(/\.(jpg|jpeg|webp)$/i, '')) || 0;
 
         // If listingId is provided, resolve it from DB
         if (listingId) {
@@ -68,44 +68,52 @@ const handler: Handler = async (event) => {
         console.log(`[Image Proxy] Fetching upstream: ${src}`);
 
         let response;
-        try {
-            response = await axios.get(src, {
+        const fetchImage = async (url: string) => {
+            return await axios.get(url, {
                 responseType: 'arraybuffer',
-                timeout: 10000,
+                timeout: 8000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                     'Referer': 'https://providentestate.com/'
                 }
             });
-        } catch (error: any) {
-            // Case sensitivity fallback for S3 (Provident Estate often uses .JPG)
-            if (error.response?.status === 403 && src.includes('s3.eu-west-2.amazonaws.com')) {
-                const altSrc = src.endsWith('.jpg') ? src.replace(/\.jpg$/, '.JPG') :
-                    src.endsWith('.JPG') ? src.replace(/\.JPG$/, '.jpg') : null;
+        };
 
-                if (altSrc) {
-                    console.log(`[Image Proxy] 403 on S3, retrying with alternative case: ${altSrc}`);
-                    response = await axios.get(altSrc, {
-                        responseType: 'arraybuffer',
-                        timeout: 10000,
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                            'Referer': 'https://providentestate.com/'
-                        }
-                    });
-                    src = altSrc; // Update src for logging
-                } else {
-                    throw error;
-                }
-            } else {
-                throw error;
+        try {
+            response = await fetchImage(src);
+        } catch (error: any) {
+            console.warn(`[Image Proxy] Primary fetch failed: ${src} (${error.message})`);
+            const fallbacks: string[] = [];
+            if (src.includes('s3.eu-west-2.amazonaws.com') || src.includes('providentestate')) {
+                if (src.endsWith('.jpg')) fallbacks.push(src.replace(/\.jpg$/, '.JPG'), src.replace(/\.jpg$/, '.webp'));
+                else if (src.endsWith('.JPG')) fallbacks.push(src.replace(/\.JPG$/, '.jpg'), src.replace(/\.JPG$/, '.webp'));
+                else if (src.endsWith('.webp')) fallbacks.push(src.replace(/\.webp$/, '.jpg'), src.replace(/\.webp$/, '.JPG'));
             }
+
+            let success = false;
+            for (const fallbackSrc of fallbacks) {
+                try {
+                    console.log(`[Image Proxy] Retrying with fallback: ${fallbackSrc}`);
+                    response = await fetchImage(fallbackSrc);
+                    src = fallbackSrc;
+                    success = true;
+                    break;
+                } catch (e) { }
+            }
+            if (!success) throw error;
         }
 
-        const contentType = response.headers['content-type'] || 'image/jpeg';
-        console.log(`[Image Proxy] Upstream responded with ${response.status}, type ${contentType}`);
+        if (!response) {
+            throw new Error("Failed to capture response during fetch");
+        }
+
+        const upstreamContentType = response.headers['content-type'];
+        const contentType = (originalPath.endsWith('.jpg') || originalPath.endsWith('.jpeg'))
+            ? 'image/jpeg'
+            : (upstreamContentType?.startsWith('image/') ? upstreamContentType : 'image/jpeg');
+
+        console.log(`[Image Proxy] Success. Upstream Type: ${upstreamContentType}, Final Type: ${contentType}`);
 
         const filename = `${listingId || 'image'}-${index}.jpg`;
 

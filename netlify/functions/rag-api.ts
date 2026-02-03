@@ -9,9 +9,44 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const handler: Handler = async (event) => {
+    console.log(`[RAG-API] Received request. Method: ${event.httpMethod}, Path: ${event.path}`);
+
     const pathSegments = event.path.split('/');
-    const clientId = pathSegments[4] || 'demo';
-    const action = pathSegments[6];
+
+    // Robust parsing: Find 'client' and 'rag' segments dynamically
+    let clientId = 'demo';
+    let action = '';
+
+    const clientIdx = pathSegments.indexOf('client');
+    if (clientIdx !== -1 && pathSegments[clientIdx + 1]) {
+        clientId = pathSegments[clientIdx + 1];
+    }
+
+    const ragIdx = pathSegments.indexOf('rag');
+    if (ragIdx !== -1 && pathSegments[ragIdx + 1]) {
+        action = pathSegments[ragIdx + 1];
+    } else {
+        // Fallback: Check if it's a direct function call like /.netlify/functions/rag-api/action
+        // In that case, the last segment might be the action? 
+        // Or if we are using the query string?
+        const lastSeg = pathSegments[pathSegments.length - 1];
+        if (['upload_text', 'delete_source', 'add_url', 'set_context'].includes(lastSeg)) {
+            action = lastSeg;
+        }
+    }
+
+    // Allow override from Body (useful for testing)
+    let body: any = {};
+    try {
+        body = JSON.parse(event.body || '{}');
+    } catch (e) {
+        console.error('[RAG-API] Failed to parse body:', e);
+    }
+
+    if (body.action) action = body.action;
+    if (body.client_id) clientId = body.client_id;
+
+    console.log(`[RAG-API] Resolved - Client: ${clientId}, Action: ${action}`);
 
     const headers = {
         'Access-Control-Allow-Origin': '*',
@@ -24,10 +59,9 @@ export const handler: Handler = async (event) => {
     }
 
     if (!action) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing action' }) };
+        console.error(`[RAG-API] Error: Missing action. Path was: ${event.path}`);
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing action', path: event.path }) };
     }
-
-    console.log(`[RAG] Action: ${action}, Client: ${clientId}`);
 
     try {
         let content = '';
@@ -36,9 +70,8 @@ export const handler: Handler = async (event) => {
         let folderId = 'default';
         let metadata: any = {};
 
-        const body = JSON.parse(event.body || '{}');
         const reqTenantId = body.tenant_id || (clientId === 'demo' ? 1 : null);
-        const reqClientId = body.client_id || clientId; // Fallback to URL segment
+        const reqClientId = body.client_id || clientId;
 
         if (!reqTenantId) {
             return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing tenant_id' }) };

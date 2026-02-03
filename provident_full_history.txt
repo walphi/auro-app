@@ -1,0 +1,213 @@
+Tab 1
+Provident × Auro RAG: 
+Data Collection & Requirements Checklist
+Project: AI Knowledge Base Implementation (Auro) 
+Objective: To centralize and ingest internal data to ensure the AI responds with accurate, brand-aligned, and commercially relevant information.
+1. Brand & Voice
+Goal: Ensuring the AI speaks like a Provident expert.
+* [ ] Latest Brand Identity / Brand Book:
+   * Logos, color palettes (hex codes), typography, and usage rules.
+Branded Book
+Provident Logos/QR Code
+Color Palettes
+   * [ ] Brand Voice & Messaging Guidelines:
+   * Tone of voice (e.g., professional, authoritative).
+   * Communication Do’s & Don’ts.
+   * Key Value Propositions and corporate taglines.
+2. Marketing & Campaigns (Current & Q1)
+Goal: Informing the AI about current priorities and promotions.
+   * [ ] Active Projects List:
+   * Focus areas for Off-plan.
+   * [ ] Campaign Calendar:
+   * Key offers and promotions for this month and Q1 2026.
+   * [ ] Priority Partners:
+   * Communities and developers that require primary focus.
+3. Sales Collateral
+Goal: Providing the AI with source material for detailed service explanations.
+   * [ ] Corporate Brochure:
+   * Soft copy (PDF) of the main office/corporate profile.
+   * [ ] Pitch Decks:
+   * Standard listing presentations used by agents to win instructions.
+4. Listings & Projects (Internal Tracking)
+Goal: Capturing unique selling points and payment plans not always visible on the web. We'll be using https://providentestate.com/new-projects/ also for the latest listings.
+   * [ ] Priority / Hero Projects:
+   * Top 5 projects to push for Q1.
+   * Bay Villas
+   * Hado by Beyond
+   * Passo
+   * Edit D3 BY Merras
+
+      * [ ] Exclusive Mandates:
+      * List of projects/units where Provident has exclusivity.
+      * [ ] Project Summary Sheets:
+      * Links to Google Drives/Sheets containing detailed payment plans, floor plans and key USPs.
+      * Brochures Shared in TAB 2
+5. Market Data & Insights
+Goal: Enabling the AI to provide data-backed investment advice.
+      * [ ] Branded Market Reports:
+      * Monthly, quarterly, or yearly PDFs/Docs.
+      * https://providentestate.com/blog/dubai-market-report-q3-2025/
+https://providentestate.com/blog/dubai-property-market-report-2025/
+         * [ ] Internal Data Summaries:
+         * Top communities by transaction volume.
+         * Average ticket size by asset class.
+6. Content & FAQs
+Goal: Automating the handling of common queries and objections.
+         * [ ] General FAQs:
+         * Compiled questions from the website, blog, and lead forms.
+Added in Tab 3
+
+
+            * [ ] Agent-Specific FAQs:
+            * Common hurdles for buyers.
+            * [ ] Objection Handling/Cheat-Sheets:
+            * Documentation on overcoming price objections, market volatility concerns, and payment plan doubts.
+7. Personas & Process
+Goal: Training the AI on the "Provident Way" of handling leads.
+            * [ ] Persona Documents:
+            * Definitions of Buyer and Investor archetypes.
+            * [ ] Standard Operating Procedures (SOPs):
+            * Lead qualification and handover process.
+            * Viewing, offer, and closing playbooks.
+            * [ ] Communication Templates:
+            * Sales scripts and/or email templates.
+
+
+Submission Notes: Please share direct links to the relevant Google docs on here please.
+
+
+
+
+Tab 2
+Projects
+
+
+
+
+Beyond Projects
+
+
+Projects
+
+
+
+
+Tab 3
+Compiled questions from the website, blog, and lead forms.
+
+lead forms
+
+
+English test form
+	English
+	- Contact/Whatsapp to share payment plans
+	
+
+	1- What is the ideal property type for you?
+	Apartments
+	Villas
+	Townhouses
+	Penthouses
+	Others
+	
+
+	2- What is your purpose of investment?
+	Residential Purpose
+	Investment Purpose
+	Golden Visa Benefits
+	
+
+	3- What is your Area of Preference in Dubai?
+	Downtown Dubai
+	Golf Communities
+	Gated Communities
+	Beach/Waterfront
+	Ultra Luxury
+	Show me the best areas
+	
+
+	4- What is Your ideal budget?
+	Less than $250,000
+	$250,000 - $500,000
+	$500,000 - $1,000,000
+	$1,000,000 - $3,000,000
+	Above $3,000,000
+	Open Budget
+	
+
+	5- How many bedrooms would you like in your property?
+	1 Bedroom
+	2 Bedrooms
+	3 Bedrooms
+	4 Bedrooms
+	5 Bedrooms and above
+	
+
+	6- Have you purchased a property before?
+	Yes
+	No
+	
+
+	7- When Are you looking to Buy/List a property in Dubai?
+	Immediately
+	Within 1 month
+	Within 3 months
+	Within 6 months
+	
+
+	8- Preferred way of communication?
+	Call
+	Email
+	WhatsApp
+	
+
+	9- Preferred time to contact?
+	Morning
+	Afternoon
+	Night
+	
+
+	Full name (auto-field)
+	Phone number (auto-field)
+	Email (auto-field)
+	Country (auto-field)
+	
+
+	Country of Residence?
+	Austria
+	Belgium
+	France
+	Germany
+	Ireland
+	Netherland
+	Sweden
+	Switzerland
+	United Kingdom
+	
+
+	Will you attend the Crypto Property Event in Dubai?
+	Yes
+	No
+	
+
+	Do you have a Crypto Wallet?
+	Yes
+	No
+	
+
+	Preferred Mode of Payment
+	Crypto
+	Fiat (USD, AED, EURO)
+	Both
+	
+
+	
+
+Website
+
+
+Name
+Email
+Phone
+Preferred Language
+Message

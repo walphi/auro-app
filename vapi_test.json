@@ -1,0 +1,21 @@
+{
+    "messages": [
+        {
+            "role": "assistant",
+            "content": "Hello John, I see you were inquiring about the Passo project on Palm Jumeirah."
+        }
+    ],
+    "call": {
+        "id": "test-vapi-id-123",
+        "customer": {
+            "number": "+447733221144"
+        },
+        "assistantOverrides": {
+            "variableValues": {
+                "name": "John Doe",
+                "email": "john.doe@example.com",
+                "lead_id": "46b54220-dbad-4dea-9bbf-0cb400bb97a0"
+            }
+        }
+    }
+}

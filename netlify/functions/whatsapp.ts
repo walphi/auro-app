@@ -977,7 +977,7 @@ BEHAVIOR RULES:
                     const listings = await searchListings(filters);
                     console.log(`SEARCH_LISTINGS found ${listings.length} results`);
 
-                    const listingsResponse = formatListingsResponse(listings, host);
+                    const listingsResponse = formatListingsResponse(listings, mediaHost);
                     let resultText = listingsResponse.text;
 
                     // Provide IDs to Gemini for internal use only
@@ -1196,7 +1196,7 @@ Description: ${listing.description || 'No detailed description available.'}
 
             if (isVoiceResponse) {
                 messageType = 'Voice';
-                meta = `https://${host}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+                meta = `https://${mediaHost}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
             }
 
             await supabase.from('messages').insert({
