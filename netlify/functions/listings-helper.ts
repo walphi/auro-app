@@ -104,10 +104,12 @@ function resolveImageUrl(url: string): string | null {
         return resolved;
     }
 
-    // Pattern: Other CloudFront URLs (usually blocked)
+    // Pattern: Other CloudFront URLs (usually blocked if hit directly by Twilio)
+    // We used to return null here, but now we allow them through so the proxy can attempt to fetch them
+    // with its custom headers (User-Agent, Referer) which often bypasses the block.
     if (url.includes('cloudfront.net')) {
-        console.log(`[Images] Matches generic CloudFront pattern (returning null)`);
-        return null;
+        console.log(`[Images] Matches generic CloudFront pattern - allowing through for proxying`);
+        return url;
     }
 
     console.log(`[Images] No blocked patterns matched, returning original URL`);

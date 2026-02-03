@@ -9,18 +9,25 @@ const handler: Handler = async (event) => {
         let { listingId, index: indexStr, src: querySrc } = event.queryStringParameters || {};
         src = querySrc;
 
-        // Path-based extraction (handles /property-image/ID/INDEX.jpg)
+        // Diagnostic Path Logging
         const xnf = event.headers['x-nf-original-path'];
         const xrew = event.headers['x-rewrite-original-path'];
         const originalPath = xnf || xrew || event.path || "";
 
-        console.log(`[Image Proxy DEBUG] Paths: xnf=${xnf}, xrew=${xrew}, event.path=${event.path}`);
+        console.log(`[Image Proxy DIAG] Path Info:`, {
+            path: event.path,
+            originalPath,
+            xnf,
+            xrew,
+            query: event.queryStringParameters
+        });
 
         const pathParts = originalPath.split('/').filter(p => !!p);
         const piIndex = pathParts.indexOf('property-image');
         if (piIndex !== -1 && pathParts.length > piIndex + 1) {
             listingId = listingId || pathParts[piIndex + 1];
             indexStr = indexStr || pathParts[piIndex + 2];
+            console.log(`[Image Proxy DIAG] Path Resolution:`, { listingId, indexStr });
         }
 
         // Clean up index (remove .jpg/.jpeg/.webp if present)
@@ -28,12 +35,14 @@ const handler: Handler = async (event) => {
 
         // If listingId is provided, resolve it from DB
         if (listingId && !src) {
-            console.log(`[Image Proxy] Fetching listing ${listingId}, index ${index}`);
+            console.log(`[Image Proxy] Fetching from DB: ${listingId}, index ${index}`);
             const listing = await getListingById(listingId);
 
             if (listing) {
+                console.log(`[Image Proxy] Listing found: ${listing.title}`);
                 if (index > 0) {
                     const images = Array.isArray(listing.images) ? listing.images : [];
+                    console.log(`[Image Proxy] Gallery size: ${images.length}`);
                     if (index < images.length) {
                         const candidate = images[index]?.url || images[index];
                         if (typeof candidate === 'string') {
@@ -42,18 +51,21 @@ const handler: Handler = async (event) => {
                     }
                 } else {
                     src = getListingImageUrl(listing) || undefined;
+                    console.log(`[Image Proxy] getListingImageUrl result: ${src}`);
                 }
+            } else {
+                console.warn(`[Image Proxy] Listing NOT FOUND in DB for ID: ${listingId}`);
             }
         }
 
         if (!src) {
-            console.error("[Image Proxy] No source URL found for:", { listingId, index });
-            // Return 404 but with text/plain to avoid SPA catch-all shadowing if possible
+            const diags = { listingId, index, src, originalPath, timestamp: new Date().toISOString() };
+            console.error("[Image Proxy] Resolution failure:", diags);
             return {
                 statusCode: 404,
-                headers: { "Content-Type": "text/plain" },
-                body: "Not Found: No image source resolved"
-            } as any;
+                headers: { "Content-Type": "application/json" } as Record<string, string>,
+                body: JSON.stringify({ error: "No image source resolved", diags })
+            };
         }
 
         // Final check: resolve the URL (redundant if using listings-helper but safe)
