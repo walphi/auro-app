@@ -35,10 +35,13 @@ const handler: Handler = async (event) => {
 
         let listingFound = false;
 
+        let listingError: string | null = null;
+
         // If listingId is provided, resolve it from DB
         if (listingId && !src) {
             console.log(`[Image Proxy] Fetching from DB: ${listingId}, index ${index}`);
-            const listing = await getListingById(listingId);
+            const { data: listing, error } = await getListingById(listingId);
+            listingError = error;
 
             if (listing) {
                 listingFound = true;
@@ -57,7 +60,7 @@ const handler: Handler = async (event) => {
                     console.log(`[Image Proxy] getListingImageUrl result: ${src}`);
                 }
             } else {
-                console.warn(`[Image Proxy] Listing NOT FOUND in DB for ID: ${listingId}`);
+                console.warn(`[Image Proxy] Listing NOT FOUND in DB for ID: ${listingId}. Error: ${error}`);
             }
         }
 
@@ -67,6 +70,7 @@ const handler: Handler = async (event) => {
                 index,
                 src,
                 listingFound,
+                listingError,
                 originalPath,
                 env: {
                     hasUrl: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),

@@ -117,7 +117,7 @@ function resolveImageUrl(url: string): string | null {
     return url;
 }
 
-export async function getListingById(id: string): Promise<PropertyListing | null> {
+export async function getListingById(id: string): Promise<{ data: PropertyListing | null, error: string | null }> {
     try {
         const { data, error } = await supabase
             .from('property_listings')
@@ -127,13 +127,13 @@ export async function getListingById(id: string): Promise<PropertyListing | null
 
         if (error) {
             console.error(`[Listings] Error fetching listing ${id}:`, error);
-            return null;
+            return { data: null, error: error.message };
         }
 
-        return data;
+        return { data: data as PropertyListing, error: null };
     } catch (e: any) {
         console.error(`[Listings] Exception fetching listing ${id}:`, e.message);
-        return null;
+        return { data: null, error: e.message };
     }
 }
 
