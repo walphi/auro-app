@@ -33,12 +33,15 @@ const handler: Handler = async (event) => {
         // Clean up index (remove .jpg/.jpeg/.webp if present)
         const index = parseInt((indexStr || "0").replace(/\.(jpg|jpeg|webp)$/i, '')) || 0;
 
+        let listingFound = false;
+
         // If listingId is provided, resolve it from DB
         if (listingId && !src) {
             console.log(`[Image Proxy] Fetching from DB: ${listingId}, index ${index}`);
             const listing = await getListingById(listingId);
 
             if (listing) {
+                listingFound = true;
                 console.log(`[Image Proxy] Listing found: ${listing.title}`);
                 if (index > 0) {
                     const images = Array.isArray(listing.images) ? listing.images : [];
@@ -59,7 +62,7 @@ const handler: Handler = async (event) => {
         }
 
         if (!src) {
-            const diags = { listingId, index, src, originalPath, timestamp: new Date().toISOString() };
+            const diags = { listingId, index, src, listingFound, originalPath, timestamp: new Date().toISOString() };
             console.error("[Image Proxy] Resolution failure:", diags);
             return {
                 statusCode: 404,
