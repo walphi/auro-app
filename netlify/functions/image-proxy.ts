@@ -62,7 +62,18 @@ const handler: Handler = async (event) => {
         }
 
         if (!src) {
-            const diags = { listingId, index, src, listingFound, originalPath, timestamp: new Date().toISOString() };
+            const diags = {
+                listingId,
+                index,
+                src,
+                listingFound,
+                originalPath,
+                env: {
+                    hasUrl: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+                    hasKey: !!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY)
+                },
+                timestamp: new Date().toISOString()
+            };
             console.error("[Image Proxy] Resolution failure:", diags);
             return {
                 statusCode: 404,
