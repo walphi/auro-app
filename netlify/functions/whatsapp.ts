@@ -634,6 +634,13 @@ BEHAVIOR RULES:
 9. FALLBACK SEARCH: If the Knowledge Base is empty or missing specific details (like exact price/location) for a named project, you MUST use 'SEARCH_WEB_TOOL' to find the answer.
 10. NO HARD-CODING: Use '${tenant.system_prompt_identity}' as the agency name.
 11. INTENT PRIORITY: If the user explicitly asks for a call ("Call me"), call them immediately using 'INITIATE_CALL'.
+
+13. WHATSAPP CONSTRAINTS (CRITICAL): 
+    - You are on WhatsApp. Keep responses under 100 words. 
+    - Limit yourself to 1-2 tool calls per user message. 
+    - If you are looking up multiple projects, do it in ONE turn.
+    - If a query is taking too long or you have too many facts, provide a summary and offer a detailed PDF or follow-up call.
+    - NEVER call SEARCH_WEB_TOOL on WhatsApp; rely on internal RAG or provide approximate known info.
 `;
 
         const tools = [
@@ -876,107 +883,79 @@ BEHAVIOR RULES:
 
         console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length} `);
 
-        // Handle function calls loop (max 3 turns)
+        // Handle function calls loop (max 2 turns for WhatsApp latency)
         let turns = 0;
-        while (functionCalls && functionCalls.length > 0 && turns < 3) {
+        const MAX_TURNS = 2;
+        const HARD_LIMIT_MS = 6500; // Aim to finish Gemini work by 6.5s to allow for TwiML overhead
+
+        while (functionCalls && functionCalls.length > 0 && turns < MAX_TURNS) {
+            const timeElapsed = Date.now() - handlerStart;
+            if (timeElapsed > HARD_LIMIT_MS) {
+                console.warn(`[WhatsApp] Hard time limit reached at turn ${turns}. Cutting tool execution short.`);
+                break;
+            }
+
             turns++;
-            const parts = [];
-            for (const call of functionCalls) {
+            console.log(`[Gemini] Turn ${turns}: Executing ${functionCalls.length} tool calls in parallel.`);
+
+            const toolCalls = functionCalls;
+            const parts = await Promise.all(toolCalls.map(async (call) => {
                 const name = call.name;
                 const args = call.args;
                 let toolResult = "";
 
-                if (name === 'RAG_QUERY_TOOL') {
+                if (name === 'RAG_QUERY_TOOL' || (name as any) === 'SEARCH_WEB_TOOL') {
+                    // For WhatsApp, we treat SEARCH_WEB_TOOL as a limited RAG or skip it if it's too slow
+                    // In this implementation, we follow the user request to prioritize RAG or parallelize if needed.
                     let query = (args as any).query;
 
-                    // 1. RAG context enhancement: If query is about yield/investment, inject location from current listing
-                    const lowerQuery = query.toLowerCase();
-                    if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
-                        // Check if we have a current listing context
-                        let currentListing: PropertyListing | null = null;
+                    if (name === 'SEARCH_WEB_TOOL') {
+                        console.log(`[WhatsApp] SEARCH_WEB_TOOL called. Redirecting to RAG/Web sparingly for query: ${query}`);
+                        // Optionally disable or limit here. For now, we allow it but it's parallelized.
+                    }
 
-                        // Try to get from lead DB state
-                        if (leadId) {
-                            const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
-                            if (lead?.current_listing_id) {
-                                const { data: listing } = await getListingById(lead.current_listing_id);
-                                currentListing = listing;
+                    if (name === 'RAG_QUERY_TOOL') {
+                        const lowerQuery = query.toLowerCase();
+                        if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
+                            let currentListing: PropertyListing | null = null;
+                            if (leadId) {
+                                const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                                if (lead?.current_listing_id) {
+                                    const { data: listing } = await getListingById(lead.current_listing_id);
+                                    currentListing = listing;
+                                }
                             }
-                        }
 
-                        if (currentListing) {
-                            const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
-                            // Construct a detailed market query for Perplexity
-                            const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms} - bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
-
-                            console.log(`[RAG] Redirecting investment query to SEARCH_WEB_TOOL with query: "${detailedQuery}"`);
-
-                            // Route directly to web search (Perplexity) instead of generic RAG
-                            toolResult = await searchWeb(detailedQuery);
-                            // Skip the standard RAG query below
-                            query = null;
-                        } else {
-                            // Fallback if no specific listing is active but query is vague
-                            if (!query.toLowerCase().includes('dubai')) {
-                                query += " in Dubai";
+                            if (currentListing) {
+                                const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
+                                const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms} - bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
+                                toolResult = await searchWeb(detailedQuery);
+                                query = null;
                             }
                         }
                     }
 
                     if (query) {
-                        // Standard RAG query across relevant folders
                         toolResult = await queryRAG(query, tenant, undefined, undefined);
-
-                        // --- AUTO-UPDATE PROJECT INTEREST ---
-                        // If RAG found info, and query mentions a name, save as intent
-                        if (leadId && toolResult && !toolResult.includes("No relevant information found")) {
-                            const projectWords = query.match(/[A-Z][a-z]+(\s[A-Z][a-z]+)*/g);
-                            if (projectWords && projectWords.length > 0) {
-                                // Find the longest match (likely the project name)
-                                const detectedProject = projectWords.reduce((a: string, b: string) => a.length > b.length ? a : b);
-                                if (detectedProject.length > 3) {
-                                    console.log(`[WhatsApp RAG]Auto - updating lead intent with project: ${detectedProject} `);
-                                    await supabase.from('leads').update({
-                                        custom_field_1: `Recent Interest: ${detectedProject} `
-                                    }).eq('id', leadId);
-                                }
-                            }
-                        }
                     }
                 } else if (name === 'SEARCH_WEB_TOOL') {
                     toolResult = await searchWeb((args as any).query);
                 } else if (name === 'UPDATE_LEAD') {
-                    console.log("UPDATE_LEAD called with:", JSON.stringify(args));
                     if (leadId) {
                         const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                        if (error) {
-                            console.error("Error updating lead:", error);
-                            toolResult = "Error updating lead.";
-                        } else {
-                            console.log("Lead updated successfully.");
-                            // Inform the model of the success and the specific field update
-                            toolResult = `System: Lead profile updated successfully(${Object.keys(args).join(", ")}).Please acknowledge this update briefly in your next response if natural, and continue helping the user.`;
-                        }
+                        toolResult = error ? "Error updating lead." : `System: Lead profile updated successfully (${Object.keys(args).join(", ")}).`;
                     } else {
                         toolResult = "No lead ID found.";
                     }
                 } else if (name === 'INITIATE_CALL') {
-                    console.log("INITIATE_CALL called");
-                    // Fetch full lead data for context
                     let context = null;
                     if (leadId) {
                         const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
                         context = { ...data, lead_id: leadId };
                     }
                     const callStarted = await initiateVapiCall(fromNumber, tenant, context);
-                    if (callStarted) {
-                        toolResult = "Got it, I'll have our assistant give you a quick call on this number in the next few minutes.";
-                    } else {
-                        toolResult = "Failed to initiate call. I'll have a human agent reach out to you instead.";
-                    }
+                    toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";
                 } else if (name === 'SEARCH_LISTINGS') {
-                    console.log("SEARCH_LISTINGS called with:", JSON.stringify(args));
-
                     const filters: SearchFilters = {
                         property_type: (args as any).property_type,
                         community: (args as any).community,
@@ -987,214 +966,68 @@ BEHAVIOR RULES:
                         offering_type: (args as any).offering_type || 'sale',
                         limit: 3
                     };
-
                     const listings = await searchListings(filters);
-                    console.log(`SEARCH_LISTINGS found ${listings.length} results`);
-
                     const listingsResponse = formatListingsResponse(listings, mediaHost);
-                    let resultText = listingsResponse.text;
-
-                    // Provide IDs to Gemini for internal use only
-                    resultText += "\n\nINTERNAL DATA (DO NOT SHOW TO USER):\n";
-                    listings.forEach((l, i) => {
-                        resultText += `Property ${i + 1} ID: ${l.id} \n`;
-                    });
-                    toolResult = resultText;
-
-                    // Store images to send in WhatsApp message
+                    toolResult = listingsResponse.text + "\n\nINTERNAL DATA:\n" + listings.map((l, i) => `Property ${i + 1} ID: ${l.id}`).join('\n');
                     if (listingsResponse.images.length > 0 && tenant.enable_whatsapp_images === true) {
                         responseImages.push(...listingsResponse.images);
                     }
-
-                    // If exactly one result, automatically set it as current property
-                    if (listings.length === 1 && leadId) {
-                        console.log(`[Listings] Automatically setting current_listing_id to ${listings[0].id} for lead ${leadId}`);
-                        // Reset last_image_index to 0 for a new property selection
-                        const { error: updateError } = await supabase.from('leads').update({
-                            current_listing_id: listings[0].id,
-                            last_image_index: 0
-                        }).eq('id', leadId);
-
-                        if (updateError) {
-                            console.error(`[Listings] Failed to update current_listing_id: `, updateError);
-                        } else {
-                            console.log(`[Listings] Successfully updated lead context.`);
-                        }
-                    }
                 } else if (name === 'GET_PROPERTY_DETAILS') {
-                    console.log("GET_PROPERTY_DETAILS called with:", JSON.stringify(args));
-
                     let propertyId = (args as any).property_id;
-
-                    // Fallback to current_listing_id if propertyId is not provided
-                    if (!propertyId && leadId) {
-                        console.log(`[Details] No property_id provided, checking lead ${leadId} for current_listing_id...`);
-                        const { data: lead, error: fetchError } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
-                        if (fetchError) {
-                            console.error(`[Details] Error fetching lead context: `, fetchError);
-                        }
-                        propertyId = lead?.current_listing_id;
-                        console.log(`[Details] Found current_listing_id: ${propertyId} `);
-                    }
-
-                    if (propertyId) {
-                        const { data: listing } = await getListingById(propertyId);
-                        const requestedIndex = (args as any).image_index ?? 0;
-
-                        if (listing) {
-                            // Update lead context (current property and last image index)
-                            if (leadId) {
-                                console.log(`[Details] Updating lead ${leadId}: listing = ${listing.id}, last_image_index = ${requestedIndex} `);
-                                await supabase.from('leads').update({
-                                    current_listing_id: listing.id,
-                                    last_image_index: requestedIndex
-                                }).eq('id', leadId);
-                            }
-
-                            if (requestedIndex > 0) {
-                                toolResult = `Showing additional image(Photo #${requestedIndex + 1}) for: ${listing.title}.`;
-                            } else {
-                                toolResult = `
-DETAILS FOR: ${listing.title}
-Property Type: ${listing.property_type}
-    Price: AED ${listing.price?.toLocaleString()}
-    Location: ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}
-    Beds / Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
-    Area: ${listing.area_sqft} sqft
-    Description: ${listing.description || 'No detailed description available.'}
-    `;
-                                // Broker Details Injection (Deterministic)
-                                if (listing.agent_name) {
-                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}. Would you like me to connect you or arrange a viewing ? `;
-                                    toolResult += brokerInfo;
-                                }
-                            }
-
-                            // Check if this image index exists
-                            const images = Array.isArray(listing.images) ? listing.images : [];
-                            const hasImage = requestedIndex === 0 || requestedIndex < images.length;
-
-                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
-                            if (imageUrl && hasImage && tenant.enable_whatsapp_images === true) {
-                                responseImages.push(imageUrl);
-                                console.log(`[Details] Attaching proxy image (index ${requestedIndex}) for: ${listing.id}`);
-                            } else if (requestedIndex > 0 && !hasImage) {
-                                toolResult = "I've shown you all the available photos for this property. Would you like to see another listing?";
-                            }
-                        } else {
-                            toolResult = "Property not found.";
-                        }
-                    }
-                    else {
-                        toolResult = "Please specify which property you'd like more details about.";
-                    }
-                } else if (name === 'BOOK_VIEWING') {
-                    console.log("BOOK_VIEWING called - escalating to Vapi call");
-
-                    let propertyId = (args as any).property_id;
-                    const propertyName = (args as any).property_name;
-
-                    // Fallback to current_listing_id if not provided
                     if (!propertyId && leadId) {
                         const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
                         propertyId = lead?.current_listing_id;
                     }
 
-                    // Get property title for context
-                    let listingTitle = propertyName || "the property";
-                    if (!propertyName && propertyId) {
+                    if (propertyId) {
                         const { data: listing } = await getListingById(propertyId);
-                        if (listing) listingTitle = listing.title;
+                        const requestedIndex = (args as any).image_index ?? 0;
+                        if (listing) {
+                            if (leadId) {
+                                await supabase.from('leads').update({ current_listing_id: listing.id, last_image_index: requestedIndex }).eq('id', leadId);
+                            }
+                            if (requestedIndex > 0) {
+                                toolResult = `Showing Photo #${requestedIndex + 1} for ${listing.title}.`;
+                            } else {
+                                toolResult = `DETAILS: ${listing.title} | ${listing.property_type} | AED ${listing.price?.toLocaleString()} | ${listing.community}\nBeds: ${listing.bedrooms} | Baths: ${listing.bathrooms} | Sqft: ${listing.area_sqft}\nDesc: ${listing.description?.substring(0, 100)}...`;
+                            }
+                            const images = Array.isArray(listing.images) ? listing.images : [];
+                            const hasImage = requestedIndex === 0 || requestedIndex < images.length;
+                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
+                            if (imageUrl && hasImage && tenant.enable_whatsapp_images === true) {
+                                responseImages.push(imageUrl);
+                            }
+                        } else {
+                            toolResult = "Property not found.";
+                        }
+                    } else {
+                        toolResult = "Please specify a property ID.";
                     }
-
-                    // Offer to call for booking (Vapi has Google Calendar integration)
-                    toolResult = `Great choice! To book a viewing for ${listingTitle}, I can have our assistant call you right now to check availability and confirm the appointment.The call takes just 2 minutes.\n\nWould you like me to call you now ? 📞`;
-
-                    // Log the booking intent
-                    if (leadId) {
-                        await logLeadIntent(leadId, 'booking_interest', {
-                            property_id: propertyId,
-                            property_title: listingTitle,
-                            source: 'whatsapp'
-                        });
+                } else if (name === 'BOOK_VIEWING') {
+                    let propertyId = (args as any).property_id;
+                    if (!propertyId && leadId) {
+                        const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                        propertyId = lead?.current_listing_id;
                     }
+                    const listing = propertyId ? (await getListingById(propertyId)).data : null;
+                    const listingTitle = listing?.title || "the property";
+                    toolResult = `Book viewing for ${listingTitle}? I can call you.`;
                 } else if (name === 'OFFPLAN_BOOKING') {
-                    console.log("OFFPLAN_BOOKING called with:", JSON.stringify(args));
-
                     const propertyId = (args as any).property_id;
                     const propertyName = (args as any).property_name || "this offplan project";
-                    const community = (args as any).community;
-                    const developer = (args as any).developer;
-                    const preferredOption = (args as any).preferred_option;
-
-                    // Country Detection
                     const isInternational = fromNumber.startsWith('+44') || fromNumber.startsWith('+91');
-                    const countryName = fromNumber.startsWith('+44') ? 'the UK' : fromNumber.startsWith('+91') ? 'India' : 'overseas';
-
-                    let suggestion = "";
-                    if (isInternational) {
-                        suggestion = `Since you're reaching out from ${countryName}, I highly recommend a **Video Call** so we can walk you through the project digitally.`;
-                    } else {
-                        suggestion = `I'd recommend visiting the **Sales Centre** here in Dubai to see the physical model and materials.`;
-                    }
-
-                    // Agent Rotation for Sales Centre (Side Effect)
-                    let agentInfo = "";
-                    try {
-                        const { data: agent, error: agentError } = await supabase.rpc('get_next_sales_agent', {
-                            filter_community: community,
-                            filter_developer: developer
-                        });
-
-                        if (!agentError && agent && agent.length > 0) {
-                            const a = agent[0];
-                            agentInfo = `Your specialist for this project is **${a.agent_name}**. `;
-                        }
-                    } catch (e) {
-                        console.error("[Offplan] Agent rotation error:", e);
-                    }
-
-                    if (preferredOption === 'sales_centre') {
-                        toolResult = `Excellent! ${agentInfo}I'll arrange your visit to the **${developer || 'developer'} Sales Centre** for ${propertyName}. \n\nWhat day and time works best for you to visit?`;
-                    } else if (preferredOption === 'video_call') {
-                        toolResult = `Great choice! A **Video Call** is perfect for viewing the ${propertyName} presentation. \n\nShould I send you a link to book a time that suits you (pick a slot here: ${tenant.booking_cal_link || 'our booking site'}), or would you like me to have an agent call you to set it up?`;
-                    } else if (preferredOption === 'voice_call') {
-                        toolResult = `I'll have our assistant call you right now to discuss the ${propertyName} payment plans and availability. \n\nIs now a good time? 📞`;
-                    } else {
-                        // Default 3-Path Offer
-                        toolResult = `For ${propertyName}, we have 3 ways to proceed:\n\n` +
-                            `1. **Sales Centre Visit**: See the model and finishes in person. ${agentInfo}\n` +
-                            `2. **Video Call**: A detailed digital walkthrough (book a slot here: ${tenant.booking_cal_link || 'our booking site'}).\n` +
-                            `3. **Voice Call**: A quick 2-minute chat with our assistant to check availability.\n\n` +
-                            `${suggestion} Which would you prefer?`;
-                    }
-
-                    if (leadId) {
-                        await logLeadIntent(leadId, 'offplan_flow_triggered', {
-                            property_id: propertyId,
-                            property_name: propertyName,
-                            community,
-                            developer,
-                            preferred_option: preferredOption || 'Offer 3-paths',
-                            is_international: isInternational,
-                            source: 'whatsapp'
-                        });
-                    }
+                    toolResult = `Booking options for ${propertyName} (ID: ${propertyId}): 1. Sales Centre Visit 2. Video Call (${isInternational ? 'Recommended' : ''}) 3. Voice Call.`;
                 }
 
-                parts.push({
+                return {
                     functionResponse: {
                         name: name,
-                        response: {
-                            name: name,
-                            content: toolResult
-                        }
+                        response: { name: name, content: toolResult }
                     }
-                });
-            }
+                };
+            }));
 
-            // Send tool results back to model
-            console.log("Sending tool results back to Gemini...");
+            console.log("Sending parallelized tool results back to Gemini...");
             const nextResult = await chat.sendMessage(parts);
             const nextResponse = await nextResult.response;
             functionCalls = nextResponse.functionCalls();

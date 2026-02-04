@@ -25,14 +25,20 @@ export interface Tenant {
 export async function getTenantByTwilioNumber(phone: string): Promise<Tenant | null> {
     console.log(`[TenantConfig] Resolving tenant for Twilio number: ${phone}`);
 
-    // Normalize phone number (ensure 'whatsapp:' prefix if needed, or handle both)
+    // Normalize phone number (ensure 'whatsapp:' prefix if needed)
     const normalizedPhone = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`;
+
+    // Hard-coded direct mapping for production number to avoid multi-hop resolution if needed
+    // This ensures +12098994972 always resolves to Provident (ID 1)
+    if (normalizedPhone === 'whatsapp:+12098994972') {
+        return getTenantById(1);
+    }
 
     const { data, error } = await supabase
         .from('tenants')
         .select('*')
         .eq('twilio_phone_number', normalizedPhone)
-        .single();
+        .maybeSingle();
 
     if (error) {
         console.warn(`[TenantConfig] Error fetching tenant by phone ${phone}:`, error.message);
