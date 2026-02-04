@@ -380,6 +380,7 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
 }
 
 const handler: Handler = async (event) => {
+    const handlerStart = Date.now();
     try {
         if (event.httpMethod !== "POST") {
             return {
@@ -490,7 +491,7 @@ const handler: Handler = async (event) => {
                 const currentListingId = existingLead.current_listing_id;
                 let propertyContext = "None";
                 if (currentListingId) {
-                    const listing = await getListingById(currentListingId);
+                    const { data: listing } = await getListingById(currentListingId);
                     if (listing) {
                         propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
                     } else {
@@ -585,6 +586,17 @@ Use your RAG Knowledge Base as the high-fidelity source of truth for pricing, pa
 
 ${leadContext}
 
+${(tenant.id === 1) ? `
+PROVIDENT PRIORITY PROJECTS (Recommend these first when matching budget/area):
+- Hado by Beyond
+- Talea by Beyond
+- PASSO by Beyond
+- LOOM at AVENEW 888
+- The Edit at d3
+
+When answering about "investment", "off-plan", "payment plans", or "capital appreciation", prioritize these projects. Pull specific details (location, payment plan, handover) from the 'projects' RAG folder.
+` : ''}
+
 ${(() => {
                 const isPaidSource = /meta|google|property_finder/i.test(leadSource);
                 if (!isPaidSource) return "";
@@ -614,6 +626,7 @@ BEHAVIOR RULES:
     - Brand new, high-spec assets with developer warranties.
     - Post-handover payment plans that make cash flow easier.
     - "I primarily specialize in the new off-plan launches which are currently offering the best value and payment flexibility in Dubai. Would you like to see our top 3 picks for 2026 handover?"
+    - NOTE: If the user explicitly repeats their interest in ready/secondary properties, respect their intent and answer normally without forcing off-plan.
 5. VISUAL-FIRST: Every property-centric response MUST use 'SEARCH_LISTINGS' or 'GET_PROPERTY_DETAILS'. Use visual cards.
 6. BRANDED RESIDENCES & OFF-PLAN: If asked about branded residences or "off-plan" projects, you MUST search the 'market_reports' folder specifically.
 7. PAYMENT PLANS: For any question about "payment plans", "installments", "down payment" or "handover", you MUST use RAG_QUERY_TOOL first.
@@ -861,7 +874,7 @@ BEHAVIOR RULES:
         let functionCalls = response.functionCalls();
         let textResponse = response.text();
 
-        console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length}`);
+        console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length} `);
 
         // Handle function calls loop (max 3 turns)
         let turns = 0;
@@ -886,14 +899,15 @@ BEHAVIOR RULES:
                         if (leadId) {
                             const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
                             if (lead?.current_listing_id) {
-                                currentListing = await getListingById(lead.current_listing_id);
+                                const { data: listing } = await getListingById(lead.current_listing_id);
+                                currentListing = listing;
                             }
                         }
 
                         if (currentListing) {
                             const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
                             // Construct a detailed market query for Perplexity
-                            const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms}-bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
+                            const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms} - bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
 
                             console.log(`[RAG] Redirecting investment query to SEARCH_WEB_TOOL with query: "${detailedQuery}"`);
 
@@ -921,9 +935,9 @@ BEHAVIOR RULES:
                                 // Find the longest match (likely the project name)
                                 const detectedProject = projectWords.reduce((a: string, b: string) => a.length > b.length ? a : b);
                                 if (detectedProject.length > 3) {
-                                    console.log(`[WhatsApp RAG] Auto-updating lead intent with project: ${detectedProject}`);
+                                    console.log(`[WhatsApp RAG]Auto - updating lead intent with project: ${detectedProject} `);
                                     await supabase.from('leads').update({
-                                        custom_field_1: `Recent Interest: ${detectedProject}`
+                                        custom_field_1: `Recent Interest: ${detectedProject} `
                                     }).eq('id', leadId);
                                 }
                             }
@@ -941,7 +955,7 @@ BEHAVIOR RULES:
                         } else {
                             console.log("Lead updated successfully.");
                             // Inform the model of the success and the specific field update
-                            toolResult = `System: Lead profile updated successfully (${Object.keys(args).join(", ")}). Please acknowledge this update briefly in your next response if natural, and continue helping the user.`;
+                            toolResult = `System: Lead profile updated successfully(${Object.keys(args).join(", ")}).Please acknowledge this update briefly in your next response if natural, and continue helping the user.`;
                         }
                     } else {
                         toolResult = "No lead ID found.";
@@ -983,12 +997,12 @@ BEHAVIOR RULES:
                     // Provide IDs to Gemini for internal use only
                     resultText += "\n\nINTERNAL DATA (DO NOT SHOW TO USER):\n";
                     listings.forEach((l, i) => {
-                        resultText += `Property ${i + 1} ID: ${l.id}\n`;
+                        resultText += `Property ${i + 1} ID: ${l.id} \n`;
                     });
                     toolResult = resultText;
 
                     // Store images to send in WhatsApp message
-                    if (listingsResponse.images.length > 0) {
+                    if (listingsResponse.images.length > 0 && tenant.enable_whatsapp_images === true) {
                         responseImages.push(...listingsResponse.images);
                     }
 
@@ -1002,7 +1016,7 @@ BEHAVIOR RULES:
                         }).eq('id', leadId);
 
                         if (updateError) {
-                            console.error(`[Listings] Failed to update current_listing_id:`, updateError);
+                            console.error(`[Listings] Failed to update current_listing_id: `, updateError);
                         } else {
                             console.log(`[Listings] Successfully updated lead context.`);
                         }
@@ -1017,20 +1031,20 @@ BEHAVIOR RULES:
                         console.log(`[Details] No property_id provided, checking lead ${leadId} for current_listing_id...`);
                         const { data: lead, error: fetchError } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
                         if (fetchError) {
-                            console.error(`[Details] Error fetching lead context:`, fetchError);
+                            console.error(`[Details] Error fetching lead context: `, fetchError);
                         }
                         propertyId = lead?.current_listing_id;
-                        console.log(`[Details] Found current_listing_id: ${propertyId}`);
+                        console.log(`[Details] Found current_listing_id: ${propertyId} `);
                     }
 
                     if (propertyId) {
-                        const listing = await getListingById(propertyId);
+                        const { data: listing } = await getListingById(propertyId);
                         const requestedIndex = (args as any).image_index ?? 0;
 
                         if (listing) {
                             // Update lead context (current property and last image index)
                             if (leadId) {
-                                console.log(`[Details] Updating lead ${leadId}: listing=${listing.id}, last_image_index=${requestedIndex}`);
+                                console.log(`[Details] Updating lead ${leadId}: listing = ${listing.id}, last_image_index = ${requestedIndex} `);
                                 await supabase.from('leads').update({
                                     current_listing_id: listing.id,
                                     last_image_index: requestedIndex
@@ -1038,20 +1052,20 @@ BEHAVIOR RULES:
                             }
 
                             if (requestedIndex > 0) {
-                                toolResult = `Showing additional image (Photo #${requestedIndex + 1}) for: ${listing.title}.`;
+                                toolResult = `Showing additional image(Photo #${requestedIndex + 1}) for: ${listing.title}.`;
                             } else {
                                 toolResult = `
 DETAILS FOR: ${listing.title}
 Property Type: ${listing.property_type}
-Price: AED ${listing.price?.toLocaleString()}
-Location: ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}
-Beds/Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
-Area: ${listing.area_sqft} sqft
-Description: ${listing.description || 'No detailed description available.'}
-`;
+    Price: AED ${listing.price?.toLocaleString()}
+    Location: ${listing.community}${listing.sub_community ? ` - ${listing.sub_community}` : ''}
+    Beds / Baths: ${listing.bedrooms} BR | ${listing.bathrooms} BA
+    Area: ${listing.area_sqft} sqft
+    Description: ${listing.description || 'No detailed description available.'}
+    `;
                                 // Broker Details Injection (Deterministic)
                                 if (listing.agent_name) {
-                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}. Would you like me to connect you or arrange a viewing?`;
+                                    const brokerInfo = `\n\nThis listing is with ${listing.agent_company || "Provident Estate"}. Your dedicated contact is ${listing.agent_name}. Would you like me to connect you or arrange a viewing ? `;
                                     toolResult += brokerInfo;
                                 }
                             }
@@ -1061,10 +1075,10 @@ Description: ${listing.description || 'No detailed description available.'}
                             const hasImage = requestedIndex === 0 || requestedIndex < images.length;
 
                             const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
-                            if (imageUrl && hasImage) {
+                            if (imageUrl && hasImage && tenant.enable_whatsapp_images === true) {
                                 responseImages.push(imageUrl);
                                 console.log(`[Details] Attaching proxy image (index ${requestedIndex}) for: ${listing.id}`);
-                            } else if (requestedIndex > 0) {
+                            } else if (requestedIndex > 0 && !hasImage) {
                                 toolResult = "I've shown you all the available photos for this property. Would you like to see another listing?";
                             }
                         } else {
@@ -1089,12 +1103,12 @@ Description: ${listing.description || 'No detailed description available.'}
                     // Get property title for context
                     let listingTitle = propertyName || "the property";
                     if (!propertyName && propertyId) {
-                        const listing = await getListingById(propertyId);
+                        const { data: listing } = await getListingById(propertyId);
                         if (listing) listingTitle = listing.title;
                     }
 
                     // Offer to call for booking (Vapi has Google Calendar integration)
-                    toolResult = `Great choice! To book a viewing for ${listingTitle}, I can have our assistant call you right now to check availability and confirm the appointment. The call takes just 2 minutes.\n\nWould you like me to call you now? 📞`;
+                    toolResult = `Great choice! To book a viewing for ${listingTitle}, I can have our assistant call you right now to check availability and confirm the appointment.The call takes just 2 minutes.\n\nWould you like me to call you now ? 📞`;
 
                     // Log the booking intent
                     if (leadId) {
@@ -1247,7 +1261,11 @@ Description: ${listing.description || 'No detailed description available.'}
   </Message>
 </Response>`;
 
-        console.log("Generated TwiML:", twiml);
+        const handlerDuration = Date.now() - handlerStart;
+        console.log(`[WhatsApp] Handler completed in ${handlerDuration}ms. Generated TwiML length: ${twiml.length}`);
+        if (handlerDuration > 8000) {
+            console.warn(`[WhatsApp] SLOW HANDLER: ${handlerDuration}ms exceeds 8s target`);
+        }
 
         return {
             statusCode: 200,
