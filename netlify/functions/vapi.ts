@@ -357,7 +357,7 @@ CURRENT LEAD PROFILE:
 
               // SANITIZATION HELPERS
               const sanitizeEmail = (e: string) => {
-                if (!e) return e;
+                if (!e) return "";
                 return e.toLowerCase()
                   .replace(/\s+at\s+/g, '@')
                   .replace(/\s+dot\s+/g, '.')
@@ -365,15 +365,29 @@ CURRENT LEAD PROFILE:
               };
 
               const sanitizePhone = (p: string) => {
-                if (!p) return p;
+                if (!p) return "";
                 let clean = p.replace(/\D/g, '');
+                // Ensure UAE number format if not starting with +
+                if (clean.startsWith('971') && !p.startsWith('+')) clean = '+' + clean;
                 return clean.startsWith('+') ? clean : `+${clean}`;
               };
 
-              const cleanEmail = sanitizeEmail(structuredData.email || leadData?.email || '');
+              const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+              let cleanEmail = sanitizeEmail(structuredData.email);
+
+              // If sanitized email from call is invalid, try leadData as fallback
+              if (!isValidEmail(cleanEmail)) {
+                console.log(`[VAPI] Call-derived email "${cleanEmail}" is invalid.`);
+                if (leadData?.email && isValidEmail(leadData.email)) {
+                  console.log(`[VAPI] Falling back to lead database email: ${leadData.email}`);
+                  cleanEmail = leadData.email;
+                }
+              }
+
               const cleanPhone = sanitizePhone(structuredData.phone || phoneNumber || leadData?.phone || '');
 
-              console.log(`[VAPI] Cleaned data for Cal.com: Email=${cleanEmail}, Phone=${cleanPhone}`);
+              console.log(`[VAPI] Data for Cal.com: Email=${cleanEmail}, Phone=${cleanPhone}`);
 
               const calResult = await createCalComBooking({
                 eventTypeId,
