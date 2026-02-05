@@ -54,6 +54,7 @@ export async function createCalComBooking(details: CalComBookingDetails) {
                     'cal-api-version': '2024-08-13',
                     'Content-Type': 'application/json'
                 }
+            }
         );
 
         console.log(`[Cal.com] RAW RESPONSE:`, JSON.stringify(response.data, null, 2));
