@@ -44,6 +44,24 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
  * Extracts the correct structured data from Vapi payload.
  * Priority: artifact.structuredOutputs (matched by name or schema), then analysis.structuredData
  */
+/**
+ * Formats a human-friendly WhatsApp confirmation message for bookings.
+ */
+function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: string, meetingUrl?: string): string {
+  const dateObj = new Date(meetingStartIso);
+  const dayName = dateObj.toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' });
+  const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
+  const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
+
+  let message = `Hi ${firstName}, your consultation with Provident is confirmed for ${dayName}, ${dateStr} at ${timeStr} (Dubai time). You’ll receive a calendar invite by email. If you need to reschedule, just reply to this message.`;
+
+  if (meetingUrl) {
+    message += `\n\nHere is your meeting link: ${meetingUrl}`;
+  }
+
+  return message;
+}
+
 function getStructuredData(body: any): any {
   const analysis = body.message?.analysis || body.call?.analysis || {};
   const artifact = body.message?.artifact || body.call?.artifact || {};
@@ -444,6 +462,56 @@ CURRENT LEAD PROFILE:
               });
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
+
+              // 5. WhatsApp Confirmation
+              if (tenant.id === 1) {
+                try {
+                  // Check if confirmation was already sent to avoid double-sending on retries
+                  const { data: existingBooking } = await supabase
+                    .from('bookings')
+                    .select('meta')
+                    .eq('booking_id', calResult.bookingId)
+                    .single();
+
+                  if (existingBooking?.meta?.whatsapp_confirmation_sent) {
+                    console.log('[WhatsApp] Confirmation already sent, skipping');
+                  } else {
+                    const phoneForWhatsapp = leadData?.phone || cleanPhone;
+                    console.log('[WhatsApp] Using phone for confirmation:', phoneForWhatsapp);
+
+                    const whatsappMessage = buildWhatsappConfirmationMessage(
+                      firstName,
+                      meetingStartIso,
+                      calResult.meetingUrl || calResult.raw?.meetingUrl
+                    );
+
+                    const sent = await sendWhatsAppMessage(phoneForWhatsapp, whatsappMessage, tenant);
+
+                    if (sent) {
+                      console.log('[WhatsApp] Sent booking confirmation', {
+                        phone: phoneForWhatsapp,
+                        leadId,
+                        bookingId: calResult.bookingId
+                      });
+
+                      // Update meta to track that confirmation was sent
+                      await supabase.from('bookings').update({
+                        meta: {
+                          ...(existingBooking?.meta || {}),
+                          whatsapp_confirmation_sent: true
+                        }
+                      }).eq('booking_id', calResult.bookingId);
+                    }
+                  }
+                } catch (waError: any) {
+                  console.error('[WhatsApp] Failed to send confirmation', {
+                    phone: leadData?.phone || cleanPhone,
+                    leadId,
+                    bookingId: calResult.bookingId,
+                    error: waError.message
+                  });
+                }
+              }
             } catch (calError: any) {
               console.error(`[VAPI] Cal.com booking failed: ${calError.message}`);
             }
