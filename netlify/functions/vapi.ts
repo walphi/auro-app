@@ -40,6 +40,32 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
   }
 }
 
+/**
+ * Extracts the correct structured data from Vapi payload.
+ * Priority: artifact.structuredOutputs (matched by name or schema), then analysis.structuredData
+ */
+function getStructuredData(body: any): any {
+  const analysis = body.message?.analysis || body.call?.analysis || {};
+  const artifact = body.message?.artifact || body.call?.artifact || {};
+  const structuredOutputs = artifact.structuredOutputs || [];
+
+  // 1. Look for the specific "Morgan Booking" structured output in the artifacts
+  // Typically they have a name or we can check for common keys
+  const newBookingOutput = structuredOutputs.find((o: any) =>
+    o.name === 'Morgan Booking' ||
+    (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
+  );
+
+  if (newBookingOutput) {
+    console.log("[VAPI] Found new booking structured output artifact:", newBookingOutput.name);
+    return newBookingOutput.result || {};
+  }
+
+  // 2. Fallback to analysis.structuredData if present (default Vapi behavior)
+  console.log("[VAPI] Falling back to analysis.structuredData");
+  return analysis.structuredData || {};
+}
+
 const handler: Handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
@@ -260,10 +286,27 @@ CURRENT LEAD PROFILE:
         }
 
         // --- NEW: CAL.COM BOOKING LOGIC ---
-        const structuredData = analysis.structuredData || {};
+        const structuredData = getStructuredData(body);
         const meetingScheduled = structuredData.meeting_scheduled === true ||
-          structuredData.meeting_scheduled === 'true' ||
-          bookingMade;
+          structuredData.meeting_scheduled === 'true';
+
+        // Explicitly log the structured data being used for booking
+        if (meetingScheduled || structuredData.meeting_scheduled !== undefined) {
+          console.log('Morgan structured booking output', {
+            meeting_scheduled: structuredData.meeting_scheduled,
+            meeting_start_iso: structuredData.meeting_start_iso,
+            first_name: structuredData.first_name,
+            last_name: structuredData.last_name,
+            email: structuredData.email,
+            phone: structuredData.phone,
+            budget: structuredData.budget,
+            property_type: structuredData.property_type,
+            preferred_area: structuredData.preferred_area,
+            lead_id: leadId,
+            tenant_id: tenant.id,
+            vapi_call_id: body.message?.call?.id || body.call?.id
+          });
+        }
 
         if (meetingScheduled && leadId) {
           const meetingStartIso = structuredData.meeting_start_iso;
@@ -295,7 +338,7 @@ CURRENT LEAD PROFILE:
                   preferred_area: structuredData.preferred_area || leadData?.location,
                   lead_id: leadId,
                   tenant_id: tenant.id,
-                  call_id: body.message?.call?.id
+                  call_id: body.message?.call?.id || body.call?.id
                 }
               });
 
@@ -303,7 +346,7 @@ CURRENT LEAD PROFILE:
               const endDate = new Date(new Date(meetingStartIso).getTime() + 30 * 60000);
 
               // Store in DB
-              await supabase.from('bookings').insert({
+              const { error: insertError } = await supabase.from('bookings').insert({
                 lead_id: leadId,
                 tenant_id: tenant.id,
                 booking_id: calResult.bookingId,
@@ -314,10 +357,14 @@ CURRENT LEAD PROFILE:
                 meta: {
                   uid: calResult.uid,
                   meeting_url: calResult.meetingUrl,
-                  call_id: body.message?.call?.id,
+                  call_id: body.message?.call?.id || body.call?.id,
                   structured_data: structuredData
                 }
               });
+
+              if (insertError) {
+                console.error('[VAPI] Booking DB Error:', insertError.message);
+              }
 
               // Update Lead
               await supabase.from('leads').update({
