@@ -202,7 +202,7 @@ const handler: Handler = async (event) => {
 
     let propertyContext = "None";
     if (leadData?.current_listing_id) {
-      const listing = await getListingById(leadData.current_listing_id);
+      const { data: listing } = await getListingById(leadData.current_listing_id);
       if (listing) {
         propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
       } else {
@@ -355,19 +355,39 @@ CURRENT LEAD PROFILE:
               const firstName = structuredData.first_name || leadData?.name?.split(' ')[0] || 'Client';
               const lastName = structuredData.last_name || leadData?.name?.split(' ').slice(1).join(' ') || '';
 
+              // SANITIZATION HELPERS
+              const sanitizeEmail = (e: string) => {
+                if (!e) return e;
+                return e.toLowerCase()
+                  .replace(/\s+at\s+/g, '@')
+                  .replace(/\s+dot\s+/g, '.')
+                  .replace(/\s+/g, '');
+              };
+
+              const sanitizePhone = (p: string) => {
+                if (!p) return p;
+                let clean = p.replace(/\D/g, '');
+                return clean.startsWith('+') ? clean : `+${clean}`;
+              };
+
+              const cleanEmail = sanitizeEmail(structuredData.email || leadData?.email || '');
+              const cleanPhone = sanitizePhone(structuredData.phone || phoneNumber || leadData?.phone || '');
+
+              console.log(`[VAPI] Cleaned data for Cal.com: Email=${cleanEmail}, Phone=${cleanPhone}`);
+
               const calResult = await createCalComBooking({
                 eventTypeId,
                 start: meetingStartIso,
                 name: `${firstName} ${lastName}`.trim(),
-                email: structuredData.email || leadData?.email,
-                phoneNumber: structuredData.phone || phoneNumber || leadData?.phone,
+                email: cleanEmail,
+                phoneNumber: cleanPhone,
                 metadata: {
-                  budget: structuredData.budget || leadData?.budget,
-                  property_type: structuredData.property_type || leadData?.property_type,
-                  preferred_area: structuredData.preferred_area || leadData?.location,
-                  lead_id: leadId,
-                  tenant_id: tenant.id,
-                  call_id: body.message?.call?.id || body.call?.id
+                  budget: String(structuredData.budget || leadData?.budget || ""),
+                  property_type: String(structuredData.property_type || leadData?.property_type || ""),
+                  preferred_area: String(structuredData.preferred_area || leadData?.location || ""),
+                  lead_id: String(leadId),
+                  tenant_id: String(tenant.id),
+                  call_id: String(body.message?.call?.id || body.call?.id || "")
                 }
               });
 
@@ -598,7 +618,7 @@ CURRENT LEAD PROFILE:
           // 2. Fetch Property Details for Message
           let listingTitle = property_name;
           if (!listingTitle) {
-            const listing = await getListingById(property_id);
+            const { data: listing } = await getListingById(property_id);
             listingTitle = listing?.title || "Property";
           }
 
