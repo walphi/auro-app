@@ -273,7 +273,7 @@ const handler: Handler = async (event) => {
 
         let propertyContext = "None";
         if (leadData?.current_listing_id) {
-            const listing = await getListingById(leadData.current_listing_id);
+            const { data: listing } = await getListingById(leadData.current_listing_id);
             if (listing) {
                 propertyContext = `${listing.title} in ${listing.community}${listing.sub_community ? ` (${listing.sub_community})` : ""} - AED ${listing.price?.toLocaleString()}`;
             } else {
@@ -317,10 +317,11 @@ ${contextString}
 RULES & BEHAVIOR:
 1. CONTACT VALIDATION (STRICT):
    - You have the CURRENT LEAD PROFILE below. 
-   - If Name, Email, or Phone are listed, YOU ALREADY HAVE THEM correctly.
-   - DO NOT ASK: "Can I get your name?" OR "What is your email?".
-   - Instead, verify: "I have you as ${leadData?.name || "Phillip"}, is that right?" or simply address them by name and only verify if unsure.
-   - If you ask for a name you already have, you fail the interaction.
+   - If a real Name is listed (not "WhatsApp Lead ..."), you ALREADY have it.
+   - If the Name is "WhatsApp Lead ...", you MUST ask for their real name at a natural point.
+   - If Email or Phone are listed, YOU ALREADY HAVE THEM. DO NOT ASK for them.
+   - Instead, verify: "I have your email as [email], is that still the best one?" if you want to be safe, but generally just use it.
+   - If you ask for information you already have (unless it's a generic placeholder), you fail the interaction.
 
 2. VOICE-ADAPTED VISUALS:
    - You are a VOICE agent. You cannot "send" cards directly, but you can describe images I am sending via WhatsApp.
@@ -470,7 +471,7 @@ RULES & BEHAVIOR:
 
                         let listingTitle = property_name || "Property";
                         if (!property_name && property_id) {
-                            const listing = await getListingById(property_id);
+                            const { data: listing } = await getListingById(property_id);
                             if (listing) listingTitle = listing.title;
                         }
 

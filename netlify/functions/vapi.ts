@@ -370,8 +370,11 @@ CURRENT LEAD PROFILE:
             const eventTypeId = parseInt(eventTypeIdAttr);
 
             try {
-              const firstName = structuredData.first_name || leadData?.name?.split(' ')[0] || 'Client';
-              const lastName = structuredData.last_name || leadData?.name?.split(' ').slice(1).join(' ') || '';
+              // Improvement: Ignore 'WhatsApp' placeholder names
+              const dbName = leadData?.name && !leadData.name.includes('WhatsApp Lead') ? leadData.name : '';
+
+              const firstName = structuredData.first_name || dbName.split(' ')[0] || 'Client';
+              const lastName = structuredData.last_name || dbName.split(' ').slice(1).join(' ') || '';
 
               // SANITIZATION HELPERS
               const sanitizeEmail = (e: string) => {

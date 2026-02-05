@@ -333,6 +333,8 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
             assistantId: tenant.vapi_assistant_id || process.env.VAPI_ASSISTANT_ID,
             customer: {
                 number: phoneNumber,
+                name: context?.name || "",
+                email: context?.email || ""
             },
             // Pass context variables via assistantOverrides
             assistantOverrides: {
