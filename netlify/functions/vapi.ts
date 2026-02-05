@@ -18,12 +18,24 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
     const from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
 
-    if (!accountSid || !authToken) return false;
+    if (!accountSid || !authToken) {
+      console.error('[VAPI WhatsApp] Missing credentials');
+      return false;
+    }
 
     const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    const fromFormatted = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
+
+    console.log('[VAPI WhatsApp] Sending message:', {
+      to: toFormatted,
+      from: fromFormatted,
+      bodyLength: text.length
+    });
+
     const params = new URLSearchParams();
-    params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
-    params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+    params.append('To', toFormatted);
+    params.append('From', fromFormatted);
     params.append('Body', text);
 
     const response = await axios.post(
@@ -31,9 +43,22 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
       params,
       { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
+
+    console.log('[VAPI WhatsApp] Twilio response:', {
+      status: response.status,
+      messageSid: response.data?.sid,
+      messageStatus: response.data?.status,
+      to: response.data?.to,
+      from: response.data?.from
+    });
+
     return response.status === 201 || response.status === 200;
   } catch (error: any) {
-    console.error("[VAPI WhatsApp Error]:", error.message);
+    console.error('[VAPI WhatsApp Error]:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     return false;
   }
 }
