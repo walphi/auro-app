@@ -47,12 +47,15 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
 function getStructuredData(body: any): any {
   const analysis = body.message?.analysis || body.call?.analysis || {};
   const artifact = body.message?.artifact || body.call?.artifact || {};
-  const structuredOutputs = artifact.structuredOutputs || [];
+  const structuredOutputs = artifact.structuredOutputs || {};
 
-  // 1. Look for the specific "Morgan Booking" structured output in the artifacts
-  // Typically they have a name or we can check for common keys
-  const newBookingOutput = structuredOutputs.find((o: any) =>
+  // Vapi sends structuredOutputs as an object keyed by ID
+  const outputsArray = Object.values(structuredOutputs) as any[];
+
+  // 1. Look for the specific "Morgan Booking" or relevant structured output
+  const newBookingOutput = outputsArray.find((o: any) =>
     o.name === 'Morgan Booking' ||
+    o.name === 'Consultation Booking' ||
     (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
   );
 
@@ -62,8 +65,16 @@ function getStructuredData(body: any): any {
   }
 
   // 2. Fallback to analysis.structuredData if present (default Vapi behavior)
-  console.log("[VAPI] Falling back to analysis.structuredData");
-  return analysis.structuredData || {};
+  const fallback = analysis.structuredData;
+  if (fallback) {
+    console.log("[VAPI] Using analysis.structuredData fallback");
+    return fallback;
+  }
+
+  console.log('[VAPI] No booking structured output found on artifact/analysis', {
+    availableNames: outputsArray.map((o) => o.name),
+  });
+  return {};
 }
 
 const handler: Handler = async (event) => {
