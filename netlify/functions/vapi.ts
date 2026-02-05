@@ -418,8 +418,8 @@ CURRENT LEAD PROFILE:
               // Calculate end time
               const endDate = new Date(new Date(meetingStartIso).getTime() + 30 * 60000);
 
-              // Store in DB
-              const { error: insertError } = await supabase.from('bookings').insert({
+              // Store in DB (Upsert to handle retries gracefully)
+              const { error: insertError } = await supabase.from('bookings').upsert({
                 lead_id: leadId,
                 tenant_id: tenant.id,
                 booking_id: calResult.bookingId,
@@ -433,6 +433,8 @@ CURRENT LEAD PROFILE:
                   call_id: body.message?.call?.id || body.call?.id,
                   structured_data: structuredData
                 }
+              }, {
+                onConflict: 'lead_id,tenant_id,meeting_start_iso'
               });
 
               if (insertError) {
