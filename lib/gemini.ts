@@ -18,6 +18,28 @@ export interface GeminiOptions {
 }
 
 /**
+ * Analytics counters for Gemini model usage
+ * These are logged to help track quota usage and scaling issues
+ */
+export const GEMINI_ANALYTICS = {
+    primary_success: 0,
+    primary_429: 0,
+    primary_404: 0,
+    primary_5xx: 0,
+    fallback_used: 0,
+    fallback_success: 0,
+    total_failure: 0
+};
+
+/**
+ * Log analytics event with timestamp
+ */
+function logAnalytics(event: string, details?: any) {
+    const timestamp = new Date().toISOString();
+    console.log(`[GEMINI_ANALYTICS] ${timestamp} - ${event}`, details || '');
+}
+
+/**
  * Helper to call Gemini with a single-turn message or audio.
  * Implements retry with backoff and model fallback.
  */
@@ -97,40 +119,99 @@ export class RobustChat {
 
 /**
  * Core execution engine with retry and fallback
+ * Max 3 attempts total: 2 on primary (initial + retry), 1 on fallback
+ * Prevents long-tail latency in WhatsApp by capping retries
  */
 async function executeWithFallback<T>(
     operation: (modelId: string) => Promise<T>
 ): Promise<T> {
     let lastError: any;
+    let attemptCount = 0;
+    const MAX_TOTAL_ATTEMPTS = 3;
 
-    // 1. Try Primary Model
+    // 1. Try Primary Model (Attempt 1)
+    attemptCount++;
     try {
-        console.log(`[GEMINI] Using primary model: ${PRIMARY_MODEL_ID}`);
-        return await operation(PRIMARY_MODEL_ID);
+        console.log(`[GEMINI] Attempt ${attemptCount}/${MAX_TOTAL_ATTEMPTS}: Using primary model: ${PRIMARY_MODEL_ID}`);
+        const result = await operation(PRIMARY_MODEL_ID);
+        GEMINI_ANALYTICS.primary_success++;
+        logAnalytics('primary_success', { model: PRIMARY_MODEL_ID, attempt: attemptCount });
+        return result;
     } catch (error: any) {
         lastError = error;
-        const status = error.status || (error.response ? error.response.status : null);
+        const status = error.status || (error.response?.status) || 'unknown';
+        const errorCode = error.code || error.message || 'unknown_error';
 
-        // Retry logic for 429
+        console.error(`[GEMINI] Primary model failed (attempt ${attemptCount}): status=${status}, code=${errorCode}`);
+
+        // Track specific error types
         if (status === 429) {
-            console.warn(`[GEMINI] Primary model 429, retrying with backoff...`);
+            GEMINI_ANALYTICS.primary_429++;
+            logAnalytics('primary_429', { model: PRIMARY_MODEL_ID, errorCode });
+        } else if (status === 404) {
+            GEMINI_ANALYTICS.primary_404++;
+            logAnalytics('primary_404', { model: PRIMARY_MODEL_ID, errorCode });
+        } else if (status >= 500 && status < 600) {
+            GEMINI_ANALYTICS.primary_5xx++;
+            logAnalytics('primary_5xx', { model: PRIMARY_MODEL_ID, status, errorCode });
+        }
+
+        // 2. Retry Primary Model for 429 (Attempt 2)
+        if (status === 429 && attemptCount < MAX_TOTAL_ATTEMPTS - 1) {
+            attemptCount++;
+            console.warn(`[GEMINI] Attempt ${attemptCount}/${MAX_TOTAL_ATTEMPTS}: Retrying primary model after 429 (2s backoff)`);
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             try {
-                return await operation(PRIMARY_MODEL_ID);
+                const result = await operation(PRIMARY_MODEL_ID);
+                GEMINI_ANALYTICS.primary_success++;
+                logAnalytics('primary_success_after_retry', { model: PRIMARY_MODEL_ID, attempt: attemptCount });
+                return result;
             } catch (retryError: any) {
                 lastError = retryError;
-                console.error(`[GEMINI] Retry failed for primary model.`);
+                const retryStatus = retryError.status || (retryError.response?.status) || 'unknown';
+                const retryCode = retryError.code || retryError.message || 'unknown_error';
+                console.error(`[GEMINI] Primary retry failed (attempt ${attemptCount}): status=${retryStatus}, code=${retryCode}`);
             }
         }
     }
 
-    // 2. Try Fallback Model
-    try {
-        console.log(`[GEMINI] Falling back to model: ${FALLBACK_MODEL_ID}`);
-        return await operation(FALLBACK_MODEL_ID);
-    } catch (fallbackError: any) {
-        console.error(`[GEMINI] Fallback model also failed: ${fallbackError.message}`);
-        throw new Error("GEMINI_TOTAL_FAILURE");
+    // 3. Try Fallback Model (Attempt 3)
+    if (attemptCount < MAX_TOTAL_ATTEMPTS) {
+        attemptCount++;
+        const fallbackReason = lastError.status === 429 ? '429 (rate limit)' :
+            lastError.status === 404 ? '404 (not found)' :
+                lastError.status >= 500 ? `${lastError.status} (server error)` :
+                    `${lastError.status || 'unknown'} (${lastError.message || 'error'})`;
+
+        console.log(`[GEMINI] Attempt ${attemptCount}/${MAX_TOTAL_ATTEMPTS}: Falling back due to ${fallbackReason}`);
+        GEMINI_ANALYTICS.fallback_used++;
+        logAnalytics('fallback_used', { reason: fallbackReason, model: FALLBACK_MODEL_ID });
+
+        try {
+            const result = await operation(FALLBACK_MODEL_ID);
+            GEMINI_ANALYTICS.fallback_success++;
+            logAnalytics('fallback_success', { model: FALLBACK_MODEL_ID, attempt: attemptCount });
+            return result;
+        } catch (fallbackError: any) {
+            lastError = fallbackError;
+            const fallbackStatus = fallbackError.status || (fallbackError.response?.status) || 'unknown';
+            const fallbackCode = fallbackError.code || fallbackError.message || 'unknown_error';
+            console.error(`[GEMINI] Fallback model failed (attempt ${attemptCount}): status=${fallbackStatus}, code=${fallbackCode}`);
+        }
     }
+
+    // 4. Total Failure
+    GEMINI_ANALYTICS.total_failure++;
+    const finalStatus = lastError.status || 'unknown';
+    const finalCode = lastError.code || lastError.message || 'unknown_error';
+    logAnalytics('total_failure', {
+        attempts: attemptCount,
+        lastStatus: finalStatus,
+        lastCode: finalCode,
+        analytics: { ...GEMINI_ANALYTICS }
+    });
+    console.error(`[GEMINI] TOTAL FAILURE after ${attemptCount} attempts. Last error: status=${finalStatus}, code=${finalCode}`);
+    console.error(`[GEMINI] Analytics snapshot:`, GEMINI_ANALYTICS);
+    throw new Error("GEMINI_TOTAL_FAILURE");
 }
