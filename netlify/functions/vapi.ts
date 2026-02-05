@@ -52,26 +52,44 @@ function getStructuredData(body: any): any {
   // Vapi sends structuredOutputs as an object keyed by ID
   const outputsArray = Object.values(structuredOutputs) as any[];
 
-  // 1. Look for the specific "Morgan Booking" or relevant structured output
-  const newBookingOutput = outputsArray.find((o: any) =>
+  // 1. Look for a consolidated booking artifact first
+  const consolidated = outputsArray.find((o: any) =>
     o.name === 'Morgan Booking' ||
     o.name === 'Consultation Booking' ||
     (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
   );
 
-  if (newBookingOutput) {
-    console.log("[VAPI] Found new booking structured output artifact:", newBookingOutput.name);
-    return newBookingOutput.result || {};
+  if (consolidated) {
+    console.log("[VAPI] Found consolidated booking artifact:", consolidated.name);
+    return consolidated.result || {};
   }
 
-  // 2. Fallback to analysis.structuredData if present (default Vapi behavior)
+  // 2. Harvesting individual fields from the array of structured outputs
+  const harvested: any = {};
+  const fieldsToHarvest = [
+    'meeting_scheduled', 'meeting_start_iso', 'first_name', 'last_name',
+    'email', 'phone', 'budget', 'property_type', 'preferred_area'
+  ];
+
+  outputsArray.forEach(o => {
+    if (o.name && fieldsToHarvest.includes(o.name)) {
+      harvested[o.name] = o.result;
+    }
+  });
+
+  if (harvested.meeting_scheduled !== undefined) {
+    console.log("[VAPI] Successfully harvested individual structured fields:", Object.keys(harvested));
+    return harvested;
+  }
+
+  // 3. Fallback to analysis.structuredData
   const fallback = analysis.structuredData;
   if (fallback) {
     console.log("[VAPI] Using analysis.structuredData fallback");
     return fallback;
   }
 
-  console.log('[VAPI] No booking structured output found on artifact/analysis', {
+  console.log('[VAPI] No booking fields found in artifact/analysis', {
     availableNames: outputsArray.map((o) => o.name),
   });
   return {};
