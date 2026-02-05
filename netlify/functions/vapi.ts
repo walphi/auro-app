@@ -382,16 +382,7 @@ CURRENT LEAD PROFILE:
                   .replace(/\s+/g, '');
               };
 
-              const sanitizePhone = (p: string) => {
-                if (!p) return "";
-                let clean = p.replace(/\D/g, '');
-                // Ensure UAE number format if not starting with +
-                if (clean.startsWith('971') && !p.startsWith('+')) clean = '+' + clean;
-                return clean.startsWith('+') ? clean : `+${clean}`;
-              };
-
               const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-
               let cleanEmail = sanitizeEmail(structuredData.email);
 
               // If sanitized email from call is invalid, try leadData as fallback
@@ -403,16 +394,14 @@ CURRENT LEAD PROFILE:
                 }
               }
 
-              const cleanPhone = sanitizePhone(structuredData.phone || phoneNumber || leadData?.phone || '');
-
-              console.log(`[VAPI] Data for Cal.com: Email=${cleanEmail}, Phone=${cleanPhone}`);
+              const rawPhone = structuredData.phone || phoneNumber || leadData?.phone || '';
 
               const calResult = await createCalComBooking({
                 eventTypeId,
                 start: meetingStartIso,
                 name: `${firstName} ${lastName}`.trim(),
                 email: cleanEmail,
-                phoneNumber: cleanPhone,
+                phoneNumber: rawPhone,
                 metadata: {
                   budget: String(structuredData.budget || leadData?.budget || ""),
                   property_type: String(structuredData.property_type || leadData?.property_type || ""),
@@ -476,7 +465,7 @@ CURRENT LEAD PROFILE:
                   if (existingBooking?.meta?.whatsapp_confirmation_sent) {
                     console.log('[WhatsApp] Confirmation already sent, skipping');
                   } else {
-                    const phoneForWhatsapp = leadData?.phone || cleanPhone;
+                    const phoneForWhatsapp = leadData?.phone || rawPhone;
                     console.log('[WhatsApp] Using phone for confirmation:', phoneForWhatsapp);
 
                     const whatsappMessage = buildWhatsappConfirmationMessage(
@@ -505,7 +494,7 @@ CURRENT LEAD PROFILE:
                   }
                 } catch (waError: any) {
                   console.error('[WhatsApp] Failed to send confirmation', {
-                    phone: leadData?.phone || cleanPhone,
+                    phone: leadData?.phone || rawPhone,
                     leadId,
                     bookingId: calResult.bookingId,
                     error: waError.message

@@ -15,24 +15,27 @@ export interface CalComBookingDetails {
 
 /**
  * Normalize phone to E.164 format.
- * Must start with + and country code, no spaces or special characters.
+ * Specifically optimized for UAE numbers and spoken/formatted inputs.
  */
 function normalizePhone(raw: string): string | null {
     if (!raw) return null;
-    // Strip everything except digits and plus
-    let cleaned = raw.replace(/[^0-9+]/g, '');
-    // If it starts with 00, convert to +
-    if (cleaned.startsWith('00')) cleaned = '+' + cleaned.slice(2);
-    // If it doesn't start with +, assume UAE and prefix +971
-    // (Ensure we don't accidentally double-prefix if '971' is already there without a plus)
-    if (!cleaned.startsWith('+')) {
-        if (cleaned.startsWith('971')) {
-            cleaned = '+' + cleaned;
-        } else {
-            cleaned = '+971' + cleaned;
-        }
+
+    // Strip everything except digits
+    let digits = raw.replace(/\D/g, '');
+
+    // Handle leading 00 or 0 (common for local dialing)
+    if (digits.startsWith('00')) {
+        digits = digits.slice(2);
+    } else if (digits.startsWith('0')) {
+        digits = digits.slice(1);
     }
-    return cleaned;
+
+    // Ensure 971 prefix for UAE
+    if (!digits.startsWith('971')) {
+        digits = '971' + digits;
+    }
+
+    return '+' + digits;
 }
 
 /**
