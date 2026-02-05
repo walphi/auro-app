@@ -15,7 +15,8 @@ export class TwilioWhatsAppClient {
     constructor(accountSid?: string, authToken?: string, from?: string) {
         this.accountSid = accountSid || process.env.TWILIO_ACCOUNT_SID || '';
         this.authToken = authToken || process.env.TWILIO_AUTH_TOKEN || '';
-        this.from = from || process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'; // default sandbox
+        this.from = from || process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+12098994972';
+        if (this.from.includes('14155238886')) this.from = 'whatsapp:+12098994972';
     }
 
     async sendTextMessage(to: string, body: string): Promise<TwilioSendResult> {

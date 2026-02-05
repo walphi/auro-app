@@ -75,7 +75,8 @@ async function sendWhatsAppNotification(booking: BookingNotification): Promise<b
 
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+    let from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
+    if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
 
     if (!accountSid || !authToken) {
         console.log('[Notify] WhatsApp skipped - Twilio not configured');

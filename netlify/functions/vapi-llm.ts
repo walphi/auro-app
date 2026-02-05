@@ -14,7 +14,8 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     try {
         const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
         const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
-        const from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+        let from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
+        if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
 
         if (!accountSid || !authToken) return false;
 

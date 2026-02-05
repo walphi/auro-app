@@ -32,7 +32,8 @@ function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: st
 async function sendWhatsAppMessage(to: string, text: string): Promise<any> {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+14155238886';
+    let from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
+    if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
 
     console.log('[WhatsApp] REQUEST:', { to, from, body: text });
 

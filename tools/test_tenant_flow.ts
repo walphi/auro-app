@@ -20,7 +20,7 @@ async function runTest() {
     const mockPayload = {
         Body: "Tell me about off-plan apartments in Emaar Beachfront. What's the budget like?",
         From: "whatsapp:+971501234567",
-        To: "whatsapp:+14155238886",
+        To: "whatsapp:+12098994972",
         NumMedia: "0"
     };
 

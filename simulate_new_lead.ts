@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as querystring from 'querystring';
 
 const URL = 'https://auroapp.com/.netlify/functions/whatsapp';
-const TO_NUMBER = 'whatsapp:+14155238886'; // Provident
+const TO_NUMBER = 'whatsapp:+12098994972'; // Provident
 const FROM_NUMBER = 'whatsapp:+971500000000'; // Simulation Phone
 
 async function sendMessage(text: string) {
