@@ -1,11 +1,14 @@
 import { Handler } from "@netlify/functions";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { getListingById } from "./listings-helper";
 import axios from "axios";
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
+import { genAI, RobustChat, callGemini } from "../../lib/gemini";
+
+// Initialize local genAI if needed for embeddings
+// ... but wait, vapi-llm.ts also has its own genAI initialization later or expects it.
 
 async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
     try {
@@ -33,7 +36,6 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     }
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const supabase = createClient(
     process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "",
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ""
@@ -361,8 +363,8 @@ RULES & BEHAVIOR:
 `;
 
         // 2. Call Gemini
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-001",
+        // 2. Call Gemini
+        const chat = new RobustChat({
             systemInstruction: systemInstruction,
             tools: [
                 {
@@ -436,9 +438,7 @@ RULES & BEHAVIOR:
                         }
                     ]
                 }
-            ] as any
-        });
-        const chat = model.startChat({
+            ] as any,
             history: messages.slice(0, -1).map((m: any) => ({
                 role: m.role === "assistant" ? "model" : "user",
                 parts: [{ text: m.content || "" }]
@@ -447,11 +447,9 @@ RULES & BEHAVIOR:
 
         const lastMsg = messages[messages.length - 1]?.content || "Hello";
         const result = await chat.sendMessage(lastMsg);
-        const response = await result.response;
 
-        // 3. Process Response
-        let text = response.text();
-        const functionCalls = response.functionCalls();
+        let text = result.text;
+        let functionCalls = result.functionCalls;
 
         if (functionCalls && functionCalls.length > 0) {
             console.log(`[VAPI-LLM] Processing ${functionCalls.length} tool calls...`);
@@ -532,7 +530,7 @@ RULES & BEHAVIOR:
 
             // Call model again with tool results
             const result2 = await chat.sendMessage(responses);
-            text = (await result2.response).text();
+            text = result2.text;
             console.log(`[VAPI-LLM] Final response after tools:`, text.substring(0, 100) + '...');
         }
 

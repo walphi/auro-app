@@ -1,5 +1,5 @@
 import { Handler } from "@netlify/functions";
-import { GoogleGenerativeAI, Content } from "@google/generative-ai";
+import { Content } from "@google/generative-ai";
 import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
@@ -8,8 +8,7 @@ import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
 import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { genAI, RobustChat, callGemini } from "../../lib/gemini";
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -800,17 +799,6 @@ BEHAVIOR RULES:
             }
         ];
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-001",
-            systemInstruction: systemInstruction,
-            tools: tools as any,
-            toolConfig: {
-                functionCallingConfig: {
-                    mode: "AUTO" // We keep it auto but the prompt now mandates use
-                }
-            } as any
-        });
-
         // --- GEMINI: History & Session Management ---
         // Since Netlify is stateless, we fetch the last interaction from Supabase to maintain flow
         let chatHistory: Content[] = [];
@@ -823,8 +811,7 @@ BEHAVIOR RULES:
                 .limit(12);
 
             if (recentMessages && recentMessages.length > 0) {
-                // The most recent message (index 0) is the one we just saved above.
-                // We want to skip it in history because it's the 'current message' passed to sendMessage.
+                // We skip the 'current message' (index 0) because it's passed separately
                 const historyRaw = recentMessages.slice(1).reverse();
 
                 let geminiHistory = historyRaw.map(m => ({
@@ -853,7 +840,10 @@ BEHAVIOR RULES:
             }
         }
 
-        const chat = model.startChat({
+        // Create Robust Chat Session
+        const chat = new RobustChat({
+            systemInstruction: systemInstruction,
+            tools: tools as any,
             history: chatHistory
         });
 
@@ -876,167 +866,171 @@ BEHAVIOR RULES:
             ];
         }
 
-        console.log("Sending prompt to Gemini (Text or Audio)...");
-        const result = await chat.sendMessage(promptContent);
-        const response = await result.response;
+        try {
+            console.log("Sending prompt to Gemini (Text or Audio)...");
+            const result = await chat.sendMessage(promptContent);
 
-        let functionCalls = response.functionCalls();
-        let textResponse = response.text();
+            let functionCalls = result.functionCalls;
+            let textResponse = result.text;
 
-        console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length} `);
+            console.log(`[Gemini] Initial Turn: Detected ${functionCalls?.length || 0} function calls. Text length: ${textResponse.length}`);
 
-        // Handle function calls loop (max 2 turns for WhatsApp latency)
-        let turns = 0;
-        const MAX_TURNS = 2;
-        const HARD_LIMIT_MS = 6500; // Aim to finish Gemini work by 6.5s to allow for TwiML overhead
+            // Handle function calls loop (max 2 turns for WhatsApp latency)
+            let turns = 0;
+            const MAX_TURNS = 2;
+            const HARD_LIMIT_MS = 6500; // Aim to finish Gemini work by 6.5s to allow for TwiML overhead
 
-        while (functionCalls && functionCalls.length > 0 && turns < MAX_TURNS) {
-            const timeElapsed = Date.now() - handlerStart;
-            if (timeElapsed > HARD_LIMIT_MS) {
-                console.warn(`[WhatsApp] Hard time limit reached at turn ${turns}. Cutting tool execution short.`);
-                break;
-            }
-
-            turns++;
-            console.log(`[Gemini] Turn ${turns}: Executing ${functionCalls.length} tool calls in parallel.`);
-
-            const toolCalls = functionCalls;
-            const parts = await Promise.all(toolCalls.map(async (call) => {
-                const name = call.name;
-                const args = call.args;
-                let toolResult = "";
-
-                if (name === 'RAG_QUERY_TOOL' || (name as any) === 'SEARCH_WEB_TOOL') {
-                    // For WhatsApp, we treat SEARCH_WEB_TOOL as a limited RAG or skip it if it's too slow
-                    // In this implementation, we follow the user request to prioritize RAG or parallelize if needed.
-                    let query = (args as any).query;
-
-                    if (name === 'SEARCH_WEB_TOOL') {
-                        console.log(`[WhatsApp] SEARCH_WEB_TOOL called. Redirecting to RAG/Web sparingly for query: ${query}`);
-                        // Optionally disable or limit here. For now, we allow it but it's parallelized.
-                    }
-
-                    if (name === 'RAG_QUERY_TOOL') {
-                        const lowerQuery = query.toLowerCase();
-                        if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
-                            let currentListing: PropertyListing | null = null;
-                            if (leadId) {
-                                const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
-                                if (lead?.current_listing_id) {
-                                    const { data: listing } = await getListingById(lead.current_listing_id);
-                                    currentListing = listing;
-                                }
-                            }
-
-                            if (currentListing) {
-                                const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
-                                const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms} - bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
-                                toolResult = await searchWeb(detailedQuery);
-                                query = null;
-                            }
-                        }
-                    }
-
-                    if (query) {
-                        toolResult = await queryRAG(query, tenant, undefined, undefined);
-                    }
-                } else if (name === 'SEARCH_WEB_TOOL') {
-                    toolResult = await searchWeb((args as any).query);
-                } else if (name === 'UPDATE_LEAD') {
-                    if (leadId) {
-                        const { error } = await supabase.from('leads').update(args).eq('id', leadId);
-                        toolResult = error ? "Error updating lead." : `System: Lead profile updated successfully (${Object.keys(args).join(", ")}).`;
-                    } else {
-                        toolResult = "No lead ID found.";
-                    }
-                } else if (name === 'INITIATE_CALL') {
-                    let context = null;
-                    if (leadId) {
-                        const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
-                        context = { ...data, lead_id: leadId };
-                    }
-                    const callStarted = await initiateVapiCall(fromNumber, tenant, context);
-                    toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";
-                } else if (name === 'SEARCH_LISTINGS') {
-                    const filters: SearchFilters = {
-                        property_type: (args as any).property_type,
-                        community: (args as any).community,
-                        min_price: (args as any).min_price,
-                        max_price: (args as any).max_price,
-                        min_bedrooms: (args as any).min_bedrooms,
-                        max_bedrooms: (args as any).max_bedrooms,
-                        offering_type: (args as any).offering_type || 'sale',
-                        limit: 3
-                    };
-                    const listings = await searchListings(filters);
-                    const listingsResponse = formatListingsResponse(listings, mediaHost);
-                    toolResult = listingsResponse.text + "\n\nINTERNAL DATA:\n" + listings.map((l, i) => `Property ${i + 1} ID: ${l.id}`).join('\n');
-                    if (listingsResponse.images.length > 0 && tenant.enable_whatsapp_images === true) {
-                        responseImages.push(...listingsResponse.images);
-                    }
-                } else if (name === 'GET_PROPERTY_DETAILS') {
-                    let propertyId = (args as any).property_id;
-                    if (!propertyId && leadId) {
-                        const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
-                        propertyId = lead?.current_listing_id;
-                    }
-
-                    if (propertyId) {
-                        const { data: listing } = await getListingById(propertyId);
-                        const requestedIndex = (args as any).image_index ?? 0;
-                        if (listing) {
-                            if (leadId) {
-                                await supabase.from('leads').update({ current_listing_id: listing.id, last_image_index: requestedIndex }).eq('id', leadId);
-                            }
-                            if (requestedIndex > 0) {
-                                toolResult = `Showing Photo #${requestedIndex + 1} for ${listing.title}.`;
-                            } else {
-                                toolResult = `DETAILS: ${listing.title} | ${listing.property_type} | AED ${listing.price?.toLocaleString()} | ${listing.community}\nBeds: ${listing.bedrooms} | Baths: ${listing.bathrooms} | Sqft: ${listing.area_sqft}\nDesc: ${listing.description?.substring(0, 100)}...`;
-                            }
-                            const images = Array.isArray(listing.images) ? listing.images : [];
-                            const hasImage = requestedIndex === 0 || requestedIndex < images.length;
-                            const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
-                            if (imageUrl && hasImage && tenant.enable_whatsapp_images === true) {
-                                responseImages.push(imageUrl);
-                            }
-                        } else {
-                            toolResult = "Property not found.";
-                        }
-                    } else {
-                        toolResult = "Please specify a property ID.";
-                    }
-                } else if (name === 'BOOK_VIEWING') {
-                    let propertyId = (args as any).property_id;
-                    if (!propertyId && leadId) {
-                        const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
-                        propertyId = lead?.current_listing_id;
-                    }
-                    const listing = propertyId ? (await getListingById(propertyId)).data : null;
-                    const listingTitle = listing?.title || "the property";
-                    toolResult = `Book viewing for ${listingTitle}? I can call you.`;
-                } else if (name === 'OFFPLAN_BOOKING') {
-                    const propertyId = (args as any).property_id;
-                    const propertyName = (args as any).property_name || "this offplan project";
-                    const isInternational = fromNumber.startsWith('+44') || fromNumber.startsWith('+91');
-                    toolResult = `Booking options for ${propertyName} (ID: ${propertyId}): 1. Sales Centre Visit 2. Video Call (${isInternational ? 'Recommended' : ''}) 3. Voice Call.`;
+            while (functionCalls && functionCalls.length > 0 && turns < MAX_TURNS) {
+                const timeElapsed = Date.now() - handlerStart;
+                if (timeElapsed > HARD_LIMIT_MS) {
+                    console.warn(`[WhatsApp] Hard time limit reached at turn ${turns}. Cutting tool execution short.`);
+                    break;
                 }
 
-                return {
-                    functionResponse: {
-                        name: name,
-                        response: { name: name, content: toolResult }
+                turns++;
+                console.log(`[Gemini] Turn ${turns}: Executing ${functionCalls.length} tool calls in parallel.`);
+
+                const toolCalls = functionCalls;
+                const parts = await Promise.all(toolCalls.map(async (call) => {
+                    const name = call.name;
+                    const args = call.args;
+                    let toolResult = "";
+
+                    if (name === 'RAG_QUERY_TOOL' || (name as any) === 'SEARCH_WEB_TOOL') {
+                        let query = (args as any).query;
+
+                        if (name === 'RAG_QUERY_TOOL') {
+                            const lowerQuery = query.toLowerCase();
+                            if (lowerQuery.includes('yield') || lowerQuery.includes('investment') || lowerQuery.includes('rent') || lowerQuery.includes('return') || lowerQuery.includes('roi')) {
+                                let currentListing: PropertyListing | null = null;
+                                if (leadId) {
+                                    const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                                    if (lead?.current_listing_id) {
+                                        const { data: listing } = await getListingById(lead.current_listing_id);
+                                        currentListing = listing;
+                                    }
+                                }
+
+                                if (currentListing) {
+                                    const locationStr = `${currentListing.sub_community || ''}, ${currentListing.community || ''}, Dubai`.trim();
+                                    const detailedQuery = `Estimate typical annual rent and gross yield range for a ${currentListing.bedrooms} - bedroom ${currentListing.property_type} in ${locationStr}, priced at AED ${currentListing.price}. Return rent_low, rent_high, yield_low, yield_high and a concise explanation.`;
+                                    toolResult = await searchWeb(detailedQuery);
+                                    query = null;
+                                }
+                            }
+                        }
+
+                        if (query) {
+                            toolResult = await queryRAG(query, tenant, undefined, undefined);
+                        }
+                    } else if (name === 'SEARCH_WEB_TOOL') {
+                        toolResult = await searchWeb((args as any).query);
+                    } else if (name === 'UPDATE_LEAD') {
+                        if (leadId) {
+                            const { error } = await supabase.from('leads').update(args).eq('id', leadId);
+                            toolResult = error ? "Error updating lead." : `System: Lead profile updated successfully (${Object.keys(args).join(", ")}).`;
+                        } else {
+                            toolResult = "No lead ID found.";
+                        }
+                    } else if (name === 'INITIATE_CALL') {
+                        let context = null;
+                        if (leadId) {
+                            const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
+                            context = { ...data, lead_id: leadId };
+                        }
+                        const callStarted = await initiateVapiCall(fromNumber, tenant, context);
+                        toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";
+                    } else if (name === 'SEARCH_LISTINGS') {
+                        const filters: SearchFilters = {
+                            property_type: (args as any).property_type,
+                            community: (args as any).community,
+                            min_price: (args as any).min_price,
+                            max_price: (args as any).max_price,
+                            min_bedrooms: (args as any).min_bedrooms,
+                            max_bedrooms: (args as any).max_bedrooms,
+                            offering_type: (args as any).offering_type || 'sale',
+                            limit: 3
+                        };
+                        const listings = await searchListings(filters);
+                        const listingsResponse = formatListingsResponse(listings, mediaHost);
+                        toolResult = listingsResponse.text + "\n\nINTERNAL DATA:\n" + listings.map((l, i) => `Property ${i + 1} ID: ${l.id}`).join('\n');
+                        if (listingsResponse.images.length > 0 && tenant.enable_whatsapp_images === true) {
+                            responseImages.push(...listingsResponse.images);
+                        }
+                    } else if (name === 'GET_PROPERTY_DETAILS') {
+                        let propertyId = (args as any).property_id;
+                        if (!propertyId && leadId) {
+                            const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                            propertyId = lead?.current_listing_id;
+                        }
+
+                        if (propertyId) {
+                            const { data: listing } = await getListingById(propertyId);
+                            const requestedIndex = (args as any).image_index ?? 0;
+                            if (listing) {
+                                if (leadId) {
+                                    await supabase.from('leads').update({ current_listing_id: listing.id, last_image_index: requestedIndex }).eq('id', leadId);
+                                }
+                                if (requestedIndex > 0) {
+                                    toolResult = `Showing Photo #${requestedIndex + 1} for ${listing.title}.`;
+                                } else {
+                                    toolResult = `DETAILS: ${listing.title} | ${listing.property_type} | AED ${listing.price?.toLocaleString()} | ${listing.community}\nBeds: ${listing.bedrooms} | Baths: ${listing.bathrooms} | Sqft: ${listing.area_sqft}\nDesc: ${listing.description?.substring(0, 100)}...`;
+                                }
+                                const images = Array.isArray(listing.images) ? listing.images : [];
+                                const hasImage = requestedIndex === 0 || requestedIndex < images.length;
+                                const imageUrl = buildProxyImageUrl(listing, requestedIndex, mediaHost);
+                                if (imageUrl && hasImage && tenant.enable_whatsapp_images === true) {
+                                    responseImages.push(imageUrl);
+                                }
+                            } else {
+                                toolResult = "Property not found.";
+                            }
+                        } else {
+                            toolResult = "Please specify a property ID.";
+                        }
+                    } else if (name === 'BOOK_VIEWING') {
+                        let propertyId = (args as any).property_id;
+                        if (!propertyId && leadId) {
+                            const { data: lead } = await supabase.from('leads').select('current_listing_id').eq('id', leadId).single();
+                            propertyId = lead?.current_listing_id;
+                        }
+                        const listingRes = propertyId ? await getListingById(propertyId) : { data: null };
+                        const listing = listingRes.data;
+                        const listingTitle = listing?.title || "the property";
+                        toolResult = `Book viewing for ${listingTitle}? I can call you.`;
+                    } else if (name === 'OFFPLAN_BOOKING') {
+                        const propertyId = (args as any).property_id;
+                        const propertyName = (args as any).property_name || "this offplan project";
+                        const isInternational = fromNumber.startsWith('+44') || fromNumber.startsWith('+91');
+                        toolResult = `Booking options for ${propertyName} (ID: ${propertyId}): 1. Sales Centre Visit 2. Video Call (${isInternational ? 'Recommended' : ''}) 3. Voice Call.`;
                     }
-                };
-            }));
 
-            console.log("Sending parallelized tool results back to Gemini...");
-            const nextResult = await chat.sendMessage(parts);
-            const nextResponse = await nextResult.response;
-            functionCalls = nextResponse.functionCalls();
-            textResponse = nextResponse.text();
+                    return {
+                        functionResponse: {
+                            name: name,
+                            response: { name: name, content: toolResult }
+                        }
+                    };
+                }));
+
+                console.log("Sending parallelized tool results back to Gemini...");
+                const nextResult = await chat.sendMessage(parts);
+                functionCalls = nextResult.functionCalls;
+                textResponse = nextResult.text;
+            }
+
+            responseText = textResponse || "I didn't quite catch that. Could you repeat?";
+
+        } catch (error: any) {
+            console.error("[GEMINI] Fatal error in conversation flow:", error.message);
+            if (error.message === "GEMINI_TOTAL_FAILURE") {
+                responseText = "Our AI assistant is currently at capacity or undergoing maintenance. A human agent will jump in to help you shortly! Thank you for your patience.";
+                console.log("[GEMINI] Sent human-handoff graceful failure message.");
+            } else {
+                // If it's a transient error that wasn't caught by the fallback logic
+                responseText = "I'm having a bit of trouble processing that. Can you try again in a moment?";
+            }
         }
-
-        responseText = textResponse || "I didn't quite catch that. Could you repeat?";
 
         // --- SUPABASE: Log AI Response ---
         if (leadId && responseText) {
