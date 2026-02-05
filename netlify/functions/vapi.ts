@@ -391,11 +391,13 @@ CURRENT LEAD PROFILE:
       }
     }
 
-    // If no tool calls, return early
-    if (!toolCalls.length) {
+    // ONLY execute tools if messageType is 'tool-calls'
+    if (messageType !== 'tool-calls' || !toolCalls.length) {
+      console.log(`[VAPI] Skipping tool processing for messageType: ${messageType}. toolCount: ${toolCalls.length}`);
       return { statusCode: 200, body: JSON.stringify({ results: [] }) };
     }
 
+    console.log(`[VAPI] Processing ${toolCalls.length} tool calls...`);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const results = await Promise.all(toolCalls.map(async (call: any) => {
