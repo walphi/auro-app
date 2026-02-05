@@ -523,7 +523,7 @@ CURRENT LEAD PROFILE:
     }
 
     console.log(`[VAPI] Processing ${toolCalls.length} tool calls...`);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
     const results = await Promise.all(toolCalls.map(async (call: any) => {
       const name = call.function?.name;
@@ -817,7 +817,7 @@ RULES & BEHAVIOR:
    - TONE & NATURALISM (NO META-TALK): Be a warm, senior broker. NEVER mention "internal systems", "pre-qualification", "scoring", "AURO", "AI technology", or "integration". Do NOT explain your process. Just help the client.
    - Maintain a professional, knowledgeable, and polite tone, recognizing the high-value nature of the Dubai real estate market.`;
 
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
       const result = await model.generateContent({
         contents: [
           { role: "user", parts: [{ text: systemInstruction + "\n\nUser: " + userMessage }] }
