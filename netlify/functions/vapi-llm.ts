@@ -362,7 +362,7 @@ RULES & BEHAVIOR:
 
         // 2. Call Gemini
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-1.5-flash",
             systemInstruction: systemInstruction,
             tools: [
                 {
