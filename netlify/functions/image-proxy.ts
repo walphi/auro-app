@@ -89,9 +89,14 @@ const handler: Handler = async (event) => {
 
         // Final check: resolve the URL (redundant if using listings-helper but safe)
         if (src.includes('cloudfront.net') && src.includes('/x/')) {
-            src = src.replace(/https?:\/\/d3h330vgpwpjr8\.cloudfront\.net\/x\//i, 'https://')
-                .replace(/\/\d+x\d+\//, '/')
-                .replace(/\.webp$/i, '.jpg');
+            // Only rewrite if it's wrapping an S3 bucket URL (Double Domain Issue)
+            if (src.includes('amazonaws.com')) {
+                src = src.replace(/https?:\/\/d3h330vgpwpjr8\.cloudfront\.net\/x\//i, 'https://')
+                    .replace(/\/\d+x\d+\//, '/')
+                    .replace(/\.webp$/i, '.jpg');
+            } else {
+                console.log(`[Image Proxy] Detected direct CloudFront URL, not rewriting domain: ${src}`);
+            }
         }
 
         console.log(`[Image Proxy] Fetching upstream: ${src}`);
@@ -150,7 +155,8 @@ const handler: Handler = async (event) => {
                 "Content-Type": contentType,
                 "Content-Disposition": `inline; filename="listing-${listingId || 'image'}-${index}.jpg"`,
                 "Cache-Control": "public, max-age=86400",
-                "Access-Control-Allow-Origin": "*"
+                "Access-Control-Allow-Origin": "*",
+                "X-Debug-Src": src
             } as Record<string, string>,
             body: Buffer.from(response.data).toString('base64'),
             isBase64Encoded: true
@@ -158,13 +164,15 @@ const handler: Handler = async (event) => {
 
     } catch (error: any) {
         console.error("[Image Proxy] Global Error:", src, error.message);
-        // Return a tiny transparent pixel instead of an error to prevent SPA shadowing and keep Twilio happy
-        const transparentPixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
         return {
-            statusCode: 200,
-            headers: { "Content-Type": "image/png" } as Record<string, string>,
-            body: transparentPixel,
-            isBase64Encoded: true
+            statusCode: 500,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                error: error.message,
+                src: src, // The URL we TRIED to fetch
+                stack: error.stack
+            })
         };
     }
 };

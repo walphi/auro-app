@@ -5,6 +5,7 @@ import { searchListings, formatListingsForVoice, SearchFilters, getListingById }
 import axios from "axios";
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
+import { createCalComBooking } from "../../lib/calCom";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -222,11 +223,12 @@ CURRENT LEAD PROFILE:
           error: error || 'Unknown error during call',
           source: 'vapi'
         });
-      } else if (messageType === 'call-ended') {
-        const summary = body.message?.analysis?.summary || body.message?.transcript;
-        const outcome = body.message?.analysis?.outcome || 'unknown';
-        const bookingMade = body.message?.analysis?.bookingMade || false;
-        console.log(`[VAPI] Call ended. outcome=${outcome}, bookingMade=${bookingMade}`);
+      } else if (messageType === 'call-ended' || messageType === 'end-of-call-report') {
+        const analysis = body.message?.analysis || body.call?.analysis || {};
+        const summary = analysis.summary || body.message?.transcript;
+        const outcome = analysis.outcome || 'unknown';
+        const bookingMade = analysis.bookingMade || false;
+        console.log(`[VAPI] Call ended/Report received. outcome=${outcome}, bookingMade=${bookingMade}`);
 
         await supabase.from('messages').insert({
           lead_id: leadId,
@@ -255,6 +257,89 @@ CURRENT LEAD PROFILE:
           });
         } catch (learnError: any) {
           console.error('[VAPI] RAG learning trigger failed:', learnError.message);
+        }
+
+        // --- NEW: CAL.COM BOOKING LOGIC ---
+        const structuredData = analysis.structuredData || {};
+        const meetingScheduled = structuredData.meeting_scheduled === true ||
+          structuredData.meeting_scheduled === 'true' ||
+          bookingMade;
+
+        if (meetingScheduled && leadId) {
+          const meetingStartIso = structuredData.meeting_start_iso;
+
+          if (meetingStartIso) {
+            console.log(`[VAPI] Scheduling Cal.com booking for lead ${leadId} at ${meetingStartIso}`);
+
+            // Resolve Event Type ID (Provident = 4644939)
+            let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
+            if (tenant.id !== 1) {
+              const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
+              eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
+            }
+            const eventTypeId = parseInt(eventTypeIdAttr);
+
+            try {
+              const firstName = structuredData.first_name || leadData?.name?.split(' ')[0] || 'Client';
+              const lastName = structuredData.last_name || leadData?.name?.split(' ').slice(1).join(' ') || '';
+
+              const calResult = await createCalComBooking({
+                eventTypeId,
+                start: meetingStartIso,
+                name: `${firstName} ${lastName}`.trim(),
+                email: structuredData.email || leadData?.email,
+                phoneNumber: structuredData.phone || phoneNumber || leadData?.phone,
+                metadata: {
+                  budget: structuredData.budget || leadData?.budget,
+                  property_type: structuredData.property_type || leadData?.property_type,
+                  preferred_area: structuredData.preferred_area || leadData?.location,
+                  lead_id: leadId,
+                  tenant_id: tenant.id,
+                  call_id: body.message?.call?.id
+                }
+              });
+
+              // Calculate end time
+              const endDate = new Date(new Date(meetingStartIso).getTime() + 30 * 60000);
+
+              // Store in DB
+              await supabase.from('bookings').insert({
+                lead_id: leadId,
+                tenant_id: tenant.id,
+                booking_id: calResult.bookingId,
+                booking_provider: 'calcom',
+                meeting_start_iso: meetingStartIso,
+                meeting_end_iso: endDate.toISOString(),
+                status: 'confirmed',
+                meta: {
+                  uid: calResult.uid,
+                  meeting_url: calResult.meetingUrl,
+                  call_id: body.message?.call?.id,
+                  structured_data: structuredData
+                }
+              });
+
+              // Update Lead
+              await supabase.from('leads').update({
+                booking_status: 'confirmed',
+                viewing_datetime: meetingStartIso
+              }).eq('id', leadId);
+
+              // Log success note
+              await supabase.from('messages').insert({
+                lead_id: leadId,
+                type: 'System_Note',
+                sender: 'System',
+                content: `✅ Cal.com Consultation Booked via Vapi\nTime: ${new Date(meetingStartIso).toLocaleString('en-US', { timeZone: 'Asia/Dubai' })}\nLink: ${calResult.meetingUrl || 'Check Cal.com'}`
+              });
+
+              console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
+            } catch (calError: any) {
+              console.error(`[VAPI] Cal.com booking failed: ${calError.message}`);
+            }
+          } else {
+            console.log(`[VAPI] Meeting scheduled but meeting_start_iso is missing in structuredData.`);
+          }
         }
       }
     }

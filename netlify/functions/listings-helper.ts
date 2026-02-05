@@ -92,17 +92,18 @@ function resolveImageUrl(url: string): string | null {
     if (url.includes('d3h330vgpwpjr8.cloudfront.net/x/')) {
         console.log(`[Images] Resolving blocked CloudFront URL: ${url}`);
 
-        // Strip the CloudFront prefix part to show the direct S3 URL which is typically appended after /x/
-        let resolved = url.replace(/https?:\/\/d3h330vgpwpjr8\.cloudfront\.net\/x\//i, 'https://');
+        // Only rewrite if it's wrapping an S3 bucket URL
+        if (url.includes('amazonaws.com')) {
+            let resolved = url.replace(/https?:\/\/d3h330vgpwpjr8\.cloudfront\.net\/x\//i, 'https://');
+            resolved = resolved.replace(/\/\d+x\d+\//, '/');
+            resolved = resolved.replace(/\.webp$/i, '.jpg');
 
-        // Remove resolution part if present (e.g., /464x312/)
-        resolved = resolved.replace(/\/\d+x\d+\//, '/');
-
-        // Force .jpg
-        resolved = resolved.replace(/\.webp$/i, '.jpg');
-
-        console.log(`[Images] Resolved successfully to: ${resolved}`);
-        return resolved;
+            console.log(`[Images] Resolved successfully to: ${resolved}`);
+            return resolved;
+        } else {
+            console.log(`[Images] CloudFront URL is direct (not double-wrapped), returning original.`);
+            return url;
+        }
     }
 
     // Pattern: Other CloudFront URLs (usually blocked if hit directly by Twilio)

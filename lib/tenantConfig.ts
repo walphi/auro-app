@@ -15,6 +15,7 @@ export interface Tenant {
     rag_client_id: string;
     system_prompt_identity: string;
     booking_cal_link: string;
+    google_calendar_id?: string;
     enable_whatsapp_images?: boolean;
     created_at: string;
 }
