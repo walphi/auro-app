@@ -76,8 +76,7 @@ const myHandler: Handler = async (event, context) => {
         console.log("[Sync-Offplan] Cleared old listings.");
 
         // 4. Update RAG Context (Embeddings)
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-        const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const { embedText } = require("../../lib/rag/embeddingClient");
 
         // Clean old scraped chunks
         await supabase.from('rag_chunks').delete().eq('source_type', 'provident_website_scrape');
@@ -99,20 +98,24 @@ New off-plan launch in ${p.location}. offering ${p.unitTypes}.
 `;
 
             try {
-                const { embedding } = await embeddingModel.embedContent(ragContent);
+                const embedding = await embedText(ragContent, { taskType: 'RETRIEVAL_DOCUMENT' });
 
-                const { error: insErr } = await supabase.from('rag_chunks').insert({
-                    chunk_id: crypto.randomUUID(),
-                    content: ragContent,
-                    embedding: embedding.values,
-                    folder_id: 'projects',
-                    document_id: `prov_off_${p.title.replace(/\s+/g, '_')}`,
-                    client_id: 'provident',
-                    tenant_id: 1, // Default Provident Tenant
-                    source_type: 'provident_website_scrape',
-                    metadata: { url: URL_TO_SCRAPE, image: p.imageUrl }
-                });
-                if (insErr) console.error(`[Sync-Offplan] RAG Insert Error for ${p.title}:`, insErr);
+                if (embedding) {
+                    const { error: insErr } = await supabase.from('rag_chunks').insert({
+                        chunk_id: crypto.randomUUID(),
+                        content: ragContent,
+                        embedding: embedding,
+                        folder_id: 'projects',
+                        document_id: `prov_off_${p.title.replace(/\s+/g, '_')}`,
+                        client_id: 'provident',
+                        tenant_id: 1, // Default Provident Tenant
+                        source_type: 'provident_website_scrape',
+                        metadata: { url: URL_TO_SCRAPE, image: p.imageUrl }
+                    });
+                    if (insErr) console.error(`[Sync-Offplan] RAG Insert Error for ${p.title}:`, insErr);
+                } else {
+                    console.error(`[Sync-Offplan] RAG Embedding failed for ${p.title} (returned null)`);
+                }
             } catch (embError: any) {
                 console.error(`[Sync-Offplan] RAG Embedding failed for ${p.title}:`, embError.message);
             }

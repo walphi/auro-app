@@ -1,6 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { embedText, embedTextBatch } from './embeddingClient';
 
 export interface Chunk {
     text: string;
@@ -74,32 +72,12 @@ export function chunkText(text: string, options: { chunkSize?: number, overlap?:
  * Generate embedding for text via Gemini API
  */
 export async function generateEmbedding(text: string): Promise<number[] | null> {
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
-        console.error('[RAG-Utils] GEMINI_API_KEY not configured');
-        return null;
-    }
-
-    try {
-        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const result = await model.embedContent({
-            content: { role: 'user', parts: [{ text: text.substring(0, 8000) }] },
-            taskType: 'RETRIEVAL_DOCUMENT' as any,
-            outputDimensionality: 768
-        } as any);
-
-        return result.embedding?.values || null;
-    } catch (err: any) {
-        console.error('[RAG-Utils] Embedding error:', err.message);
-        return null;
-    }
+    return embedText(text, { taskType: 'RETRIEVAL_DOCUMENT' });
 }
 
 /**
  * Generate embeddings for a batch of strings
  */
 export async function generateEmbeddingsBatch(texts: string[]): Promise<(number[] | null)[]> {
-    // Note: Gemini text-embedding-004 supports batching, but for simplicity and robustness
-    // we'll process them with Promise.all for now.
-    return Promise.all(texts.map(text => generateEmbedding(text)));
+    return embedTextBatch(texts);
 }

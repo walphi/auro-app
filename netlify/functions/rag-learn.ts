@@ -1,8 +1,6 @@
 import { Handler } from '@netlify/functions';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { embedText } from '../../lib/rag/embeddingClient';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -121,9 +119,9 @@ async function isDuplicate(embedding: number[], tenantId: number): Promise<boole
  * Generate embedding for text using Gemini
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const result = await embedModel.embedContent(text);
-    return result.embedding.values;
+    const values = await embedText(text, { taskType: 'RETRIEVAL_DOCUMENT' });
+    if (!values) throw new Error("Embedding failed");
+    return values;
 }
 
 /**

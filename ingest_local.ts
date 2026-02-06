@@ -45,19 +45,21 @@ async function ingestFile(filePath: string, folderId: string, sourceName: string
     console.log(`Created doc ${doc.id} with ${chunks.length} chunks.`);
 
     // 2. Generate Embeddings & Insert Chunks
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const { embedText } = require("./lib/rag/embeddingClient");
 
     for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
 
         try {
-            const result = await model.embedContent({
-                content: { role: 'user', parts: [{ text: chunk }] },
-                taskType: 'RETRIEVAL_DOCUMENT' as any,
+            const embedding = await embedText(chunk, {
+                taskType: 'RETRIEVAL_DOCUMENT',
                 outputDimensionality: 768
-            } as any);
+            });
 
-            const embedding = result.embedding.values;
+            if (!embedding) {
+                console.error(`Error embedding chunk ${i}: Returned null`);
+                continue;
+            }
 
             await supabase.from('rag_chunks').insert({
                 tenant_id: 1,

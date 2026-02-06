@@ -10,6 +10,7 @@ import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/ten
 import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
 import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
 import { genAI, RobustChat, callGemini } from "../../lib/gemini";
+import { embedText } from "../../lib/rag/embeddingClient";
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -32,13 +33,18 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             console.log(`[RAG] Auto - routing to Market Reports for query: "${query}"`);
         }
 
-        const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-        const embResult = await embedModel.embedContent({
-            content: { role: 'user', parts: [{ text: query }] },
-            taskType: 'RETRIEVAL_QUERY' as any,
+        const embedding = await embedText(query, {
+            taskType: 'RETRIEVAL_QUERY',
             outputDimensionality: 768
-        } as any);
-        const embedding = embResult.embedding.values;
+        });
+
+        if (!embedding) {
+            console.error('[RAG] Fallback: Could not generate embedding for query.');
+            // Degrading gracefully: return generic response or trigger web search if applicable
+            // For now, let's allow it to attempt keyword search if results are empty later,
+            // but we must skip the vector search parts.
+            return "No specific details found in the knowledge base, but I'd be happy to have an agent discuss this with you directly.";
+        }
 
         // Hierarchical Search Strategy
         const searchSteps = [];

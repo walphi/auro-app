@@ -15,9 +15,13 @@ async function main() {
     console.log(`Question: ${question}`);
     console.log(`Project: ${projectId}`);
 
-    const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const embResult = await embedModel.embedContent(question);
-    const embedding = embResult.embedding.values;
+    const { embedText } = require('./lib/rag/embeddingClient');
+    const embedding = await embedText(question, { taskType: 'RETRIEVAL_DOCUMENT' });
+
+    if (!embedding) {
+        console.error('Embedding failed');
+        return;
+    }
 
     const { data: results, error } = await supabase.rpc('match_rag_chunks', {
         query_embedding: embedding,

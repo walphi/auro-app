@@ -28,6 +28,7 @@
         "npm:clsx@^2.1.1",
         "npm:dotenv@^16.4.5",
         "npm:google-tts-api@^2.0.2",
+        "npm:googleapis@^171.2.0",
         "npm:lambda-multipart-parser@^1.0.1",
         "npm:lucide-react@0.554",
         "npm:openai@^6.10.0",
