@@ -293,6 +293,7 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
         const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
         const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
         const from = resolveWhatsAppSender(tenant);
+        console.log(`[WhatsApp] Resolved From address: ${from}`);
 
         if (!accountSid || !authToken) {
             console.error("[WhatsApp] Missing Twilio credentials for sending message.");
