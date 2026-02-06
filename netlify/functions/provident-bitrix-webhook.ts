@@ -9,6 +9,8 @@ import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
  * Validates request, fetches lead details, and triggers engagement.
  */
 export const handler: Handler = async (event, context) => {
+    console.log(`[BitrixWebhook] Incoming request: ${event.httpMethod} ${event.path} | Body size: ${event.body?.length || 0} bytes`);
+
     // 1. Ensure the request is POST
     if (event.httpMethod !== 'POST') {
         return {
@@ -22,7 +24,8 @@ export const handler: Handler = async (event, context) => {
     const validKey = process.env.AURO_PROVIDENT_WEBHOOK_KEY;
 
     if (!auroKey || auroKey !== validKey) {
-        console.error('[Webhook] Unauthorized access attempt');
+        console.error(`[Webhook] Unauthorized access attempt. Received key: ${auroKey ? 'present' : 'missing'}`);
+        console.log(`[Webhook] Headers: ${JSON.stringify(event.headers)}`);
         return {
             statusCode: 401,
             body: JSON.stringify({ error: 'unauthorized' }),
@@ -32,6 +35,7 @@ export const handler: Handler = async (event, context) => {
     try {
         // 3. Parse and validate the JSON body
         if (!event.body) {
+            console.error('[Webhook] Empty request body');
             throw new Error('Missing body');
         }
 
