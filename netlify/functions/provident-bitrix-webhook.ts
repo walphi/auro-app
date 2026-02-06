@@ -15,7 +15,11 @@ export const handler: Handler = async (event, context) => {
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
-            body: JSON.stringify({ error: 'method_not_allowed' }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: "error",
+                message: "Use POST with JSON payload and x-auro-key header"
+            }),
         };
     }
 
@@ -50,7 +54,7 @@ export const handler: Handler = async (event, context) => {
             };
         }
 
-        console.log(`[Webhook] Processing ONCRMLEADADD for lead ${leadId}`);
+        console.log(`[Webhook] Processing ${body.event || 'ONCRMLEADADD'} for lead ${leadId}`);
 
         // 4. Fetch full lead data from Bitrix24
         let bitrixLead;
