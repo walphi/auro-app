@@ -17,6 +17,7 @@ export interface Tenant {
     booking_cal_link: string;
     google_calendar_id?: string;
     enable_whatsapp_images?: boolean;
+    twilio_whatsapp_number?: string; // Dedicated WhatsApp sender if different from twilio_phone_number
     created_at: string;
 }
 
@@ -30,8 +31,8 @@ export async function getTenantByTwilioNumber(phone: string): Promise<Tenant | n
     const normalizedPhone = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`;
 
     // Hard-coded direct mapping for production number to avoid multi-hop resolution if needed
-    // This ensures +12098994972 always resolves to Provident (ID 1)
-    if (normalizedPhone === 'whatsapp:+12098994972') {
+    // This ensures +12098994972 and +971565203832 always resolve to Provident (ID 1)
+    if (normalizedPhone === 'whatsapp:+12098994972' || normalizedPhone === 'whatsapp:+971565203832') {
         return getTenantById(1);
     }
 

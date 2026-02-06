@@ -11,6 +11,9 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
+import { getTenantById } from './lib/tenantConfig';
+import { resolveWhatsAppSender } from './lib/twilioWhatsAppClient';
+
 /**
  * REPLICATED HELPERS FROM vapi.ts
  */
@@ -29,11 +32,10 @@ function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: st
     return message;
 }
 
-async function sendWhatsAppMessage(to: string, text: string): Promise<any> {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    let from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
-    if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
+async function sendWhatsAppMessage(to: string, text: string, tenant: any): Promise<any> {
+    const accountSid = tenant?.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant?.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = resolveWhatsAppSender(tenant);
 
     console.log('[WhatsApp] REQUEST:', { to, from, body: text });
 
@@ -89,8 +91,12 @@ async function runTest() {
     // 3. Build Message
     const message = buildWhatsappConfirmationMessage(firstName, meetingStartIso, meetingUrl);
 
-    // 4. Send
-    const result = await sendWhatsAppMessage(phoneForWhatsapp, message);
+    // 4. Resolve Tenant
+    const tenantId = lead?.tenant_id || 1;
+    const tenant = await getTenantById(tenantId);
+
+    // 5. Send
+    const result = await sendWhatsAppMessage(phoneForWhatsapp, message, tenant);
 
     console.log('[WhatsApp] RAW RESPONSE:', JSON.stringify(result, null, 2));
 }

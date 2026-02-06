@@ -7,6 +7,9 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 );
 
+import { resolveWhatsAppSender } from '../../lib/twilioWhatsAppClient';
+import { getTenantById } from '../../lib/tenantConfig';
+
 // Email provider: Resend (or fallback to log-only for demo)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
@@ -19,6 +22,7 @@ interface BookingNotification {
     property_id: string;
     viewing_datetime: string;
     formatted_date: string;
+    tenant_id?: number;
 }
 
 async function sendEmailNotification(booking: BookingNotification): Promise<boolean> {
@@ -73,10 +77,15 @@ async function sendWhatsAppNotification(booking: BookingNotification): Promise<b
         return false;
     }
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    let from = process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
-    if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
+    // Resolve tenant if available
+    let tenant = null;
+    if (booking.tenant_id) {
+        tenant = await getTenantById(booking.tenant_id);
+    }
+
+    const accountSid = tenant?.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant?.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = resolveWhatsAppSender(tenant || undefined);
 
     if (!accountSid || !authToken) {
         console.log('[Notify] WhatsApp skipped - Twilio not configured');
@@ -132,7 +141,7 @@ export const handler: Handler = async (event) => {
         // Fetch lead details
         const { data: lead, error: leadError } = await supabase
             .from('leads')
-            .select('email, phone, name')
+            .select('email, phone, name, tenant_id')
             .eq('id', lead_id)
             .single();
 
@@ -149,7 +158,8 @@ export const handler: Handler = async (event) => {
             property_title: property_title || 'Property Viewing',
             property_id: property_id || '',
             viewing_datetime: viewing_datetime || '',
-            formatted_date: formatted_date || viewing_datetime
+            formatted_date: formatted_date || viewing_datetime,
+            tenant_id: lead.tenant_id
         };
 
         // Send both notifications

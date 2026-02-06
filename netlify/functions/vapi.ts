@@ -6,6 +6,7 @@ import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { createCalComBooking } from "../../lib/calCom";
 import { genAI, callGemini } from "../../lib/gemini";
+import { resolveWhatsAppSender } from "../../lib/twilioWhatsAppClient";
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -16,13 +17,7 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
   try {
     const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
     const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
-    let from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
-
-    // Safety check: specific override to ensure we never use sandbox for this flow
-    if (from.includes('14155238886')) {
-      console.warn('[VAPI WhatsApp] Detected sandbox number in config, switching to production');
-      from = 'whatsapp:+12098994972';
-    }
+    const from = resolveWhatsAppSender(tenant);
 
     if (!accountSid || !authToken) {
       console.error('[VAPI WhatsApp] Missing credentials');

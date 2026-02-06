@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { TwilioWhatsAppClient } from './lib/twilioWhatsAppClient';
+import { TwilioWhatsAppClient, resolveWhatsAppSender } from './lib/twilioWhatsAppClient';
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -22,8 +22,7 @@ async function runStandaloneTest() {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     // Fallback to TWILIO_PHONE_NUMBER if TWILIO_WHATSAPP_NUMBER is not set
-    let fromNumber = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
-    if (fromNumber.includes('14155238886')) fromNumber = 'whatsapp:+12098994972';
+    const fromNumber = resolveWhatsAppSender();
 
     console.log(`Using Account SID: ${accountSid?.substring(0, 10)}...`);
     console.log(`From Number: ${fromNumber}`);

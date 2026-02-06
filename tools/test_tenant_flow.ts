@@ -15,12 +15,12 @@ async function runTest() {
     console.log("=== Running /test-flow Simulation ===");
 
     // Dynamically import handler
-    const { handler } = await import("./netlify/functions/whatsapp");
+    const { handler } = await import("../netlify/functions/whatsapp");
 
     const mockPayload = {
         Body: "Tell me about off-plan apartments in Emaar Beachfront. What's the budget like?",
         From: "whatsapp:+971501234567",
-        To: "whatsapp:+12098994972",
+        To: "whatsapp:+971565203832", // UAE Number for Provident
         NumMedia: "0"
     };
 

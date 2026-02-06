@@ -4,6 +4,7 @@ import * as querystring from "querystring";
 import axios from "axios";
 import { createClient } from "@supabase/supabase-js";
 import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl, buildProxyImageUrl } from "./listings-helper";
+import { TwilioWhatsAppClient, resolveWhatsAppSender } from '../../lib/twilioWhatsAppClient';
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
@@ -28,7 +29,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
         if (!effectiveFolderId && (lowerQ.includes('market') || lowerQ.includes('report') || lowerQ.includes('outlook') || lowerQ.includes('trend'))) {
             effectiveFolderId = 'market_reports';
-            console.log(`[RAG] Auto-routing to Market Reports for query: "${query}"`);
+            console.log(`[RAG] Auto - routing to Market Reports for query: "${query}"`);
         }
 
         const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
@@ -116,7 +117,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
             const { data, error } = await supabase.rpc('match_rag_chunks', rpcParams);
             if (error) {
-                console.error(`[RAG] RPC Error for folders ${JSON.stringify(folders)}:`, error);
+                console.error(`[RAG] RPC Error for folders ${JSON.stringify(folders)}: `, error);
             }
 
             // If RPC doesn't support list, and we have a list, we might need a different approach 
@@ -141,7 +142,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         console.log(`[RAG] Total unique chunks collected: ${results.length} for query: "${query}"`);
 
         if (query.startsWith('DEBUGRAG:')) {
-            return `DEBUG: Found ${results.length} results for "${query}". Folders: ${JSON.stringify(searchSteps)}. Client: ${clientId}. Tenant: ${tenant.id}.`;
+            return `DEBUG: Found ${results.length} results for "${query}".Folders: ${JSON.stringify(searchSteps)}.Client: ${clientId}.Tenant: ${tenant.id}.`;
         }
 
         // Final Fallback: Search everything for this client
@@ -168,13 +169,13 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
             // Trigger if no relevant chunks found OR if results are very few
             if (!hasRelevantChunks || results.length < 3) {
-                console.log(`[RAG] Keyword boost: Query mentions "${mentionedProject}" but proper context is missing (hasRelevant=${hasRelevantChunks}, count=${results.length}). Executing keyword search...`);
+                console.log(`[RAG] Keyword boost: Query mentions "${mentionedProject}" but proper context is missing(hasRelevant = ${hasRelevantChunks}, count = ${results.length}).Executing keyword search...`);
 
                 const { data: keywordData, error: kwError } = await supabase
                     .from('rag_chunks')
                     .select('content')
                     .eq('client_id', clientId)
-                    .ilike('content', `%${mentionedProject}%`)
+                    .ilike('content', `% ${mentionedProject}% `)
                     .limit(5);
 
                 if (!kwError && keywordData && keywordData.length > 0) {
@@ -188,10 +189,10 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
 
                 // SUPER FALLBACK: If we still have poor results for a named project, FORCE web search
                 if (results.length < 3) {
-                    console.log(`[RAG] Results still thin for "${mentionedProject}". Auto-triggering Web Search...`);
+                    console.log(`[RAG] Results still thin for "${mentionedProject}".Auto - triggering Web Search...`);
                     const webData = await searchWeb(query);
                     if (webData && !webData.includes("Error")) {
-                        results.unshift(`WEB SEARCH RESULT (High Priority): ${webData}`);
+                        results.unshift(`WEB SEARCH RESULT(High Priority): ${webData} `);
                     }
                 }
             }
@@ -221,7 +222,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
                 return PROMPT_TEMPLATES.AGENCY_AUTHORITY(query, context);
             }
 
-            console.log(`[RAG] Retrieval Success. Found ${results.length} chunks. Context snippet: "${context.substring(0, 150)}..."`);
+            console.log(`[RAG] Retrieval Success.Found ${results.length} chunks.Context snippet: "${context.substring(0, 150)}..."`);
             return PROMPT_TEMPLATES.FACTUAL_RESPONSE(query, context);
         }
 
@@ -233,7 +234,7 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
             const { data: textData } = await supabase
                 .from('knowledge_base')
                 .select('content')
-                .ilike('content', `%${foundKeyword}%`)
+                .ilike('content', `% ${foundKeyword}% `)
                 .limit(2);
 
             if (textData && textData.length > 0) {
@@ -242,11 +243,11 @@ async function queryRAG(query: string, tenant: Tenant, filterFolderId?: string |
         }
 
         // --- NEW: FALLBACK TO WEB SEARCH (PERPLEXITY) ---
-        console.log(`[RAG] No internal results found for "${query}". Falling back to Perplexity web search...`);
+        console.log(`[RAG] No internal results found for "${query}".Falling back to Perplexity web search...`);
         const webResult = await searchWeb(query);
         if (webResult && !webResult.includes("Error") && !webResult.includes("disabled")) {
-            console.log(`[RAG] Perplexity fallback successful. Result length: ${webResult.length}`);
-            return `INFO FROM LIVE WEB SEARCH (Use this as the source of truth): ${webResult}`;
+            console.log(`[RAG] Perplexity fallback successful.Result length: ${webResult.length} `);
+            return `INFO FROM LIVE WEB SEARCH(Use this as the source of truth): ${webResult} `;
         }
 
         return "No specific details found in the knowledge base or web, but I'd be happy to have an agent discuss this with you directly.";
@@ -273,7 +274,7 @@ async function searchWeb(query: string): Promise<string> {
             temperature: 0.2
         }, {
             headers: {
-                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                'Authorization': `Bearer ${PERPLEXITY_API_KEY} `,
                 'Content-Type': 'application/json'
             }
         });
@@ -291,18 +292,17 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     try {
         const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
         const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
-        let from = tenant.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER || 'whatsapp:+12098994972';
-        if (from.includes('14155238886')) from = 'whatsapp:+12098994972';
+        const from = resolveWhatsAppSender(tenant);
 
         if (!accountSid || !authToken) {
             console.error("[WhatsApp] Missing Twilio credentials for sending message.");
             return false;
         }
 
-        const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        const auth = Buffer.from(`${accountSid}:${authToken} `).toString('base64');
         const params = new URLSearchParams();
-        params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
-        params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+        params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to} `);
+        params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from} `);
         params.append('Body', text);
 
         console.log(`[WhatsApp] Sending message to ${to}: "${text.substring(0, 50)}..."`);

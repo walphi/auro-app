@@ -7,6 +7,29 @@ export interface TwilioSendResult {
     error?: string;
 }
 
+export function resolveWhatsAppSender(tenant?: { twilio_whatsapp_number?: string, twilio_phone_number?: string }): string {
+    // 1. Prefer tenant explicit WhatsApp number
+    let sender = tenant?.twilio_whatsapp_number;
+
+    // 2. Fallback to tenant phone number
+    if (!sender) sender = tenant?.twilio_phone_number;
+
+    // 3. Fallback to Env Vars
+    if (!sender) sender = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_PHONE_NUMBER;
+
+    // 4. Fallback to Production Default (if everything else is missing)
+    if (!sender) sender = '+12098994972';
+
+    // 5. Sandbox Guard: strictly block +14155238886
+    if (sender.includes('14155238886')) {
+        console.warn(`[WhatsApp] Blocked usage of sandbox number ${sender}, swapping to production default.`);
+        sender = '+12098994972';
+    }
+
+    // 6. Format
+    return sender.startsWith('whatsapp:') ? sender : `whatsapp:${sender}`;
+}
+
 export class TwilioWhatsAppClient {
     private accountSid: string;
     private authToken: string;
@@ -15,8 +38,9 @@ export class TwilioWhatsAppClient {
     constructor(accountSid?: string, authToken?: string, from?: string) {
         this.accountSid = accountSid || process.env.TWILIO_ACCOUNT_SID || '';
         this.authToken = authToken || process.env.TWILIO_AUTH_TOKEN || '';
-        this.from = from || process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+12098994972';
-        if (this.from.includes('14155238886')) this.from = 'whatsapp:+12098994972';
+
+        // Use the resolution logic with an empty tenant to get the env-based default
+        this.from = from ? resolveWhatsAppSender({ twilio_whatsapp_number: from }) : resolveWhatsAppSender();
     }
 
     async sendTextMessage(to: string, body: string): Promise<TwilioSendResult> {
