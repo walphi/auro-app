@@ -20,19 +20,33 @@ export interface CalComBookingDetails {
 function normalizePhone(raw: string): string | null {
     if (!raw) return null;
 
-    // Strip everything except digits
-    let digits = raw.replace(/\D/g, '');
+    // Remove 'whatsapp:' prefix if present
+    let cleaned = raw.replace(/^whatsapp:/i, '').trim();
 
-    // Handle leading 00 or 0 (common for local dialing)
+    // Strip all non-digit characters except leading +
+    let hasPlus = cleaned.startsWith('+');
+    let digits = cleaned.replace(/\D/g, '');
+
+    // Handle leading 00 (international prefix)
     if (digits.startsWith('00')) {
         digits = digits.slice(2);
-    } else if (digits.startsWith('0')) {
-        digits = digits.slice(1);
     }
 
-    // Ensure 971 prefix for UAE
-    if (!digits.startsWith('971')) {
+    // If we have a + and digits don't start with country code, or no + at all
+    // Assume UAE if number doesn't start with a country code
+    if (!digits.startsWith('971') && !digits.startsWith('1') && !digits.startsWith('44') && !digits.startsWith('91')) {
+        // Remove leading 0 if present (local format)
+        if (digits.startsWith('0')) {
+            digits = digits.slice(1);
+        }
+        // Prepend UAE country code
         digits = '971' + digits;
+    }
+
+    // Ensure we have at least 10 digits after country code
+    if (digits.length < 10) {
+        console.warn(`[Cal.com] Phone number too short after normalization: ${digits}`);
+        return null;
     }
 
     return '+' + digits;
@@ -50,7 +64,7 @@ export async function createCalComBooking(details: CalComBookingDetails) {
     }
 
     const normalizedPhone = normalizePhone(details.phoneNumber);
-    console.log('[Cal.com] Normalized phone for attendee:', normalizedPhone);
+    console.log(`[MEETING_DEBUG] Cal.com phone normalization: raw="${details.phoneNumber}" → normalized="${normalizedPhone}"`);
 
     // Cal.com v2 API endpoint
     const payload = {
@@ -68,6 +82,8 @@ export async function createCalComBooking(details: CalComBookingDetails) {
             ...details.metadata
         }
     };
+
+    console.log(`[MEETING_DEBUG] Cal.com payload attendeePhoneNumber="${payload.attendee.phoneNumber}"`);
 
     try {
         console.log(`[Cal.com] Creating booking for ${details.email} at ${details.start}...`);
