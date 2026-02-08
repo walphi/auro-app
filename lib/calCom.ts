@@ -54,11 +54,14 @@ function normalizePhone(raw: string): string | null {
         return null;
     }
 
-    // UAE-specific: cap at 12 digits (971 + 9 digits). If longer, trim to 12.
-    // This handles cases where an extra digit is spoken/transcribed by Vapi.
-    if (digits.startsWith('971') && digits.length > 12) {
-        console.warn(`[Cal.com] UAE phone has ${digits.length} digits (expected 12), trimming: "${digits}" → "${digits.slice(0, 12)}"`);
-        digits = digits.slice(0, 12);
+    // Improve UAE handling: if it starts with 9710, fix it to 971
+    if (digits.startsWith('9710')) {
+        digits = '971' + digits.slice(4);
+    }
+
+    // Only warn if potentially invalid, don't auto-truncate blindly
+    if (digits.length > 15) {
+        console.warn(`[Cal.com] Phone number unusually long: "${digits}"`);
     }
 
     const result = '+' + digits;

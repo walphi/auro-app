@@ -100,7 +100,7 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
     const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
 
     // Fixed copy as requested
-    const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}. Your property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+    const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}\n\nYour property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
 
     console.log('[WhatsApp Helper] Sending confirmation via Messaging Service:', {
       to: phoneCleaned,
