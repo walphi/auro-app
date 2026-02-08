@@ -17,9 +17,11 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
   try {
     const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
     const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID; // Optional
     const from = resolveWhatsAppSender(tenant);
 
     console.log(`[MEETING_DEBUG] WhatsApp sender resolution: tenant.twilio_whatsapp_number="${tenant.twilio_whatsapp_number}", tenant.twilio_phone_number="${tenant.twilio_phone_number}", resolved="${from}"`);
+    console.log(`[MEETING_DEBUG] Messaging Service SID: ${messagingServiceSid || 'Not configured'}`);
 
     if (!accountSid || !authToken) {
       console.error('[VAPI WhatsApp] Missing credentials');
@@ -30,12 +32,20 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
     const fromFormatted = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
-    console.log(`[MEETING_DEBUG] Twilio send params: To="${toFormatted}", From="${fromFormatted}", AccountSid="${accountSid}"`);
-
     const params = new URLSearchParams();
     params.append('To', toFormatted);
-    params.append('From', fromFormatted);
     params.append('Body', text);
+
+    // Use Messaging Service if configured, otherwise use direct From number
+    if (messagingServiceSid) {
+      params.append('MessagingServiceSid', messagingServiceSid);
+      console.log(`[MEETING_DEBUG] Using Messaging Service: ${messagingServiceSid}`);
+    } else {
+      params.append('From', fromFormatted);
+      console.log(`[MEETING_DEBUG] Using direct From: ${fromFormatted}`);
+    }
+
+    console.log(`[MEETING_DEBUG] Twilio send params: To="${toFormatted}", AccountSid="${accountSid}"`);
 
     const response = await axios.post(
       `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
@@ -51,8 +61,9 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
       message: error.message,
       status: error.response?.status,
       code: error.response?.data?.code,
+      twilioMessage: error.response?.data?.message,
       moreInfo: error.response?.data?.more_info,
-      data: error.response?.data
+      fullError: error.response?.data
     });
     return false;
   }
