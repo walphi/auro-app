@@ -6,17 +6,123 @@ import { logLeadIntent } from "../../lib/enterprise/leadIntents";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { createCalComBooking } from "../../lib/calCom";
 import { genAI, callGemini } from "../../lib/gemini";
+import { resolveWhatsAppSender, TwilioWhatsAppClient } from "../../lib/twilioWhatsAppClient";
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
+  try {
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = resolveWhatsAppSender(tenant);
+
+    if (!accountSid || !authToken) {
+      console.error('[VAPI WhatsApp] Missing credentials');
+      return false;
+    }
+
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+    const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+    const fromFormatted = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
+
+    console.log('[VAPI WhatsApp] Sending message:', {
+      to: toFormatted,
+      from: fromFormatted,
+      bodyLength: text.length
+    });
+
+    const params = new URLSearchParams();
+    params.append('To', toFormatted);
+    params.append('From', fromFormatted);
+    params.append('Body', text);
+
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      params,
+      { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    console.log('[VAPI WhatsApp] Twilio response:', {
+      status: response.status,
+      messageSid: response.data?.sid,
+      messageStatus: response.data?.status,
+      to: response.data?.to,
+      from: response.data?.from
+    });
+
+    return response.status === 201 || response.status === 200;
+  } catch (error: any) {
+    console.error('[VAPI WhatsApp Error]:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    return false;
+  }
+}
+
 
 /**
+ * Helper using TwilioWhatsAppClient for simple confirmation.
+ */
+async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, meetingStartIso: string, meetingUrl: string, tenant: Tenant): Promise<boolean> {
+  try {
+    const client = new TwilioWhatsAppClient(
+      tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID,
+      tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN,
+      tenant.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER
+    );
+
+    const dateObj = new Date(meetingStartIso);
+    const dayName = dateObj.toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' });
+    const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
+    const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
+
+    // Fixed template as requested
+    const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}. Your property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+
+    console.log('[WhatsApp Helper] Sending simple confirmation:', { phone, message });
+    const result = await client.sendTextMessage(phone, message);
+
+    if (result.success) {
+      console.log('[WhatsApp Helper] Sent successfully via TwilioWhatsAppClient. SID:', result.sid);
+      return true;
+    } else {
+      console.error('[WhatsApp Helper] Twilio client failed:', result.error);
+      return false;
+    }
+  } catch (error: any) {
+    console.error('[WhatsApp Helper] Error:', error.message);
+    return false;
+  }
+}
+
+/**
+
  * Extracts the correct structured data from Vapi payload.
  * Priority: artifact.structuredOutputs (matched by name or schema), then analysis.structuredData
  */
+/**
+ * Formats a human-friendly WhatsApp confirmation message for bookings.
+ */
+function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: string, meetingUrl?: string): string {
+  const dateObj = new Date(meetingStartIso);
+  const dayName = dateObj.toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' });
+  const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
+  const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
+
+  let message = `Hi ${firstName}, your consultation with Provident is confirmed for ${dayName}, ${dateStr} at ${timeStr} (Dubai time). You’ll receive a calendar invite by email. If you need to reschedule, just reply to this message.`;
+
+  if (meetingUrl) {
+    message += `\n\nHere is your meeting link: ${meetingUrl}`;
+  }
+
+  return message;
+}
+
 function getStructuredData(body: any): any {
   const analysis = body.message?.analysis || body.call?.analysis || {};
   const artifact = body.message?.artifact || body.call?.artifact || {};
@@ -288,12 +394,9 @@ CURRENT LEAD PROFILE:
         }
 
         // --- NEW: CAL.COM BOOKING LOGIC ---
-        // --- NEW: CAL.COM BOOKING LOGIC ---
         const structuredData = getStructuredData(body);
         const meetingScheduled = structuredData.meeting_scheduled === true ||
           structuredData.meeting_scheduled === 'true';
-
-        console.log(`[MEETING_DEBUG] meetingScheduled=${meetingScheduled}, leadId=${leadId}, tenantId=${tenant?.id}`);
 
         // Explicitly log the structured data being used for booking
         if (meetingScheduled || structuredData.meeting_scheduled !== undefined) {
@@ -415,70 +518,33 @@ CURRENT LEAD PROFILE:
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
 
-              // 5. Trigger WhatsApp Confirmation (async, non-blocking)
-              if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
-                console.log(`[MEETING_DEBUG] Triggering WhatsApp confirmation for Tenant ${tenant.id}`);
+              // 5. WhatsApp Confirmation
+              // 5. WhatsApp Confirmation (Simple Version)
+              if (tenant.id === 1) {
+                const phoneForWhatsapp = leadData?.phone || rawPhone;
+                const sent = await sendSimpleWhatsAppConfirmation(
+                  phoneForWhatsapp,
+                  firstName,
+                  meetingStartIso,
+                  calResult.meetingUrl || calResult.raw?.meetingUrl,
+                  tenant
+                );
 
-                try {
-                  // Check if confirmation was already sent to avoid double-sending on retries
-                  const { data: existingBooking } = await supabase
+                if (sent) {
+                  // Fetch existing meta to preserve data (safety fix)
+                  const { data: currentBooking } = await supabase
                     .from('bookings')
                     .select('meta')
                     .eq('booking_id', calResult.bookingId)
                     .single();
 
-                  if (existingBooking?.meta?.whatsapp_confirmation_sent) {
-                    console.log('[MEETING_CONFIRMATION] Already sent, skipping');
-                  } else {
-                    const phoneForWhatsapp = leadData?.phone || rawPhone;
-                    const finalProject = structuredData.project_name || structuredData.property_interest || "your property inquiry";
-
-                    console.log(`[MEETING_CONFIRMATION] Triggering async send for booking_id=${calResult.bookingId}`);
-
-                    // Trigger the send-meeting-confirmation function (fire and forget)
-                    const host = process.env.URL || 'https://auro-app.netlify.app';
-                    const triggerUrl = `${host}/.netlify/functions/send-meeting-confirmation`;
-                    console.log(`[MEETING_CONFIRMATION] Triggering: ${triggerUrl}`);
-
-                    try {
-                      const triggerRes = await fetch(triggerUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          leadPhone: phoneForWhatsapp,
-                          projectName: finalProject,
-                          meetingStartIso,
-                          tenantId: tenant.id,
-                          bookingId: calResult.bookingId
-                        })
-                      });
-
-                      if (triggerRes.ok) {
-                        const result = await triggerRes.json();
-                        if (result.success) {
-                          console.log(`[MEETING_CONFIRMATION] ✅ Sent. SID=${result.sid}`);
-                          // Update meta to track that confirmation was sent
-                          await supabase.from('bookings').update({
-                            meta: {
-                              ...(existingBooking?.meta || {}),
-                              whatsapp_confirmation_sent: true,
-                              whatsapp_sid: result.sid
-                            }
-                          }).eq('booking_id', calResult.bookingId);
-                        } else {
-                          console.error(`[MEETING_CONFIRMATION] ❌ Worker returned error: ${result.error}`);
-                        }
-                      } else {
-                        console.error(`[MEETING_CONFIRMATION] ❌ HTTP Error: ${triggerRes.status} ${triggerRes.statusText} from ${triggerUrl}`);
-                        const text = await triggerRes.text();
-                        console.error(`[MEETING_CONFIRMATION] Response body: ${text}`);
-                      }
-                    } catch (fetchErr: any) {
-                      console.error(`[MEETING_CONFIRMATION] Network/Trigger failed:`, fetchErr.message);
+                  await supabase.from('bookings').update({
+                    meta: {
+                      ...(currentBooking?.meta || {}),
+                      whatsapp_confirmation_sent: true,
+                      call_id: body.message?.call?.id || body.call?.id
                     }
-                  }
-                } catch (waError: any) {
-                  console.error('[MEETING_CONFIRMATION] Error triggering:', waError.message);
+                  }).eq('booking_id', calResult.bookingId);
                 }
               }
             } catch (calError: any) {
@@ -701,6 +767,10 @@ CURRENT LEAD PROFILE:
             console.log('[VAPI] Booking notifications triggered');
           } catch (notifyErr: any) {
             console.error('[VAPI] Notification trigger failed:', notifyErr.message);
+            // Fallback: send WhatsApp directly
+            const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
+            const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
+            await sendWhatsAppMessage(phoneNumber, messageText, tenant);
           }
 
           // 5. Log as Intent
