@@ -66,36 +66,62 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
 
 
 /**
- * Helper using TwilioWhatsAppClient for simple confirmation.
+ * Helper using TwilioWhatsAppClient for simple (free-form) confirmation.
+ * NOTE: Free-form messages only work within the WhatsApp 24-hour session window.
+ * If the lead has not messaged the business number in the last 24 hours, Twilio
+ * will return HTTP 400. For out-of-session sends, a Content Template is required
+ * (future enhancement).
  */
 async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, meetingStartIso: string, meetingUrl: string, tenant: Tenant): Promise<boolean> {
   try {
+    // ── Guard: validate phone looks like E.164 ──────────────────────────
+    const phoneCleaned = (phone || '').replace(/^whatsapp:/i, '').trim();
+    if (!phoneCleaned || !phoneCleaned.startsWith('+') || phoneCleaned.replace(/\D/g, '').length < 8) {
+      console.error('[WhatsApp Helper] Invalid or missing phone – skipping send:', { raw: phone, cleaned: phoneCleaned });
+      return false;
+    }
+
+    const senderNumber = tenant.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER;
+    console.log('[WhatsApp Helper] Preparing confirmation:', {
+      to: phoneCleaned,
+      from: senderNumber,
+      firstName,
+      meetingStartIso,
+      meetingUrl: meetingUrl || '(none)',
+      tenantId: tenant.id,
+    });
+
     const client = new TwilioWhatsAppClient(
       tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID,
       tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN,
-      tenant.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER
+      senderNumber
     );
 
     const dateObj = new Date(meetingStartIso);
-    const dayName = dateObj.toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' });
     const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
     const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
 
-    // Fixed template as requested
+    // Fixed copy as requested
     const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}. Your property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
 
-    console.log('[WhatsApp Helper] Sending simple confirmation:', { phone, message });
-    const result = await client.sendTextMessage(phone, message);
+    console.log('[WhatsApp Helper] Sending free-form confirmation:', {
+      to: phoneCleaned,
+      from: senderNumber,
+      bodyLength: message.length,
+      bodyPreview: message.substring(0, 120),
+    });
+
+    const result = await client.sendTextMessage(phoneCleaned, message);
 
     if (result.success) {
-      console.log('[WhatsApp Helper] Sent successfully via TwilioWhatsAppClient. SID:', result.sid);
+      console.log('[WhatsApp Helper] ✅ Sent successfully. SID:', result.sid);
       return true;
     } else {
-      console.error('[WhatsApp Helper] Twilio client failed:', result.error);
+      console.error('[WhatsApp Helper] ❌ Twilio client returned failure:', result.error);
       return false;
     }
   } catch (error: any) {
-    console.error('[WhatsApp Helper] Error:', error.message);
+    console.error('[WhatsApp Helper] ❌ Unexpected error:', error.message);
     return false;
   }
 }
@@ -518,10 +544,17 @@ CURRENT LEAD PROFILE:
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
 
-              // 5. WhatsApp Confirmation
-              // 5. WhatsApp Confirmation (Simple Version)
+              // 5. WhatsApp Confirmation (Simple free-form – requires 24h session)
               if (tenant.id === 1) {
                 const phoneForWhatsapp = leadData?.phone || rawPhone;
+                console.log('[VAPI] Attempting WhatsApp booking confirmation for tenant 1:', {
+                  phoneForWhatsapp,
+                  firstName,
+                  meetingStartIso,
+                  meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl || '(none)',
+                  bookingId: calResult.bookingId,
+                });
+
                 const sent = await sendSimpleWhatsAppConfirmation(
                   phoneForWhatsapp,
                   firstName,
@@ -529,6 +562,8 @@ CURRENT LEAD PROFILE:
                   calResult.meetingUrl || calResult.raw?.meetingUrl,
                   tenant
                 );
+
+                console.log(`[VAPI] WhatsApp confirmation result: sent=${sent}, bookingId=${calResult.bookingId}`);
 
                 if (sent) {
                   // Fetch existing meta to preserve data (safety fix)

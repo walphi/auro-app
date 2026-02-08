@@ -60,6 +60,13 @@ export class TwilioWhatsAppClient {
             params.append('From', formattedFrom);
             params.append('Body', body);
 
+            console.log('[Twilio] sendTextMessage payload:', {
+                to: formattedTo,
+                from: formattedFrom,
+                bodyLength: body.length,
+                bodyPreview: body.substring(0, 120)
+            });
+
             const response = await axios.post(
                 `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`,
                 params,
@@ -71,10 +78,25 @@ export class TwilioWhatsAppClient {
                 }
             );
 
+            console.log('[Twilio] sendTextMessage success:', {
+                sid: response.data.sid,
+                status: response.data.status,
+                to: response.data.to,
+                from: response.data.from,
+                dateCreated: response.data.date_created
+            });
+
             return { success: true, sid: response.data.sid };
         } catch (error: any) {
-            console.error("[Twilio] Error sending message:", error.message);
-            return { success: false, error: error.message };
+            const twilioErr = error.response?.data;
+            console.error("[Twilio] Error sending message:", {
+                httpStatus: error.response?.status,
+                twilioCode: twilioErr?.code,
+                twilioMessage: twilioErr?.message,
+                moreInfo: twilioErr?.more_info,
+                errorMessage: error.message
+            });
+            return { success: false, error: twilioErr?.message || error.message };
         }
     }
 }
