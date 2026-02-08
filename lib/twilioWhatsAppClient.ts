@@ -33,14 +33,12 @@ export function resolveWhatsAppSender(tenant?: { twilio_whatsapp_number?: string
 export class TwilioWhatsAppClient {
     private accountSid: string;
     private authToken: string;
-    private from: string;
+    private messagingServiceSid: string | undefined;
 
-    constructor(accountSid?: string, authToken?: string, from?: string) {
+    constructor(accountSid?: string, authToken?: string, messagingServiceSid?: string) {
         this.accountSid = accountSid || process.env.TWILIO_ACCOUNT_SID || '';
         this.authToken = authToken || process.env.TWILIO_AUTH_TOKEN || '';
-
-        // Use the resolution logic with an empty tenant to get the env-based default
-        this.from = from ? resolveWhatsAppSender({ twilio_whatsapp_number: from }) : resolveWhatsAppSender();
+        this.messagingServiceSid = messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID;
     }
 
     async sendTextMessage(to: string, body: string): Promise<TwilioSendResult> {
@@ -54,15 +52,20 @@ export class TwilioWhatsAppClient {
 
             // Ensure whatsapp: prefix
             const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-            const formattedFrom = this.from.startsWith('whatsapp:') ? this.from : `whatsapp:${this.from}`;
 
             params.append('To', formattedTo);
-            params.append('From', formattedFrom);
             params.append('Body', body);
+
+            // Use Messaging Service SID (Twilio will pick WhatsApp sender from service pool)
+            if (this.messagingServiceSid) {
+                params.append('MessagingServiceSid', this.messagingServiceSid);
+            } else {
+                throw new Error('Missing TWILIO_MESSAGING_SERVICE_SID – WhatsApp requires a Messaging Service');
+            }
 
             console.log('[Twilio] sendTextMessage payload:', {
                 to: formattedTo,
-                from: formattedFrom,
+                messagingServiceSid: this.messagingServiceSid,
                 bodyLength: body.length,
                 bodyPreview: body.substring(0, 120)
             });

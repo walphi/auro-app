@@ -81,10 +81,8 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
       return false;
     }
 
-    const senderNumber = tenant.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER;
     console.log('[WhatsApp Helper] Preparing confirmation:', {
       to: phoneCleaned,
-      from: senderNumber,
       firstName,
       meetingStartIso,
       meetingUrl: meetingUrl || '(none)',
@@ -94,7 +92,7 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
     const client = new TwilioWhatsAppClient(
       tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID,
       tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN,
-      senderNumber
+      process.env.TWILIO_MESSAGING_SERVICE_SID
     );
 
     const dateObj = new Date(meetingStartIso);
@@ -104,9 +102,9 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
     // Fixed copy as requested
     const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}. Your property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
 
-    console.log('[WhatsApp Helper] Sending free-form confirmation:', {
+    console.log('[WhatsApp Helper] Sending confirmation via Messaging Service:', {
       to: phoneCleaned,
-      from: senderNumber,
+      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || '(not configured)',
       bodyLength: message.length,
       bodyPreview: message.substring(0, 120),
     });
