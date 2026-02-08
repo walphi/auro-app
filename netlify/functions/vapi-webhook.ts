@@ -179,12 +179,12 @@ const handler: Handler = async (event) => {
             email: structuredData.email || leadData.email,
             phoneNumber: structuredData.phone || phoneNumber || leadData.phone,
             metadata: {
-                budget: structuredData.budget || leadData.budget,
-                property_type: structuredData.property_type || leadData.property_type,
-                preferred_area: structuredData.preferred_area || leadData.location,
-                lead_id: leadId,
-                tenant_id: tenant.id,
-                call_id: call?.id
+                budget: String(structuredData.budget || leadData.budget || ''),
+                property_type: String(structuredData.property_type || leadData.property_type || ''),
+                preferred_area: String(structuredData.preferred_area || leadData.location || ''),
+                lead_id: String(leadId),
+                tenant_id: String(tenant.id),
+                call_id: String(call?.id || '')
             }
         };
 

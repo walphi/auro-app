@@ -69,8 +69,6 @@ export async function createCalComBooking(details: CalComBookingDetails) {
         }
     };
 
-    console.log('[Cal.com] REQUEST BODY:', JSON.stringify(payload, null, 2));
-
     try {
         console.log(`[Cal.com] Creating booking for ${details.email} at ${details.start}...`);
 
