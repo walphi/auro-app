@@ -28,12 +28,6 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
     const fromFormatted = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
-    console.log('[VAPI WhatsApp] Sending message:', {
-      to: toFormatted,
-      from: fromFormatted,
-      bodyLength: text.length
-    });
-
     const params = new URLSearchParams();
     params.append('To', toFormatted);
     params.append('From', fromFormatted);
@@ -45,13 +39,7 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
       { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    console.log('[VAPI WhatsApp] Twilio response:', {
-      status: response.status,
-      messageSid: response.data?.sid,
-      messageStatus: response.data?.status,
-      to: response.data?.to,
-      from: response.data?.from
-    });
+    console.log(`[MEETING_WHATSAPP] Twilio message SID=${response.data?.sid} status=${response.data?.status}`);
 
     return response.status === 201 || response.status === 200;
   } catch (error: any) {
@@ -71,16 +59,16 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
 /**
  * Formats a human-friendly WhatsApp confirmation message for bookings.
  */
-function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: string, meetingUrl?: string): string {
+function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: string, tenant: Tenant, projectName: string): string {
   const dateObj = new Date(meetingStartIso);
-  const dayName = dateObj.toLocaleString('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' });
-  const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
   const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
+  const dateStr = dateObj.toLocaleString('en-US', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
 
-  let message = `Hi ${firstName}, your consultation with Provident is confirmed for ${dayName}, ${dateStr} at ${timeStr} (Dubai time). You’ll receive a calendar invite by email. If you need to reschedule, just reply to this message.`;
+  // Requirement: “Your call about [PROJECT_NAME] with Provident has been scheduled. You’ll be contacted at [TIME] on [DATE] (Dubai Time) on this number.”
+  let message = `Your call about ${projectName} with Provident has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
 
-  if (meetingUrl) {
-    message += `\n\nHere is your meeting link: ${meetingUrl}`;
+  if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
+    message += `\n\nIn the meantime, you can explore Provident’s Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
   }
 
   return message;
@@ -495,23 +483,20 @@ CURRENT LEAD PROFILE:
                     console.log('[WhatsApp] Confirmation already sent, skipping');
                   } else {
                     const phoneForWhatsapp = leadData?.phone || rawPhone;
-                    console.log('[WhatsApp] Using phone for confirmation:', phoneForWhatsapp);
+                    const finalProject = structuredData.project_name || structuredData.property_interest || "your property inquiry";
+
+                    console.log(`[MEETING_WHATSAPP] Booking received from Cal.com: booking_id=${calResult.bookingId} lead_phone=${phoneForWhatsapp}`);
 
                     const whatsappMessage = buildWhatsappConfirmationMessage(
                       firstName,
                       meetingStartIso,
-                      calResult.meetingUrl || calResult.raw?.meetingUrl
+                      tenant,
+                      finalProject
                     );
 
                     const sent = await sendWhatsAppMessage(phoneForWhatsapp, whatsappMessage, tenant);
 
                     if (sent) {
-                      console.log('[WhatsApp] Sent booking confirmation', {
-                        phone: phoneForWhatsapp,
-                        leadId,
-                        bookingId: calResult.bookingId
-                      });
-
                       // Update meta to track that confirmation was sent
                       await supabase.from('bookings').update({
                         meta: {
