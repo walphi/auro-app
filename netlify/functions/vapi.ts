@@ -345,9 +345,12 @@ CURRENT LEAD PROFILE:
         }
 
         // --- NEW: CAL.COM BOOKING LOGIC ---
+        // --- NEW: CAL.COM BOOKING LOGIC ---
         const structuredData = getStructuredData(body);
         const meetingScheduled = structuredData.meeting_scheduled === true ||
           structuredData.meeting_scheduled === 'true';
+
+        console.log(`[MEETING_DEBUG] meetingScheduled=${meetingScheduled}, leadId=${leadId}, tenantId=${tenant?.id}`);
 
         // Explicitly log the structured data being used for booking
         if (meetingScheduled || structuredData.meeting_scheduled !== undefined) {
@@ -470,7 +473,9 @@ CURRENT LEAD PROFILE:
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
 
               // 5. WhatsApp Confirmation
-              if (tenant.id === 1) {
+              // 5. WhatsApp Confirmation
+              if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
+                console.log(`[MEETING_DEBUG] Attempting WhatsApp for Tenant ${tenant.id}`);
                 try {
                   // Check if confirmation was already sent to avoid double-sending on retries
                   const { data: existingBooking } = await supabase
