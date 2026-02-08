@@ -585,6 +585,20 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
             }
         }
 
+        // --- PROMPT ROUTER: Detect projects and pre-fetch RAG ---
+        let autoRagContext = "";
+        const projectKeywords = ["Hado", "Edit", "Talea", "PASSO", "LOOM", "Avenew", "Beyond", "Meraas", "Dubai South", "d3"];
+        const needsProjectRag = projectKeywords.some(k => userMessage.toLowerCase().includes(k.toLowerCase()));
+
+        if (needsProjectRag && userMessage.length > 5) {
+            console.log(`[Router] Keywords detected for project search. Pre-fetching RAG for: "${userMessage}"`);
+            // We search across common project folders
+            autoRagContext = await queryRAG(userMessage, tenant, ['campaign_docs', 'projects']);
+            if (autoRagContext.includes("No specific details found")) {
+                autoRagContext = "";
+            }
+        }
+
         // --- GEMINI AGENT WITH TOOLS ---
         const systemInstruction = `You are "Auro", a calm, confident off-plan specialist for ${tenant.system_prompt_identity} in Dubai.
 
@@ -595,6 +609,13 @@ TONE & STYLE:
 - Always keep the conversation moving toward a clear next step (narrowing projects, sending a shortlist, or booking a call) — but without pressure.
 
 ${leadContext}
+
+${autoRagContext ? `
+PROJECT CONTEXT (STRICTLY USE THIS):
+${autoRagContext}
+
+RULE: The user is asking about a specific project listed above. You MUST share at least one concrete fact (e.g. location, unique amenity, payment plan detail, or developer) in your very first response. DO NOT give a generic "I am familiar" reply without facts if the data is present above.
+` : ''}
 
 GREETINGS:
 For simple greetings ("hi", "hello", "hey", "hi there" with no clear question):
@@ -628,11 +649,14 @@ Capture these details organically when the conversation flows there:
 
 CORE RULES:
 1. KNOW YOUR FACTS: Never answer project/pricing/market questions from memory. Use RAG_QUERY_TOOL or SEARCH_LISTINGS first.
-2. VISUAL-FIRST: For property discussions, use SEARCH_LISTINGS or GET_PROPERTY_DETAILS to show real options.
-3. OFFPLAN EXPERTISE: When relevant, highlight off-plan benefits (capital appreciation, payment plans, developer warranties) without being pushy.
-4. PARTIAL INFO: If you find some details but not others, share what you have and offer to get a specialist to confirm the rest.
-5. CALL INTENT: If user explicitly asks for a call, use INITIATE_CALL immediately.
-6. WHATSAPP LIMITS: Keep responses concise. Max 1-2 tool calls per message. Never call SEARCH_WEB_TOOL on WhatsApp.
+2. PROJECT MANDATE: When the user mentions a specific project (Hado, Talea, Edit at d3, etc.), you MUST retrieve details using RAG_QUERY_TOOL before answering (if not already provided in context).
+3. FACT-FIRST: No more generic responses for project inquiries. Provide a concrete fact from RAG, then ask your qualifying questions.
+4. VISUAL-FIRST: For property discussions, use SEARCH_LISTINGS or GET_PROPERTY_DETAILS to show real options.
+5. OFFPLAN EXPERTISE: When relevant, highlight off-plan benefits (capital appreciation, payment plans, developer warranties) without being pushy.
+6. PARTIAL INFO: If you find some details but not others, share what you have and offer to get a specialist to confirm the rest.
+7. WEB FALLBACK: If a project fact is missing from RAG, you may use SEARCH_WEB_TOOL as a secondary source.
+8. CALL INTENT: If user explicitly asks for a call, use INITIATE_CALL immediately.
+9. WHATSAPP CONCISE: Keep responses short. Max 1-2 tool calls per message.
 `;
 
         const tools = [

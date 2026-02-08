@@ -1,12 +1,66 @@
 import { Handler } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
+import axios from "axios";
 import { createCalComBooking } from "../../lib/calCom";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
+import { resolveWhatsAppSender } from "../../lib/twilioWhatsAppClient";
 
 // Initialize Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+/**
+ * Sends a WhatsApp notification to the lead about their scheduled call.
+ */
+async function sendWhatsAppNotification(to: string, projectName: string, startTimeIso: string, tenant: Tenant) {
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = resolveWhatsAppSender(tenant);
+
+    if (!accountSid || !authToken) {
+        console.error('[MEETING_WHATSAPP] Missing Twilio credentials');
+        return;
+    }
+
+    const date = new Date(startTimeIso);
+    const timeStr = date.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Dubai'
+    });
+    const dateStr = date.toLocaleString('en-US', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: 'Asia/Dubai'
+    });
+
+    // Requirement: “Your call about [PROJECT_NAME] with Provident has been scheduled. You’ll be contacted at [TIME] on this number.”
+    const message = `Your call about ${projectName} with Provident has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
+
+    console.log(`[MEETING_WHATSAPP] Booking received from Cal.com: booking_id=N/A lead_phone=${to}`);
+    console.log(`[MEETING_WHATSAPP] Sending notification from ${from}`);
+
+    try {
+        const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+        const params = new URLSearchParams();
+        params.append('To', to.startsWith('whatsapp:') ? to : `whatsapp:${to}`);
+        params.append('From', from.startsWith('whatsapp:') ? from : `whatsapp:${from}`);
+        params.append('Body', message);
+
+        const response = await axios.post(
+            `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+            params,
+            { headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
+
+        console.log(`[MEETING_WHATSAPP] Twilio message SID=${response.data.sid} status=${response.data.status}`);
+    } catch (error: any) {
+        console.error(`[MEETING_WHATSAPP] Failed to send WhatsApp:`, error.response?.data || error.message);
+    }
+}
 
 const handler: Handler = async (event) => {
     try {
@@ -196,6 +250,15 @@ const handler: Handler = async (event) => {
         });
 
         console.log(`[Vapi Webhook] Success: Booking ${calResult.bookingId} created for lead ${leadId}`);
+
+        // --- SEND WHATSAPP NOTIFICATION ---
+        const finalPhone = structuredData.phone || phoneNumber || leadData.phone;
+        const finalProject = structuredData.project_name || structuredData.property_interest || "your property inquiry";
+
+        if (finalPhone) {
+            // We fire and forget or await depending on whether we want to block the webhook response
+            await sendWhatsAppNotification(finalPhone, finalProject, meetingStartIso, tenant);
+        }
 
         return {
             statusCode: 200,
