@@ -16,9 +16,14 @@ export interface CalComBookingDetails {
 /**
  * Normalize phone to E.164 format.
  * Specifically optimized for UAE numbers and spoken/formatted inputs.
+ *
+ * Valid UAE mobile: +971 5X XXXX XXX  →  +971XXXXXXXXX  (12 digits total)
+ * Valid UAE landline: +971 [2-9] XXX XXXX  →  +971XXXXXXXX (11-12 digits)
  */
 function normalizePhone(raw: string): string | null {
     if (!raw) return null;
+
+    console.log(`[Cal.com] normalizePhone input: "${raw}"`);
 
     // Remove 'whatsapp:' prefix if present
     let cleaned = raw.replace(/^whatsapp:/i, '').trim();
@@ -43,13 +48,22 @@ function normalizePhone(raw: string): string | null {
         digits = '971' + digits;
     }
 
-    // Ensure we have at least 10 digits after country code
+    // Ensure we have at least 10 digits
     if (digits.length < 10) {
-        console.warn(`[Cal.com] Phone number too short after normalization: ${digits}`);
+        console.warn(`[Cal.com] Phone number too short after normalization: "${digits}" (from raw="${raw}")`);
         return null;
     }
 
-    return '+' + digits;
+    // UAE-specific: cap at 12 digits (971 + 9 digits). If longer, trim to 12.
+    // This handles cases where an extra digit is spoken/transcribed by Vapi.
+    if (digits.startsWith('971') && digits.length > 12) {
+        console.warn(`[Cal.com] UAE phone has ${digits.length} digits (expected 12), trimming: "${digits}" → "${digits.slice(0, 12)}"`);
+        digits = digits.slice(0, 12);
+    }
+
+    const result = '+' + digits;
+    console.log(`[Cal.com] normalizePhone result: "${result}" (${digits.length} digits)`);
+    return result;
 }
 
 /**
@@ -83,7 +97,8 @@ export async function createCalComBooking(details: CalComBookingDetails) {
         }
     };
 
-    console.log(`[MEETING_DEBUG] Cal.com payload attendeePhoneNumber="${payload.attendee.phoneNumber}"`);
+    // Log the FULL payload as JSON so we can inspect exactly what Cal.com receives
+    console.log(`[Cal.com] Full booking payload:`, JSON.stringify(payload, null, 2));
 
     try {
         console.log(`[Cal.com] Creating booking for ${details.email} at ${details.start}...`);
