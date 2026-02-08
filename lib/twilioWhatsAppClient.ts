@@ -54,10 +54,24 @@ export class TwilioWhatsAppClient {
 
             // Ensure whatsapp: prefix
             const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-            const formattedFrom = this.from.startsWith('whatsapp:') ? this.from : `whatsapp:${this.from}`;
+
+            // Check for Messaging Service SID
+            const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
             params.append('To', formattedTo);
-            params.append('From', formattedFrom);
+
+            if (messagingServiceSid) {
+                // Use Messaging Service
+                params.append('MessagingServiceSid', messagingServiceSid);
+                // console.log(`[Twilio] Using Messaging Service: ${messagingServiceSid}`);
+            } else {
+                // Use direct From number
+                const formattedFrom = this.from ? (this.from.startsWith('whatsapp:') ? this.from : `whatsapp:${this.from}`) : '';
+                if (formattedFrom) {
+                    params.append('From', formattedFrom);
+                }
+            }
+
             params.append('Body', body);
 
             const response = await axios.post(
