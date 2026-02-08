@@ -38,7 +38,12 @@ async function sendWhatsAppNotification(to: string, projectName: string, startTi
     });
 
     // Requirement: “Your call about [PROJECT_NAME] with Provident has been scheduled. You’ll be contacted at [TIME] on this number.”
-    const message = `Your call about ${projectName} with Provident has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
+    // Plus Provident's Branded Residences PDF link
+    let message = `Your call about ${projectName} with Provident has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
+
+    if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
+        message += `\n\nIn the meantime, you can explore Provident’s Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+    }
 
     console.log(`[MEETING_WHATSAPP] Booking received from Cal.com: booking_id=N/A lead_phone=${to}`);
     console.log(`[MEETING_WHATSAPP] Sending notification from ${from}`);
