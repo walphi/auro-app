@@ -18,8 +18,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * Priority: artifact.structuredOutputs (matched by name or schema), then analysis.structuredData
  */
 function getStructuredData(body: any): any {
-  const analysis = body.message?.analysis || body.message?.call?.analysis || body.call?.analysis || {};
-  const artifact = body.message?.artifact || body.message?.call?.artifact || body.call?.artifact || {};
+  const analysis = body.message?.analysis || body.call?.analysis || {};
+  const artifact = body.message?.artifact || body.call?.artifact || {};
   const structuredOutputs = artifact.structuredOutputs || {};
 
   // Vapi sends structuredOutputs as an object keyed by ID

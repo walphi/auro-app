@@ -54,11 +54,23 @@ export class TwilioWhatsAppClient {
 
             // Ensure whatsapp: prefix
             const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-            const formattedFrom = this.from.startsWith('whatsapp:') ? this.from : `whatsapp:${this.from}`;
 
             params.append('To', formattedTo);
-            params.append('From', formattedFrom);
             params.append('Body', body);
+
+            // Check for Messaging Service SID
+            const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+            if (messagingServiceSid) {
+                params.append('MessagingServiceSid', messagingServiceSid);
+                // When using MessagingServiceSid, 'From' is usually omitted or optional
+                // But some configs might still want it. Let's omit 'From' if Service is present to be safe, 
+                // as that's the standard fix for "From not found" errors when Service exists.
+                console.log(`[TwilioClient] Using MessagingServiceSid: ${messagingServiceSid}`);
+            } else {
+                const formattedFrom = this.from.startsWith('whatsapp:') ? this.from : `whatsapp:${this.from}`;
+                params.append('From', formattedFrom);
+            }
 
             const response = await axios.post(
                 `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`,
@@ -74,9 +86,6 @@ export class TwilioWhatsAppClient {
             return { success: true, sid: response.data.sid };
         } catch (error: any) {
             console.error("[Twilio] Error sending message:", error.message);
-            if (error.response?.data) {
-                console.error("[Twilio] Full error response:", JSON.stringify(error.response.data));
-            }
             return { success: false, error: error.message };
         }
     }
