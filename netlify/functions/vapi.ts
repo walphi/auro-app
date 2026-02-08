@@ -19,6 +19,8 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
     const from = resolveWhatsAppSender(tenant);
 
+    console.log(`[MEETING_DEBUG] WhatsApp sender resolution: tenant.twilio_whatsapp_number="${tenant.twilio_whatsapp_number}", tenant.twilio_phone_number="${tenant.twilio_phone_number}", resolved="${from}"`);
+
     if (!accountSid || !authToken) {
       console.error('[VAPI WhatsApp] Missing credentials');
       return false;
@@ -27,6 +29,8 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
     const toFormatted = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
     const fromFormatted = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
+
+    console.log(`[MEETING_DEBUG] Twilio send params: To="${toFormatted}", From="${fromFormatted}", AccountSid="${accountSid}"`);
 
     const params = new URLSearchParams();
     params.append('To', toFormatted);
@@ -46,6 +50,8 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
     console.error('[VAPI WhatsApp Error]:', {
       message: error.message,
       status: error.response?.status,
+      code: error.response?.data?.code,
+      moreInfo: error.response?.data?.more_info,
       data: error.response?.data
     });
     return false;
