@@ -437,34 +437,45 @@ CURRENT LEAD PROFILE:
 
                     // Trigger the send-meeting-confirmation function (fire and forget)
                     const host = process.env.URL || 'https://auro-app.netlify.app';
-                    fetch(`${host}/.netlify/functions/send-meeting-confirmation`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        leadPhone: phoneForWhatsapp,
-                        projectName: finalProject,
-                        meetingStartIso,
-                        tenantId: tenant.id,
-                        bookingId: calResult.bookingId
-                      })
-                    }).then(async (res) => {
-                      const result = await res.json();
-                      if (result.success) {
-                        console.log(`[MEETING_CONFIRMATION] ✅ Sent. SID=${result.sid}`);
-                        // Update meta to track that confirmation was sent
-                        await supabase.from('bookings').update({
-                          meta: {
-                            ...(existingBooking?.meta || {}),
-                            whatsapp_confirmation_sent: true,
-                            whatsapp_sid: result.sid
-                          }
-                        }).eq('booking_id', calResult.bookingId);
+                    const triggerUrl = `${host}/.netlify/functions/send-meeting-confirmation`;
+                    console.log(`[MEETING_CONFIRMATION] Triggering: ${triggerUrl}`);
+
+                    try {
+                      const triggerRes = await fetch(triggerUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          leadPhone: phoneForWhatsapp,
+                          projectName: finalProject,
+                          meetingStartIso,
+                          tenantId: tenant.id,
+                          bookingId: calResult.bookingId
+                        })
+                      });
+
+                      if (triggerRes.ok) {
+                        const result = await triggerRes.json();
+                        if (result.success) {
+                          console.log(`[MEETING_CONFIRMATION] ✅ Sent. SID=${result.sid}`);
+                          // Update meta to track that confirmation was sent
+                          await supabase.from('bookings').update({
+                            meta: {
+                              ...(existingBooking?.meta || {}),
+                              whatsapp_confirmation_sent: true,
+                              whatsapp_sid: result.sid
+                            }
+                          }).eq('booking_id', calResult.bookingId);
+                        } else {
+                          console.error(`[MEETING_CONFIRMATION] ❌ Worker returned error: ${result.error}`);
+                        }
                       } else {
-                        console.error(`[MEETING_CONFIRMATION] ❌ Failed: ${result.error}`);
+                        console.error(`[MEETING_CONFIRMATION] ❌ HTTP Error: ${triggerRes.status} ${triggerRes.statusText} from ${triggerUrl}`);
+                        const text = await triggerRes.text();
+                        console.error(`[MEETING_CONFIRMATION] Response body: ${text}`);
                       }
-                    }).catch((err) => {
-                      console.error(`[MEETING_CONFIRMATION] Trigger failed:`, err.message);
-                    });
+                    } catch (fetchErr: any) {
+                      console.error(`[MEETING_CONFIRMATION] Network/Trigger failed:`, fetchErr.message);
+                    }
                   }
                 } catch (waError: any) {
                   console.error('[MEETING_CONFIRMATION] Error triggering:', waError.message);
