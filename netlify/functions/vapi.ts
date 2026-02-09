@@ -542,42 +542,52 @@ CURRENT LEAD PROFILE:
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
 
-              // 5. WhatsApp Confirmation (Simple free-form – requires 24h session)
+              // 5. Trigger Meeting Confirmation Netlify Function
               if (tenant.id === 1) {
-                const phoneForWhatsapp = leadData?.phone || rawPhone;
-                console.log('[VAPI] Attempting WhatsApp booking confirmation for tenant 1:', {
-                  phoneForWhatsapp,
-                  firstName,
-                  meetingStartIso,
-                  meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl || '(none)',
-                  bookingId: calResult.bookingId,
-                });
+                const phoneForConfirmation = leadData?.phone || rawPhone;
+                const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
 
-                const sent = await sendSimpleWhatsAppConfirmation(
-                  phoneForWhatsapp,
-                  firstName,
-                  meetingStartIso,
-                  calResult.meetingUrl || calResult.raw?.meetingUrl,
-                  tenant
-                );
+                console.log(`[MeetingConfirmation] Calling send-meeting-confirmation for tenant 1, lead ${leadId}, booking ${calResult.bookingId}`);
 
-                console.log(`[VAPI] WhatsApp confirmation result: sent=${sent}, bookingId=${calResult.bookingId}`);
+                try {
+                  // Use harvested data or fallbacks for project name
+                  const projectName = structuredData.preferred_area || structuredData.property_type || 'Property Consultation';
 
-                if (sent) {
-                  // Fetch existing meta to preserve data (safety fix)
-                  const { data: currentBooking } = await supabase
-                    .from('bookings')
-                    .select('meta')
-                    .eq('booking_id', calResult.bookingId)
-                    .single();
+                  const confirmationResponse = await axios.post('https://auroapp.com/.netlify/functions/send-meeting-confirmation', {
+                    tenantId: tenant.id,
+                    leadId: leadId,
+                    leadPhone: phoneForConfirmation,
+                    meetingStartIso: meetingStartIso,
+                    bookingId: calResult.bookingId,
+                    meetingUrl: meetingUrl,
+                    firstName: firstName,
+                    projectName: projectName
+                  });
 
-                  await supabase.from('bookings').update({
-                    meta: {
-                      ...(currentBooking?.meta || {}),
-                      whatsapp_confirmation_sent: true,
-                      call_id: body.message?.call?.id || body.call?.id
-                    }
-                  }).eq('booking_id', calResult.bookingId);
+                  console.log(`[MeetingConfirmation] send-meeting-confirmation responded with ${confirmationResponse.status} ${JSON.stringify(confirmationResponse.data)}`);
+
+                  if (confirmationResponse.status === 200 || confirmationResponse.status === 201) {
+                    // Fetch existing meta to preserve data
+                    const { data: currentBooking } = await supabase
+                      .from('bookings')
+                      .select('meta')
+                      .eq('booking_id', calResult.bookingId)
+                      .single();
+
+                    await supabase.from('bookings').update({
+                      meta: {
+                        ...(currentBooking?.meta || {}),
+                        whatsapp_confirmation_sent: true,
+                        call_id: body.message?.call?.id || body.call?.id
+                      }
+                    }).eq('booking_id', calResult.bookingId);
+                  }
+                } catch (confirmError: any) {
+                  console.error(`[MeetingConfirmation] ❌ Failed to call send-meeting-confirmation:`, {
+                    message: confirmError.message,
+                    status: confirmError.response?.status,
+                    data: confirmError.response?.data
+                  });
                 }
               }
             } catch (calError: any) {
@@ -783,7 +793,76 @@ CURRENT LEAD PROFILE:
             timeZone: 'Asia/Dubai'
           }) + " Dubai time";
 
-          // 4. Send notifications via booking-notify function (Email + WhatsApp)
+          // 4. Create Cal.com Booking immediately
+          let calResult: any = null;
+          const emailForBooking = leadData?.email;
+          if (emailForBooking) {
+            try {
+              // Resolve Event Type ID
+              let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
+              if (tenant.id !== 1) {
+                const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
+                eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
+              }
+
+              calResult = await createCalComBooking({
+                eventTypeId: parseInt(eventTypeIdAttr),
+                start: resolved_datetime,
+                name: leadData.name || 'Client',
+                email: emailForBooking,
+                phoneNumber: phoneNumber || leadData.phone || '',
+                metadata: {
+                  lead_id: String(leadId),
+                  tenant_id: String(tenant.id),
+                  property_id: property_id,
+                  source: 'vapi_tool_call'
+                }
+              });
+
+              console.log(`[VAPI] Tool-call booking successful: ${calResult.bookingId}`);
+
+              // Store booking record
+              await supabase.from('bookings').upsert({
+                lead_id: leadId,
+                tenant_id: tenant.id,
+                booking_id: calResult.bookingId,
+                booking_provider: 'calcom',
+                meeting_start_iso: resolved_datetime,
+                status: 'confirmed',
+                meta: {
+                  uid: calResult.uid,
+                  meeting_url: calResult.meetingUrl,
+                  call_id: body.message?.call?.id || body.call?.id,
+                  listing_title: listingTitle
+                }
+              }, { onConflict: 'lead_id,tenant_id,meeting_start_iso' });
+
+              // 5. Trigger Meeting Confirmation Netlify Function
+              if (tenant.id === 1) {
+                console.log(`[MeetingConfirmation] Calling send-meeting-confirmation for tool success: ${calResult.bookingId}`);
+                try {
+                  const confirmRes = await axios.post('https://auroapp.com/.netlify/functions/send-meeting-confirmation', {
+                    tenantId: tenant.id,
+                    leadId: leadId,
+                    leadPhone: phoneNumber || leadData.phone,
+                    meetingStartIso: resolved_datetime,
+                    bookingId: calResult.bookingId,
+                    meetingUrl: calResult.meetingUrl,
+                    firstName: (leadData.name || 'Client').split(' ')[0],
+                    projectName: listingTitle
+                  });
+                  console.log(`[MeetingConfirmation] Tool confirmation response: ${confirmRes.status}`);
+                } catch (confirmErr: any) {
+                  console.error(`[MeetingConfirmation] Tool confirmation call failed:`, confirmErr.message);
+                }
+              }
+
+            } catch (calErr: any) {
+              console.error("[VAPI] Tool-call Cal.com failed:", calErr.message);
+            }
+          }
+
+          // 6. Send other generic notifications
           const host = process.env.URL || 'https://auro-app.netlify.app';
           try {
             await fetch(`${host}/.netlify/functions/booking-notify`, {
@@ -797,13 +876,8 @@ CURRENT LEAD PROFILE:
                 formatted_date: formattedDate
               })
             });
-            console.log('[VAPI] Booking notifications triggered');
           } catch (notifyErr: any) {
             console.error('[VAPI] Notification trigger failed:', notifyErr.message);
-            // Fallback: send WhatsApp directly
-            const calLink = `${tenant.booking_cal_link}?date=${encodeURIComponent(resolved_datetime)}&property=${encodeURIComponent(property_id)}`;
-            const messageText = `✅ Booking Confirmed!\n\nProperty: ${listingTitle}\nDate: ${formattedDate}\n\nOur agent will meet you at the location. You can manage your booking here: ${calLink}`;
-            await sendWhatsAppMessage(phoneNumber, messageText, tenant);
           }
 
           // 5. Log as Intent
