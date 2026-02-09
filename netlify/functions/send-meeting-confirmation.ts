@@ -23,9 +23,9 @@ export const handler: Handler = async (event) => {
 
     try {
         const payload = JSON.parse(event.body || '{}');
-        const { leadPhone, projectName, meetingStartIso, tenantId, bookingId } = payload;
+        const { leadPhone, projectName, meetingStartIso, tenantId, bookingId, meetingUrl } = payload;
 
-        console.log(`[MEETING_CONFIRMATION] Received request: bookingId=${bookingId}, leadPhone=${leadPhone}, tenantId=${tenantId}`);
+        console.log(`[MEETING_CONFIRMATION] Received request: bookingId=${bookingId}, leadPhone=${leadPhone}, meetingUrl=${meetingUrl}`);
 
         if (!leadPhone || !meetingStartIso || !tenantId) {
             return {
@@ -61,9 +61,12 @@ export const handler: Handler = async (event) => {
             timeZone: 'Asia/Dubai'
         });
 
-        // Build message
+        // Build message exactly as requested
         const finalProject = projectName || "your property inquiry";
-        let message = `Your call about ${finalProject} with Provident has been scheduled. You'll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
+
+        let message = `Your call about ${finalProject} with Provident has been scheduled.\n`;
+        message += `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n`;
+        message += `Join the meeting: ${meetingUrl || 'Link in calendar'}`;
 
         // Add branded residences PDF for Provident
         if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
@@ -71,6 +74,11 @@ export const handler: Handler = async (event) => {
         }
 
         const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+        console.log(`[MEETING_CONFIRMATION] Debug Message Data:`, {
+            meetingUrl,
+            messageBody: message
+        });
 
         console.log(`[MEETING_CONFIRMATION] Twilio Call Config:`, {
             messagingServiceSid,
