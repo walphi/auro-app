@@ -70,14 +70,19 @@ export const handler: Handler = async (event) => {
             message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
         }
 
-        console.log(`[MEETING_CONFIRMATION] Sending to ${leadPhone} via TwilioWhatsAppClient`);
-        console.log(`[MEETING_CONFIRMATION] Message: ${message.substring(0, 100)}...`);
+        const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+        console.log(`[MEETING_CONFIRMATION] Twilio Call Config:`, {
+            messagingServiceSid,
+            to: leadPhone,
+            from: tenant.twilio_whatsapp_number || tenant.twilio_phone_number
+        });
 
         // Use the same TwilioWhatsAppClient as the chat handler
         const twilioClient = new TwilioWhatsAppClient(
             tenant.twilio_account_sid,
             tenant.twilio_auth_token,
-            tenant.twilio_whatsapp_number || tenant.twilio_phone_number
+            messagingServiceSid
         );
 
         const result = await twilioClient.sendTextMessage(leadPhone, message);
