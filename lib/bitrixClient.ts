@@ -18,6 +18,12 @@ export interface BitrixLead {
     [key: string]: any;
 }
 
+export interface BitrixDeal {
+    id: string;
+    TITLE: string;
+    [key: string]: any;
+}
+
 /**
  * Fetches full lead details from Bitrix24
  * @param leadId The ID of the lead to fetch
@@ -119,6 +125,67 @@ export async function addLeadComment(entityId: string, comment: string) {
         if (error.response?.data) {
             console.error(`[BitrixClient] Error details:`, JSON.stringify(error.response.data));
         }
+        throw error;
+    }
+}
+/**
+ * Fetches full deal details from Bitrix24
+ * @param dealId The ID of the deal to fetch
+ * @returns Promise with deal data
+ */
+export async function getDealById(dealId: string | number): Promise<any> {
+    const webhookUrl = process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error('BITRIX_PROVIDENT_WEBHOOK_URL is not defined');
+    }
+
+    console.log(`[BitrixClient] Fetching deal ${dealId} from Bitrix24...`);
+
+    try {
+        const response = await axios.get(`${webhookUrl}/crm.deal.get.json`, {
+            params: { ID: dealId }
+        });
+
+        if (response.data.error) {
+            console.error(`[BitrixClient] Bitrix API Error: ${response.data.error_description || response.data.error}`);
+            throw new Error(`Bitrix API Error: ${response.data.error}`);
+        }
+
+        return response.data.result;
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to fetch deal ${dealId}:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * Adds a comment to the deal's timeline in Bitrix24
+ * @param dealId The ID of the deal
+ * @param comment The comment text to add
+ */
+export async function addDealComment(dealId: string | number, comment: string) {
+    const webhookUrl = process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error('BITRIX_PROVIDENT_WEBHOOK_URL is not defined');
+    }
+
+    const url = `${webhookUrl}/crm.timeline.comment.add.json`;
+
+    const body = {
+        fields: {
+            ENTITY_ID: dealId,
+            ENTITY_TYPE: 'deal',
+            COMMENT: comment,
+            AUTHOR_ID: 1
+        }
+    };
+
+    try {
+        const response = await axios.post(url, body);
+        console.log('[BitrixClient] Add deal comment response:', response.data);
+        return response.data;
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to add comment to deal ${dealId}:`, error.message);
         throw error;
     }
 }

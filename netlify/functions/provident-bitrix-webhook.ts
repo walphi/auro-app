@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { getLeadById, addLeadComment, updateLead } from '../../lib/bitrixClient';
+import { getLeadById, addLeadComment, updateLead, getDealById, addDealComment } from '../../lib/bitrixClient';
 import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
 
 /**
@@ -44,92 +44,139 @@ export const handler: Handler = async (event, context) => {
         }
 
         const body = JSON.parse(event.body);
-        const leadId = body.data?.FIELDS?.ID;
+        const eventType = body.event || 'ONCRMLEADADD';
+        const entityId = body.data?.FIELDS?.ID;
 
-        if (!leadId) {
-            console.error('[Webhook] Invalid payload: Missing leadId');
+        if (!entityId) {
+            console.error('[BitrixWebhook] Invalid payload: Missing entityId');
             return {
                 statusCode: 400,
                 body: JSON.stringify({ error: 'invalid_payload' }),
             };
         }
 
-        console.log(`[Webhook] Processing ${body.event || 'ONCRMLEADADD'} for lead ${leadId}`);
+        const isDeal = eventType.includes('DEAL');
 
-        // 4. Fetch full lead data from Bitrix24
-        let bitrixLead;
-        try {
-            bitrixLead = await getLeadById(leadId);
-        } catch (bitrixError: any) {
-            console.error('[Webhook] Bitrix fetch error:', bitrixError.message);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'bitrix_error', message: 'Failed to fetch lead from CRM' }),
-            };
-        }
+        if (isDeal) {
+            console.log(`[BitrixDealWebhook] Processing deal ${entityId}`);
 
-        // 5. Extract lead details
-        // Phone numbers in Bitrix are often in an array
-        const phone = bitrixLead.PHONE?.[0]?.VALUE;
-        const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
-        const projectName = bitrixLead.TITLE || 'off-plan opportunities';
-        const responsibleId = bitrixLead.ASSIGNED_BY_ID;
+            // 1. Fetch deal data
+            let deal;
+            try {
+                deal = await getDealById(entityId);
+            } catch (error: any) {
+                console.error('[BitrixDealWebhook] Error fetching deal:', error.message);
+                return { statusCode: 500, body: JSON.stringify({ error: 'bitrix_error' }) };
+            }
 
-        if (!phone) {
-            console.warn(`[Webhook] Lead ${leadId} has no phone number. Skipping WhatsApp engagement.`);
+            // 2. Extract production fields
+            const name = deal.UF_CRM_1693544881 || deal.TITLE || 'Recipient';
+            const phone = deal.UF_CRM_PHONE_WORK || (deal.PHONE?.[0]?.VALUE);
+            const email = deal.UF_CRM_EMAIL_WORK || (deal.EMAIL?.[0]?.VALUE);
+
+            console.log(`[BitrixClient] Fetched deal ${entityId} with phone ${phone}`);
+
+            if (!phone) {
+                console.warn(`[BitrixDealWebhook] Deal ${entityId} has no phone number. Skipping WhatsApp.`);
+                return { statusCode: 200, body: JSON.stringify({ status: 'skipped', reason: 'no_phone' }) };
+            }
+
+            // 3. Trigger WhatsApp engagement
+            const whatsappTriggered = await triggerLeadEngagement({
+                phone: phone,
+                name: name,
+                projectName: deal.TITLE || 'off-plan opportunities'
+            });
+
+            // 4. Write back comment to deal
+            const comment = `AURO - status: WhatsApp engagement triggered for ${phone}`;
+            console.log(`[BitrixDeal] Adding comment for deal ${entityId}: ${comment.substring(0, 50)}...`);
+
+            try {
+                await addDealComment(entityId, comment);
+            } catch (error: any) {
+                console.error(`[BitrixDealWebhook] Failed to add comment to deal ${entityId}:`, error.message);
+            }
+
             return {
                 statusCode: 200,
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     status: 'accepted',
-                    leadId: leadId,
+                    entityId: entityId,
+                    type: 'deal',
+                    whatsappTriggered
+                }),
+            };
+        } else {
+            // Existing Lead Path
+            console.log(`[Webhook] Processing ONCRMLEADADD for lead ${entityId}`);
+
+            // Fetch full lead data from Bitrix24
+            let bitrixLead;
+            try {
+                bitrixLead = await getLeadById(entityId);
+            } catch (bitrixError: any) {
+                console.error('[Webhook] Bitrix fetch error:', bitrixError.message);
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({ error: 'bitrix_error', message: 'Failed to fetch lead from CRM' }),
+                };
+            }
+
+            // Extract lead details
+            const phone = bitrixLead.PHONE?.[0]?.VALUE;
+            const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
+            const projectName = bitrixLead.TITLE || 'off-plan opportunities';
+            const responsibleId = bitrixLead.ASSIGNED_BY_ID;
+
+            if (!phone) {
+                console.warn(`[Webhook] Lead ${entityId} has no phone number. Skipping WhatsApp engagement.`);
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({
+                        status: 'accepted',
+                        leadId: entityId,
+                        bitrixFetched: true,
+                        whatsappTriggered: false,
+                        reason: 'missing_phone'
+                    }),
+                };
+            }
+
+            // Trigger WhatsApp engagement flow
+            const whatsappTriggered = await triggerLeadEngagement({
+                phone: phone,
+                name: name,
+                projectName: projectName
+            });
+
+            // Success response with comment write-back
+            try {
+                const comment = `AURO - status: Accepted and qualification initiated\nInitial contact triggered via WhatsApp.\nResponsible: ${responsibleId || 'Unknown'}`;
+                await addLeadComment(entityId, comment);
+
+                if (responsibleId) {
+                    await updateLead(entityId, {
+                        UF_AURO_RESPONSIBLE_ID: responsibleId
+                    });
+                }
+            } catch (commentError: any) {
+                console.error(`[Webhook] Failed to write back to lead ${entityId}:`, commentError.message);
+            }
+
+            return {
+                statusCode: 200,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'accepted',
+                    event: eventType,
+                    leadId: entityId,
                     bitrixFetched: true,
-                    whatsappTriggered: false,
-                    reason: 'missing_phone'
+                    whatsappTriggered: whatsappTriggered
                 }),
             };
         }
-
-        // 6. Trigger WhatsApp engagement flow
-        const whatsappTriggered = await triggerLeadEngagement({
-            phone: phone,
-            name: name,
-            projectName: projectName
-        });
-
-        if (!whatsappTriggered) {
-            console.error(`[Webhook] Failed to trigger WhatsApp for lead ${leadId}`);
-            // We still return 200/accepted because the lead *was* processed by Bitrix level
-            // but we flag that WhatsApp failed.
-        }
-
-        // 7. Success response
-        try {
-            // Updated comment format as per Ayham's request
-            const comment = `AURO - status: Accepted and qualification initiated\nInitial contact triggered via WhatsApp.\nResponsible: ${responsibleId || 'Unknown'}`;
-            await addLeadComment(leadId, comment);
-
-            // Write back responsible ID to custom field if available
-            if (responsibleId) {
-                await updateLead(leadId, {
-                    UF_AURO_RESPONSIBLE_ID: responsibleId
-                });
-            }
-        } catch (commentError: any) {
-            console.error(`[Webhook] Failed to write back to lead ${leadId}:`, commentError.message);
-        }
-
-        return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                status: 'accepted',
-                event: body.event || 'ONCRMLEADADD',
-                leadId: leadId,
-                bitrixFetched: true,
-                whatsappTriggered: whatsappTriggered
-            }),
-        };
-
     } catch (error: any) {
         console.error('[Webhook] Internal error:', error.message);
         return {
