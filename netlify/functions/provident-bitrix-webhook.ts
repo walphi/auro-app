@@ -45,27 +45,61 @@ export const handler: Handler = async (event, context) => {
     }
 
     try {
-        // 3. Parse and validate the JSON body
+        // 3. Parse and validate the body
         if (!event.body) {
             console.error('[Webhook] Empty request body');
             throw new Error('Missing body');
         }
 
-        const body = JSON.parse(event.body);
-        const eventType = body.event;
-        const entityId = body.data?.FIELDS?.ID;
+        // Try to parse body. If it's URL encoded (common for Bitrix), we might need to handle it.
+        // For now, let's assume JSON as per user request but add robust logging.
+        let body: any;
+        try {
+            body = JSON.parse(event.body);
+            console.log('[Webhook] Raw body (JSON):', JSON.stringify(body));
+        } catch (e) {
+            console.log('[Webhook] Raw body (Text):', event.body);
+            // Simple check for URL-encoded body
+            if (event.body.includes('=') && !event.body.startsWith('{')) {
+                const params = new URLSearchParams(event.body);
+                body = {};
+                for (const [key, value] of params.entries()) {
+                    // Handle nested Bitrix fields like data[FIELDS][ID]
+                    if (key.includes('[') && key.includes(']')) {
+                        const parts = key.split('[').map(p => p.replace(']', ''));
+                        let current = body;
+                        for (let i = 0; i < parts.length - 1; i++) {
+                            current[parts[i]] = current[parts[i]] || {};
+                            current = current[parts[i]];
+                        }
+                        current[parts[parts.length - 1]] = value;
+                    } else {
+                        body[key] = value;
+                    }
+                }
+                console.log('[Webhook] Parsed Form Body:', JSON.stringify(body));
+            } else {
+                throw new Error('Unparsable body');
+            }
+        }
 
-        if (!entityId) {
-            console.error('[BitrixWebhook] Invalid payload: Missing entityId');
+        const rawEvent = body.event || body.EVENT_NAME || body.event_name;
+        const normalizedEvent = String(rawEvent || '').toUpperCase();
+
+        // Extract ID - Handle both JSON tree and flat form versions
+        const entityId = body.data?.FIELDS?.ID || body.id || (body.data?.id);
+
+        if (!entityId || !rawEvent) {
+            console.error(`[BitrixWebhook] Invalid payload: Missing entityId (${entityId}) or event (${rawEvent})`);
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'invalid_payload' }),
+                body: JSON.stringify({ error: 'invalid_payload', received: { entityId, event: rawEvent } }),
             };
         }
 
         // --- PRODUCTION DEAL BRANCH ---
-        if (eventType === "onCrmDealAdd" || eventType === "onCrmDealUpdate") {
-            console.log(`[BitrixDealWebhook] Processing ${eventType} for deal ${entityId}`);
+        if (normalizedEvent === "ONCRMDEALADD" || normalizedEvent === "ONCRMDEALUPDATE") {
+            console.log(`[BitrixDealWebhook] Processing ${normalizedEvent} for deal ${entityId}`);
 
             // 1. Fetch deal data from production Bitrix
             let deal;
@@ -112,14 +146,14 @@ export const handler: Handler = async (event, context) => {
                     status: 'accepted',
                     entityId: entityId,
                     type: 'deal',
-                    event: eventType,
+                    event: normalizedEvent,
                     whatsappTriggered
                 }),
             };
         }
 
         // --- STAGING LEAD BRANCH ---
-        else if (eventType === "ONCRMLEADADD") {
+        else if (normalizedEvent === "ONCRMLEADADD") {
             console.log(`[Webhook] Processing ONCRMLEADADD for lead ${entityId}`);
 
             // 1. Fetch full lead data from staging Bitrix
@@ -180,7 +214,7 @@ export const handler: Handler = async (event, context) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     status: 'accepted',
-                    event: eventType,
+                    event: normalizedEvent,
                     leadId: entityId,
                     bitrixFetched: true,
                     whatsappTriggered: whatsappTriggered
@@ -190,10 +224,10 @@ export const handler: Handler = async (event, context) => {
 
         // --- UNHANDLED EVENT ---
         else {
-            console.log(`[Webhook] Unhandled event type: ${eventType}`);
+            console.log(`[Webhook] Unhandled event type: ${rawEvent}`);
             return {
                 statusCode: 200,
-                body: JSON.stringify({ status: 'ignored', event: eventType }),
+                body: JSON.stringify({ status: 'ignored', event: rawEvent }),
             };
         }
 
