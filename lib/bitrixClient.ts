@@ -97,10 +97,11 @@ export async function updateLead(leadId: string, fields: Record<string, any>, cu
  * Adds a comment to the lead's timeline in Bitrix24
  * @param entityId The ID of the lead
  * @param comment The comment text to add
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  * @returns Promise with the API response data
  */
-export async function addLeadComment(entityId: string, comment: string) {
-    const baseUrl = process.env.BITRIX_WEBHOOK_URL || process.env.BITRIX_PROVIENDENT_WEBHOOK_URL;
+export async function addLeadComment(entityId: string, comment: string, customWebhookUrl?: string) {
+    const baseUrl = customWebhookUrl || process.env.BITRIX_WEBHOOK_URL || process.env.BITRIX_PROVIENDENT_WEBHOOK_URL;
     if (!baseUrl) {
         throw new Error('Bitrix Webhook URL is not defined');
     }
@@ -131,10 +132,11 @@ export async function addLeadComment(entityId: string, comment: string) {
 /**
  * Fetches full deal details from Bitrix24
  * @param dealId The ID of the deal to fetch
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  * @returns Promise with deal data
  */
-export async function getDealById(dealId: string | number): Promise<any> {
-    const webhookUrl = process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
+export async function getDealById(dealId: string | number, customWebhookUrl?: string): Promise<any> {
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
     if (!webhookUrl) {
         throw new Error('BITRIX_PROVIDENT_WEBHOOK_URL is not defined');
     }
@@ -162,9 +164,10 @@ export async function getDealById(dealId: string | number): Promise<any> {
  * Adds a comment to the deal's timeline in Bitrix24
  * @param dealId The ID of the deal
  * @param comment The comment text to add
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
  */
-export async function addDealComment(dealId: string | number, comment: string) {
-    const webhookUrl = process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
+export async function addDealComment(dealId: string | number, comment: string, customWebhookUrl?: string) {
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
     if (!webhookUrl) {
         throw new Error('BITRIX_PROVIDENT_WEBHOOK_URL is not defined');
     }

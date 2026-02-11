@@ -8,6 +8,15 @@ import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
  * Endpoint for Bitrix24 ONCRMLEADADD event.
  * Validates request, fetches lead details, and triggers engagement.
  */
+const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
+const STAGING_LEAD_URL = "https://stage.prestate.link/re";
+
+/**
+ * Netlify Function: provident-bitrix-webhook
+ * 
+ * Endpoint for Bitrix24 events.
+ * Handles staging leads (ONCRMLEADADD) and production deals (onCrmDealAdd, onCrmDealUpdate).
+ */
 export const handler: Handler = async (event, context) => {
     console.log(`[BitrixWebhook] Incoming request: ${event.httpMethod} ${event.path} | Body size: ${event.body?.length || 0} bytes`);
 
@@ -29,7 +38,6 @@ export const handler: Handler = async (event, context) => {
 
     if (!auroKey || auroKey !== validKey) {
         console.error(`[Webhook] Unauthorized access attempt. Received key: ${auroKey ? 'present' : 'missing'}`);
-        console.log(`[Webhook] Headers: ${JSON.stringify(event.headers)}`);
         return {
             statusCode: 401,
             body: JSON.stringify({ error: 'unauthorized' }),
@@ -44,7 +52,7 @@ export const handler: Handler = async (event, context) => {
         }
 
         const body = JSON.parse(event.body);
-        const eventType = body.event || 'ONCRMLEADADD';
+        const eventType = body.event;
         const entityId = body.data?.FIELDS?.ID;
 
         if (!entityId) {
@@ -55,15 +63,14 @@ export const handler: Handler = async (event, context) => {
             };
         }
 
-        const isDeal = eventType.includes('DEAL');
+        // --- PRODUCTION DEAL BRANCH ---
+        if (eventType === "onCrmDealAdd" || eventType === "onCrmDealUpdate") {
+            console.log(`[BitrixDealWebhook] Processing ${eventType} for deal ${entityId}`);
 
-        if (isDeal) {
-            console.log(`[BitrixDealWebhook] Processing deal ${entityId}`);
-
-            // 1. Fetch deal data
+            // 1. Fetch deal data from production Bitrix
             let deal;
             try {
-                deal = await getDealById(entityId);
+                deal = await getDealById(entityId, BITRIX_PROVIDENT_WEBHOOK_URL);
             } catch (error: any) {
                 console.error('[BitrixDealWebhook] Error fetching deal:', error.message);
                 return { statusCode: 500, body: JSON.stringify({ error: 'bitrix_error' }) };
@@ -88,12 +95,12 @@ export const handler: Handler = async (event, context) => {
                 projectName: deal.TITLE || 'off-plan opportunities'
             });
 
-            // 4. Write back comment to deal
+            // 4. Write back comment to deal in production
             const comment = `AURO - status: WhatsApp engagement triggered for ${phone}`;
             console.log(`[BitrixDeal] Adding comment for deal ${entityId}: ${comment.substring(0, 50)}...`);
 
             try {
-                await addDealComment(entityId, comment);
+                await addDealComment(entityId, comment, BITRIX_PROVIDENT_WEBHOOK_URL);
             } catch (error: any) {
                 console.error(`[BitrixDealWebhook] Failed to add comment to deal ${entityId}:`, error.message);
             }
@@ -105,17 +112,20 @@ export const handler: Handler = async (event, context) => {
                     status: 'accepted',
                     entityId: entityId,
                     type: 'deal',
+                    event: eventType,
                     whatsappTriggered
                 }),
             };
-        } else {
-            // Existing Lead Path
+        }
+
+        // --- STAGING LEAD BRANCH ---
+        else if (eventType === "ONCRMLEADADD") {
             console.log(`[Webhook] Processing ONCRMLEADADD for lead ${entityId}`);
 
-            // Fetch full lead data from Bitrix24
+            // 1. Fetch full lead data from staging Bitrix
             let bitrixLead;
             try {
-                bitrixLead = await getLeadById(entityId);
+                bitrixLead = await getLeadById(entityId, STAGING_LEAD_URL);
             } catch (bitrixError: any) {
                 console.error('[Webhook] Bitrix fetch error:', bitrixError.message);
                 return {
@@ -124,7 +134,7 @@ export const handler: Handler = async (event, context) => {
                 };
             }
 
-            // Extract lead details
+            // 2. Extract lead details
             const phone = bitrixLead.PHONE?.[0]?.VALUE;
             const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
             const projectName = bitrixLead.TITLE || 'off-plan opportunities';
@@ -144,22 +154,22 @@ export const handler: Handler = async (event, context) => {
                 };
             }
 
-            // Trigger WhatsApp engagement flow
+            // 3. Trigger WhatsApp engagement flow
             const whatsappTriggered = await triggerLeadEngagement({
                 phone: phone,
                 name: name,
                 projectName: projectName
             });
 
-            // Success response with comment write-back
+            // 4. Success response with comment write-back to staging
             try {
                 const comment = `AURO - status: Accepted and qualification initiated\nInitial contact triggered via WhatsApp.\nResponsible: ${responsibleId || 'Unknown'}`;
-                await addLeadComment(entityId, comment);
+                await addLeadComment(entityId, comment, STAGING_LEAD_URL);
 
                 if (responsibleId) {
                     await updateLead(entityId, {
                         UF_AURO_RESPONSIBLE_ID: responsibleId
-                    });
+                    }, STAGING_LEAD_URL);
                 }
             } catch (commentError: any) {
                 console.error(`[Webhook] Failed to write back to lead ${entityId}:`, commentError.message);
@@ -177,6 +187,16 @@ export const handler: Handler = async (event, context) => {
                 }),
             };
         }
+
+        // --- UNHANDLED EVENT ---
+        else {
+            console.log(`[Webhook] Unhandled event type: ${eventType}`);
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ status: 'ignored', event: eventType }),
+            };
+        }
+
     } catch (error: any) {
         console.error('[Webhook] Internal error:', error.message);
         return {
