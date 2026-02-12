@@ -83,7 +83,14 @@ export const handler: Handler = async (event, context) => {
             }
         }
 
-        const rawEvent = body.event || body.EVENT_NAME || body.event_name;
+        let rawEvent = body.event || body.EVENT_NAME || body.event_name;
+
+        // Legacy Support: Default to ONCRMLEADADD if event is missing but data.FIELDS.ID exists
+        // This handles older manual tests/postman calls that don't include an explicit event name.
+        if (!rawEvent && body.data?.FIELDS?.ID) {
+            rawEvent = 'ONCRMLEADADD';
+        }
+
         const normalizedEvent = String(rawEvent || '').toUpperCase();
 
         // Extract ID - Handle both JSON tree and flat form versions
