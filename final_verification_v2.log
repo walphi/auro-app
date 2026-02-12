@@ -1,0 +1,170 @@
+=== TEST: Cal.com Booking + WhatsApp Confirmation ===
+
+Tenant loaded: Provident Real Estate (id=1)
+twilio_whatsapp_number: +971565203832
+twilio_phone_number: whatsapp:+14155238886
+
+--- Step 1: Cal.com Booking at 2026-02-13T11:00:00.000Z ---
+[Cal.com] normalizePhone input: "+971507150121"
+[Cal.com] normalizePhone result: "+971507150121" (12 digits)
+[MEETING_DEBUG] Cal.com phone normalization: raw="+971507150121" → normalized="+971507150121"
+[Cal.com] Full booking payload: {
+  "eventTypeId": 4644939,
+  "start": "2026-02-13T11:00:00.000Z",
+  "attendee": {
+    "name": "Philip Walsh",
+    "email": "phillipwalsh@gmail.com",
+    "phoneNumber": "+971507150121",
+    "timeZone": "Asia/Dubai",
+    "language": "en"
+  },
+  "metadata": {
+    "source": "Auro Vapi AI"
+  }
+}
+[Cal.com] Creating booking for phillipwalsh@gmail.com at 2026-02-13T11:00:00.000Z...
+[Cal.com] RAW RESPONSE: {
+  "status": "success",
+  "data": {
+    "id": 15651818,
+    "uid": "rB4zW89YD4TjzjY6KRmSVN",
+    "title": "Off-Plan Consultation between Provident Real Estate and Philip Walsh",
+    "description": "",
+    "hosts": [
+      {
+        "id": 2133023,
+        "name": "Provident Real Estate",
+        "email": "abstraxpw@gmail.com",
+        "displayEmail": "abstraxpw@gmail.com",
+        "username": "auro-app",
+        "timeZone": "Asia/Dubai"
+      }
+    ],
+    "status": "accepted",
+    "cancellationReason": "",
+    "cancelledByEmail": "",
+    "rescheduledByEmail": null,
+    "start": "2026-02-13T11:00:00.000Z",
+    "end": "2026-02-13T11:30:00.000Z",
+    "duration": 30,
+    "eventTypeId": 4644939,
+    "eventType": {
+      "id": 4644939,
+      "slug": "provident-off-plan-consultation"
+    },
+    "meetingUrl": "https://meet.google.com/oku-afdf-zsu",
+    "location": "https://meet.google.com/oku-afdf-zsu",
+    "absentHost": false,
+    "createdAt": "2026-02-08T17:58:01.945Z",
+    "updatedAt": "2026-02-08T17:58:05.023Z",
+    "metadata": {
+      "source": "Auro Vapi AI"
+    },
+    "rating": null,
+    "icsUid": "rB4zW89YD4TjzjY6KRmSVN@Cal.com",
+    "attendees": [
+      {
+        "name": "Philip Walsh",
+        "email": "phillipwalsh@gmail.com",
+        "displayEmail": "phillipwalsh@gmail.com",
+        "timeZone": "Asia/Dubai",
+        "language": "en",
+        "absent": false,
+        "phoneNumber": "+971507150121"
+      }
+    ],
+    "bookingFieldsResponses": {
+      "email": "phillipwalsh@gmail.com",
+      "attendeePhoneNumber": "+971507150121",
+      "name": "Philip Walsh",
+      "displayEmail": "phillipwalsh@gmail.com"
+    },
+    "isPlatformManagedUserBooking": false
+  }
+}
+[Cal.com] Booking created successfully: 15651818
+
+✅ Cal.com booking SUCCESS: {
+  "bookingId": "15651818",
+  "uid": "rB4zW89YD4TjzjY6KRmSVN",
+  "meetingUrl": "https://meet.google.com/oku-afdf-zsu",
+  "raw": {
+    "id": 15651818,
+    "uid": "rB4zW89YD4TjzjY6KRmSVN",
+    "title": "Off-Plan Consultation between Provident Real Estate and Philip Walsh",
+    "description": "",
+    "hosts": [
+      {
+        "id": 2133023,
+        "name": "Provident Real Estate",
+        "email": "abstraxpw@gmail.com",
+        "displayEmail": "abstraxpw@gmail.com",
+        "username": "auro-app",
+        "timeZone": "Asia/Dubai"
+      }
+    ],
+    "status": "accepted",
+    "cancellationReason": "",
+    "cancelledByEmail": "",
+    "rescheduledByEmail": null,
+    "start": "2026-02-13T11:00:00.000Z",
+    "end": "2026-02-13T11:30:00.000Z",
+    "duration": 30,
+    "eventTypeId": 4644939,
+    "eventType": {
+      "id": 4644939,
+      "slug": "provident-off-plan-consultation"
+    },
+    "meetingUrl": "https://meet.google.com/oku-afdf-zsu",
+    "location": "https://meet.google.com/oku-afdf-zsu",
+    "absentHost": false,
+    "createdAt": "2026-02-08T17:58:01.945Z",
+    "updatedAt": "2026-02-08T17:58:05.023Z",
+    "metadata": {
+      "source": "Auro Vapi AI"
+    },
+    "rating": null,
+    "icsUid": "rB4zW89YD4TjzjY6KRmSVN@Cal.com",
+    "attendees": [
+      {
+        "name": "Philip Walsh",
+        "email": "phillipwalsh@gmail.com",
+        "displayEmail": "phillipwalsh@gmail.com",
+        "timeZone": "Asia/Dubai",
+        "language": "en",
+        "absent": false,
+        "phoneNumber": "+971507150121"
+      }
+    ],
+    "bookingFieldsResponses": {
+      "email": "phillipwalsh@gmail.com",
+      "attendeePhoneNumber": "+971507150121",
+      "name": "Philip Walsh",
+      "displayEmail": "phillipwalsh@gmail.com"
+    },
+    "isPlatformManagedUserBooking": false
+  }
+}
+
+--- Step 2: WhatsApp Confirmation ---
+Messaging Service SID: MG533f604e6517d3d8b3082e945df5a8b6
+Recipient: +971507150121
+Message body: Hi Philip, your Provident consultation is confirmed for February 13 at 3:00 PM (Dubai time). Join link: https://meet.google.com/oku-afdf-zsu. Your property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view
+
+[Twilio] sendTextMessage payload: {
+  to: 'whatsapp:+971507150121',
+  messagingServiceSid: 'MG533f604e6517d3d8b3082e945df5a8b6',
+  bodyLength: 236,
+  bodyPreview: 'Hi Philip, your Provident consultation is confirmed for February 13 at 3:00 PM (Dubai time). Join link: https://meet.goo'
+}
+[Twilio] Error sending message: {
+  httpStatus: 404,
+  twilioCode: 20404,
+  twilioMessage: 'The requested resource /2010-04-01/Accounts/AC9aa932cbab62a7e9a8d1ec5754a6a604/Messages.json was not found',
+  moreInfo: 'https://www.twilio.com/docs/errors/20404',
+  errorMessage: 'Request failed with status code 404'
+}
+
+❌ WhatsApp confirmation FAILED: The requested resource /2010-04-01/Accounts/AC9aa932cbab62a7e9a8d1ec5754a6a604/Messages.json was not found
+
+=== TEST COMPLETE ===

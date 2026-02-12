@@ -28,19 +28,19 @@ async function testMainVapi() {
                 },
                 customer: {
                     number: "+971507150121"
-                },
-                analysis: {
-                    structuredData: {
-                        meeting_scheduled: true,
-                        meeting_start_iso: meetingStartIso,
-                        first_name: "Test",
-                        last_name: "User",
-                        email: "phill+test@auro-app.com",
-                        phone: "+971507150121",
-                        project_name: "Test Project – DO NOT CONTACT"
-                    },
-                    bookingMade: true
                 }
+            },
+            analysis: {
+                structuredData: {
+                    meeting_scheduled: true,
+                    meeting_start_iso: meetingStartIso,
+                    first_name: "Test",
+                    last_name: "User",
+                    email: "phill+test@auro-app.com",
+                    phone: "+971507150121",
+                    project_name: "Test Project – DO NOT CONTACT"
+                },
+                bookingMade: true
             }
         }
     };

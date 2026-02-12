@@ -11,6 +11,7 @@ import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "..
 import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
 import { genAI, RobustChat, callGemini } from "../../lib/gemini";
 import { embedText } from "../../lib/rag/embeddingClient";
+import { normalizePhone } from "../../lib/phoneUtils";
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -402,7 +403,8 @@ const handler: Handler = async (event) => {
         const body = querystring.parse(event.body || "");
         const userMessage = (body.Body as string) || "";
         const numMedia = parseInt((body.NumMedia as string) || "0");
-        const fromNumber = (body.From as string).replace("whatsapp:", "").trim();
+        const rawFrom = (body.From as string).replace("whatsapp:", "").trim();
+        const fromNumber = normalizePhone(rawFrom);
         const toNumber = (body.To as string);
         const host = event.headers.host || "auro-app.netlify.app";
         // CRITICAL: Always use the netlify.app domain for media if available to ensure Twilio deliverability

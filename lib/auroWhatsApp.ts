@@ -1,4 +1,5 @@
 import { TwilioWhatsAppClient } from './twilioWhatsAppClient';
+import { normalizePhone } from './phoneUtils';
 
 /**
  * Auro WhatsApp Service
@@ -17,7 +18,9 @@ interface EngagementParams {
  * @param params Object containing lead phone, name, and optional project name
  */
 export async function triggerLeadEngagement(params: EngagementParams): Promise<boolean> {
-    const { phone, name, projectName = 'our latest projects' } = params;
+    const rawPhone = params.phone;
+    const phone = normalizePhone(rawPhone);
+    const { name, projectName = 'our latest projects' } = params;
 
     console.log(`[AuroWhatsApp] Triggering engagement flow for ${name} (${phone})`);
 

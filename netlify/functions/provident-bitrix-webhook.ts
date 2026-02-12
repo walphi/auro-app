@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { getLeadById, addLeadComment, updateLead, getDealById, addDealComment } from '../../lib/bitrixClient';
 import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
+import { normalizePhone } from '../../lib/phoneUtils';
 
 /**
  * Netlify Function: provident-bitrix-webhook
@@ -126,17 +127,41 @@ export const handler: Handler = async (event, context) => {
 
             // 2. Extract production fields
             const name = deal.UF_CRM_1693544881 || deal.TITLE || 'Recipient';
-            const phone = deal.UF_CRM_PHONE_WORK || (deal.PHONE?.[0]?.VALUE);
+            const rawPhone = deal.UF_CRM_PHONE_WORK || (deal.PHONE?.[0]?.VALUE);
+            const phone = normalizePhone(rawPhone);
             const email = deal.UF_CRM_EMAIL_WORK || (deal.EMAIL?.[0]?.VALUE);
 
-            console.log(`[BitrixClient] Fetched deal ${entityId} with phone ${phone}`);
+            console.log(`[BitrixClient] Fetched deal ${entityId} with phone ${phone} (raw: ${rawPhone})`);
 
             if (!phone) {
                 console.warn(`[BitrixDealWebhook] Deal ${entityId} has no phone number. Skipping WhatsApp.`);
                 return { statusCode: 200, body: JSON.stringify({ status: 'skipped', reason: 'no_phone' }) };
             }
 
-            // 3. Trigger WhatsApp engagement
+            // 3. Link Deal ID in Supabase for Provident (Tenant 1)
+            try {
+                const { data: lead, error: findError } = await supabase
+                    .from('leads')
+                    .select('id, custom_field_1')
+                    .eq('phone', phone)
+                    .single();
+
+                if (lead) {
+                    // Update custom_field_1 with DealID: [id]
+                    const currentField = lead.custom_field_1 || '';
+                    if (!currentField.includes(`DealID: ${entityId}`)) {
+                        const newField = currentField ? `${currentField} | DealID: ${entityId}` : `DealID: ${entityId}`;
+                        await supabase.from('leads').update({
+                            custom_field_1: newField
+                        }).eq('id', lead.id);
+                        console.log(`[SupabaseSync] Linked DealID ${entityId} to lead ${lead.id}`);
+                    }
+                }
+            } catch (supabaseError: any) {
+                console.error('[SupabaseSync] Error linking deal:', supabaseError.message);
+            }
+
+            // 4. Trigger WhatsApp engagement
             const whatsappTriggered = await triggerLeadEngagement({
                 phone: phone,
                 name: name,
@@ -183,7 +208,8 @@ export const handler: Handler = async (event, context) => {
             }
 
             // 2. Extract lead details
-            const phone = bitrixLead.PHONE?.[0]?.VALUE;
+            const rawPhone = bitrixLead.PHONE?.[0]?.VALUE;
+            const phone = normalizePhone(rawPhone);
             const name = bitrixLead.NAME || bitrixLead.TITLE || 'Value Home Seekers';
             const projectName = bitrixLead.TITLE || 'off-plan opportunities';
             const responsibleId = bitrixLead.ASSIGNED_BY_ID;

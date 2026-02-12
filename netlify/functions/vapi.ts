@@ -9,36 +9,10 @@ import { genAI, callGemini } from "../../lib/gemini";
 import { resolveWhatsAppSender, TwilioWhatsAppClient } from "../../lib/twilioWhatsAppClient";
 import { generateAuroSummary } from "../../lib/auroSummary";
 import { addDealComment } from "../../lib/bitrixClient";
+import { normalizePhone, resolvePrioritizedPhone } from "../../lib/phoneUtils";
 
 const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
 
-/**
- * Normalizes phone numbers to E.164 format with a leading '+'.
- * Specifically handles UAE phone number patterns.
- */
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-
-  if (!digits) return "";
-
-  // UAE numbers – prefer +971
-  if (digits.startsWith("971")) {
-    return `+${digits}`;
-  }
-
-  // Local UAE mobile like 050..., 058..., 052...
-  if (digits.startsWith("05")) {
-    return `+971${digits.slice(1)}`;
-  }
-
-  // If it starts with 5 (already without the leading 0)
-  if (digits.startsWith("5")) {
-    return `+971${digits}`;
-  }
-
-  // Fallback: just prefix with +
-  return `+${digits}`;
-}
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -267,12 +241,9 @@ const handler: Handler = async (event) => {
     // VAPI payload structure: body.message.call.customer.number or body.call.customer.number
     let phoneNumber = body.message?.call?.customer?.number || body.call?.customer?.number;
 
-    // Normalize phone number (remove 'whatsapp:' prefix if present, ensure + prefix)
+    // Use global normalizePhone
     if (phoneNumber) {
-      phoneNumber = phoneNumber.replace('whatsapp:', '').trim();
-      if (!phoneNumber.startsWith('+')) {
-        phoneNumber = '+' + phoneNumber;
-      }
+      phoneNumber = normalizePhone(phoneNumber);
       console.log("[VAPI] Normalized phone number:", phoneNumber);
     } else {
       console.log("[VAPI] No phone number found in payload");
@@ -563,14 +534,21 @@ CURRENT LEAD PROFILE:
                 }
               }
 
-              const rawPhone = structuredData.phone || phoneNumber || leadData?.phone || '';
-              const normalizedAttendeePhone = normalizePhone(rawPhone);
+              // PHONE SOURCE PRIORITY: Vapi Customer Number > Lead Phone > Structured Assistant Data
+              // Note: 'phoneNumber' here is the Vapi customer number resolved at start of handler
+              const normalizedAttendeePhone = resolvePrioritizedPhone(
+                phoneNumber,
+                leadData?.phone,
+                structuredData.phone
+              );
 
               console.log(`[VAPI] Prepared Cal.com booking for lead ${leadId}:`, {
                 attendeeName: `${firstName} ${lastName}`.trim(),
                 attendeeEmail: cleanEmail,
                 attendeePhone: normalizedAttendeePhone,
-                rawPhone: rawPhone
+                vapiNumber: phoneNumber,
+                leadPhone: leadData?.phone,
+                structuredPhone: structuredData.phone
               });
 
               const calResult = await createCalComBooking({
@@ -633,7 +611,7 @@ CURRENT LEAD PROFILE:
 
               // 5. Trigger Meeting Confirmation Netlify Function
               if (tenant.id === 1) {
-                const phoneForConfirmation = leadData?.phone || rawPhone;
+                const phoneForConfirmation = normalizedAttendeePhone;
                 const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
 
                 console.log(`[MeetingConfirmation] Calling send-meeting-confirmation for tenant 1, lead ${leadId}, booking ${calResult.bookingId}`);
@@ -898,12 +876,18 @@ CURRENT LEAD PROFILE:
                 eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
               }
 
+              const prioritizedPhone = resolvePrioritizedPhone(
+                phoneNumber,
+                leadData?.phone,
+                args.phone // Assistant phone from tool args if present
+              );
+
               calResult = await createCalComBooking({
                 eventTypeId: parseInt(eventTypeIdAttr),
                 start: resolved_datetime,
                 name: leadData.name || 'Client',
                 email: emailForBooking,
-                phoneNumber: phoneNumber || leadData.phone || '',
+                phoneNumber: prioritizedPhone,
                 metadata: {
                   lead_id: String(leadId),
                   tenant_id: String(tenant.id),
@@ -937,7 +921,7 @@ CURRENT LEAD PROFILE:
                   const confirmRes = await axios.post('https://auroapp.com/.netlify/functions/send-meeting-confirmation', {
                     tenantId: tenant.id,
                     leadId: leadId,
-                    leadPhone: phoneNumber || leadData.phone,
+                    leadPhone: prioritizedPhone,
                     meetingStartIso: resolved_datetime,
                     bookingId: calResult.bookingId,
                     meetingUrl: calResult.meetingUrl,

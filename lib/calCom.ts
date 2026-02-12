@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { normalizePhone } from './phoneUtils';
 
 /**
  * Interface for Cal.com booking details
@@ -11,62 +12,6 @@ export interface CalComBookingDetails {
     phoneNumber: string;
     metadata?: Record<string, any>;
     timeZone?: string;
-}
-
-/**
- * Normalize phone to E.164 format.
- * Specifically optimized for UAE numbers and spoken/formatted inputs.
- *
- * Valid UAE mobile: +971 5X XXXX XXX  →  +971XXXXXXXXX  (12 digits total)
- * Valid UAE landline: +971 [2-9] XXX XXXX  →  +971XXXXXXXX (11-12 digits)
- */
-function normalizePhone(raw: string): string | null {
-    if (!raw) return null;
-
-    console.log(`[Cal.com] normalizePhone input: "${raw}"`);
-
-    // Remove 'whatsapp:' prefix if present
-    let cleaned = raw.replace(/^whatsapp:/i, '').trim();
-
-    // Strip all non-digit characters except leading +
-    let hasPlus = cleaned.startsWith('+');
-    let digits = cleaned.replace(/\D/g, '');
-
-    // Handle leading 00 (international prefix)
-    if (digits.startsWith('00')) {
-        digits = digits.slice(2);
-    }
-
-    // If we have a + and digits don't start with country code, or no + at all
-    // Assume UAE if number doesn't start with a country code
-    if (!digits.startsWith('971') && !digits.startsWith('1') && !digits.startsWith('44') && !digits.startsWith('91')) {
-        // Remove leading 0 if present (local format)
-        if (digits.startsWith('0')) {
-            digits = digits.slice(1);
-        }
-        // Prepend UAE country code
-        digits = '971' + digits;
-    }
-
-    // Ensure we have at least 10 digits
-    if (digits.length < 10) {
-        console.warn(`[Cal.com] Phone number too short after normalization: "${digits}" (from raw="${raw}")`);
-        return null;
-    }
-
-    // Improve UAE handling: if it starts with 9710, fix it to 971
-    if (digits.startsWith('9710')) {
-        digits = '971' + digits.slice(4);
-    }
-
-    // Only warn if potentially invalid, don't auto-truncate blindly
-    if (digits.length > 15) {
-        console.warn(`[Cal.com] Phone number unusually long: "${digits}"`);
-    }
-
-    const result = '+' + digits;
-    console.log(`[Cal.com] normalizePhone result: "${result}" (${digits.length} digits)`);
-    return result;
 }
 
 /**
