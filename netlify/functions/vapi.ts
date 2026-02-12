@@ -12,6 +12,34 @@ import { addDealComment } from "../../lib/bitrixClient";
 
 const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
 
+/**
+ * Normalizes phone numbers to E.164 format with a leading '+'.
+ * Specifically handles UAE phone number patterns.
+ */
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+
+  if (!digits) return "";
+
+  // UAE numbers – prefer +971
+  if (digits.startsWith("971")) {
+    return `+${digits}`;
+  }
+
+  // Local UAE mobile like 050..., 058..., 052...
+  if (digits.startsWith("05")) {
+    return `+971${digits.slice(1)}`;
+  }
+
+  // If it starts with 5 (already without the leading 0)
+  if (digits.startsWith("5")) {
+    return `+971${digits}`;
+  }
+
+  // Fallback: just prefix with +
+  return `+${digits}`;
+}
+
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
@@ -536,13 +564,21 @@ CURRENT LEAD PROFILE:
               }
 
               const rawPhone = structuredData.phone || phoneNumber || leadData?.phone || '';
+              const normalizedAttendeePhone = normalizePhone(rawPhone);
+
+              console.log(`[VAPI] Prepared Cal.com booking for lead ${leadId}:`, {
+                attendeeName: `${firstName} ${lastName}`.trim(),
+                attendeeEmail: cleanEmail,
+                attendeePhone: normalizedAttendeePhone,
+                rawPhone: rawPhone
+              });
 
               const calResult = await createCalComBooking({
                 eventTypeId,
                 start: meetingStartIso,
                 name: `${firstName} ${lastName}`.trim(),
                 email: cleanEmail,
-                phoneNumber: rawPhone,
+                phoneNumber: normalizedAttendeePhone,
                 metadata: {
                   budget: String(structuredData.budget || leadData?.budget || ""),
                   property_type: String(structuredData.property_type || leadData?.property_type || ""),
@@ -644,7 +680,11 @@ CURRENT LEAD PROFILE:
                 }
               }
             } catch (calError: any) {
-              console.error(`[VAPI] Cal.com booking failed: ${calError.message}`);
+              console.error(`[VAPI] Cal.com booking failed:`, {
+                message: calError.message,
+                response: calError.response?.data || 'No response data',
+                status: calError.response?.status
+              });
             }
           } else {
             console.log(`[VAPI] Meeting scheduled but meeting_start_iso is missing in structuredData.`);
