@@ -8,6 +8,13 @@ import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
  * Endpoint for Bitrix24 ONCRMLEADADD event.
  * Validates request, fetches lead details, and triggers engagement.
  */
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
 const STAGING_LEAD_URL = "https://stage.prestate.link/re";
 

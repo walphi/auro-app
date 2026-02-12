@@ -7,6 +7,10 @@ import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../.
 import { createCalComBooking } from "../../lib/calCom";
 import { genAI, callGemini } from "../../lib/gemini";
 import { resolveWhatsAppSender, TwilioWhatsAppClient } from "../../lib/twilioWhatsAppClient";
+import { generateAuroSummary } from "../../lib/auroSummary";
+import { addDealComment } from "../../lib/bitrixClient";
+
+const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
 
 // Initialize Supabase Client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -386,14 +390,16 @@ CURRENT LEAD PROFILE:
         const summary = analysis.summary || body.message?.transcript;
         const outcome = analysis.outcome || 'unknown';
         const bookingMade = analysis.bookingMade || false;
-        console.log(`[VAPI] Call ended/Report received. outcome=${outcome}, bookingMade=${bookingMade}`);
+        const recordingUrl = body.message?.call?.recordingUrl || body.call?.recordingUrl;
+
+        console.log(`[VAPI] Call ended/Report received. outcome=${outcome}, bookingMade=${bookingMade}, recording=${recordingUrl ? 'YES' : 'NO'}`);
 
         await supabase.from('messages').insert({
           lead_id: leadId,
           type: 'Voice_Transcript',
           sender: 'System',
           content: `--- Call Summary ---\n${summary || 'Call ended.'}`,
-          meta: JSON.stringify({ outcome, bookingMade })
+          meta: JSON.stringify({ outcome, bookingMade, recordingUrl })
         });
 
         // Trigger RAG learning for completed calls
@@ -415,6 +421,53 @@ CURRENT LEAD PROFILE:
           });
         } catch (learnError: any) {
           console.error('[VAPI] RAG learning trigger failed:', learnError.message);
+        }
+
+        // --- NEW: AURO SUMMARY POSTBACK TO BITRIX ---
+        // We post a summary if this is a Provident Deal (Tenant 1) and we have a Bitrix Deal ID.
+        if (tenant.id === 1 && leadData?.custom_field_1?.includes('DealID:')) {
+          console.log(`[AuroSummary] Initiating summary postback for lead ${leadId}`);
+
+          try {
+            // 1. Fetch WhatsApp message history
+            const { data: messages } = await supabase
+              .from('messages')
+              .select('sender, content, type')
+              .eq('lead_id', leadId)
+              .in('type', ['Message', 'Image', 'Voice'])
+              .order('created_at', { ascending: true })
+              .limit(20);
+
+            const whatsappHighlights = messages?.map(m => `${m.sender}: ${m.content}`).join('\n') || 'No messages recorded.';
+
+            // 2. Extract Bitrix Deal ID
+            const dealIdMatch = leadData.custom_field_1.match(/DealID:\s*(\d+)/);
+            const bitrixDealId = dealIdMatch ? dealIdMatch[1] : null;
+
+            if (bitrixDealId) {
+              const structuredData = getStructuredData(body);
+
+              // 3. Generate Summary
+              const auroSummary = generateAuroSummary({
+                leadName: leadData.name || structuredData.first_name || 'Recipient',
+                leadPhone: leadData.phone || phoneNumber,
+                leadEmail: leadData.email || structuredData.email,
+                budget: leadData.budget || structuredData.budget,
+                location: leadData.location || structuredData.preferred_area,
+                propertyType: leadData.property_type || structuredData.property_type,
+                whatsappTranscript: whatsappHighlights,
+                voiceSummary: summary,
+                voiceRecordingUrl: recordingUrl,
+                meetingDateTime: structuredData.meeting_start_iso ? new Date(structuredData.meeting_start_iso).toLocaleString('en-US', { timeZone: 'Asia/Dubai' }) : undefined,
+                meetingUrl: leadData.meeting_url || leadData.meta?.meetingUrl // From local state if available
+              });
+
+              console.log(`[AuroSummary] Posting summary to Bitrix Deal ${bitrixDealId}`);
+              await addDealComment(bitrixDealId, auroSummary, BITRIX_PROVIDENT_WEBHOOK_URL);
+            }
+          } catch (summaryError: any) {
+            console.error('[AuroSummary] Failed to generate/post summary:', summaryError.message);
+          }
         }
 
         // --- NEW: CAL.COM BOOKING LOGIC ---
