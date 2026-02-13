@@ -192,3 +192,34 @@ export async function addDealComment(dealId: string | number, comment: string, c
         throw error;
     }
 }
+/**
+ * Updates deal fields in Bitrix24
+ * @param dealId The ID of the deal to update
+ * @param fields Object containing fields to update
+ * @param customWebhookUrl Optional specific webhook URL for multi-tenancy
+ */
+export async function updateDeal(dealId: string | number, fields: Record<string, any>, customWebhookUrl?: string): Promise<void> {
+    const webhookUrl = customWebhookUrl || process.env.BITRIX_PROVIDENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error('BITRIX_PROVIDENT_WEBHOOK_URL is not defined');
+    }
+
+    console.log(`[BitrixClient] Updating deal ${dealId} in Bitrix24 using ${webhookUrl.substring(0, 30)}...`);
+
+    try {
+        const response = await axios.post(`${webhookUrl}/crm.deal.update.json`, {
+            id: dealId,
+            fields: fields
+        });
+
+        if (response.data.error) {
+            console.error(`[BitrixClient] Bitrix API Error during deal update: ${response.data.error_description || response.data.error}`);
+            throw new Error(`Bitrix API Error: ${response.data.error}`);
+        }
+
+        console.log(`[BitrixClient] Deal ${dealId} updated successfully`);
+    } catch (error: any) {
+        console.error(`[BitrixClient] Failed to update deal ${dealId}:`, error.message);
+        throw error;
+    }
+}

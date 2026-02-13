@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { getLeadById, addLeadComment, updateLead, getDealById, addDealComment } from '../../lib/bitrixClient';
+import { getLeadById, addLeadComment, updateLead, getDealById, addDealComment, updateDeal } from '../../lib/bitrixClient';
 import { triggerLeadEngagement } from '../../lib/auroWhatsApp';
 import { normalizePhone } from '../../lib/phoneUtils';
 
@@ -262,12 +262,104 @@ export const handler: Handler = async (event, context) => {
             };
         }
 
-        // --- UNHANDLED EVENT ---
-        else {
-            console.log(`[Webhook] Unhandled event type: ${rawEvent}`);
+        // --- VAPI BOOKING BRANCH ---
+        else if (normalizedEvent === "VAPI_BOOKING") {
+            const data = body.data || body; // Support both structures
+            const bitrixId = data.bitrix_id || data.bitrix_deal_id;
+            const leadId = data.lead_id;
+            const phone = data.phone;
+            const summary = data.summary;
+            const transcript = data.transcript;
+            const booking = data.booking || {};
+            const structured = data.structured || {};
+
+            console.log(`[VapiBookingWebhook] Processing VAPI_BOOKING for BitrixID ${bitrixId}, Lead ${leadId}`);
+
+            if (!bitrixId) {
+                console.warn("[VapiBookingWebhook] No Bitrix ID provided in payload. Skipping update.");
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({ status: 'ignored', reason: 'no_bitrix_id' })
+                };
+            }
+
+            // 1. Prepare structured comment
+            const formattedDate = booking.start ? new Date(booking.start).toLocaleString('en-US', {
+                day: 'numeric',
+                month: 'long',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Dubai'
+            }) : 'Not set';
+
+            const comment = `📅 AURO CALL & BOOKING SUMMARY\n\n` +
+                `STATUS: Consultation Booked\n` +
+                `TIME: ${formattedDate} (Dubai Time)\n` +
+                `LINK: ${booking.meetingUrl || 'N/A'}\n` +
+                `BOOKING ID: ${booking.bookingId || 'N/A'}\n\n` +
+                `--- CALL SUMMARY ---\n` +
+                `${summary || 'No summary available.'}\n\n` +
+                `--- STRUCTURED DATA ---\n` +
+                `- Budget: ${structured.budget || 'N/A'}\n` +
+                `- Property Type: ${structured.property_type || 'N/A'}\n` +
+                `- Preferred Area: ${structured.preferred_area || 'N/A'}\n` +
+                `- Meeting Scheduled: ${structured.meetingscheduled ? 'Yes' : 'No'}\n` +
+                `- Meeting Start (ISO): ${structured.meetingstartiso || 'N/A'}\n\n` +
+                `--- FULL TRANSCRIPT ---\n` +
+                `${transcript?.substring(0, 1000) || 'No transcript.'}${transcript?.length > 1000 ? '...' : ''}\n\n` +
+                `Powered by Auro AI`;
+
+            // 2. Try to update Bitrix (as Deal first, as it's the production entity for Provident)
+            let result;
+            try {
+                console.log(`[VapiBookingWebhook] Attempting to update Deal ${bitrixId} and add comment`);
+
+                // Update specific fields if we can identify them (using common internal names or comments)
+                const updateFields: any = {
+                    COMMENTS: `Auro Note: Cal.com booking made for ${formattedDate}. Budget: ${structured.budget || 'N/A'}`
+                };
+
+                // Try to update the deal status/fields
+                try {
+                    await updateDeal(bitrixId, updateFields, BITRIX_PROVIDENT_WEBHOOK_URL);
+                } catch (updErr) {
+                    console.warn(`[VapiBookingWebhook] Field update failed, continuing with comment...`);
+                }
+
+                result = await addDealComment(bitrixId, comment, BITRIX_PROVIDENT_WEBHOOK_URL);
+            } catch (dealErr: any) {
+                console.warn(`[VapiBookingWebhook] Deal update failed (${dealErr.message}), trying as Lead...`);
+                try {
+                    // Similar update for Lead
+                    try {
+                        await updateLead(bitrixId, {
+                            COMMENTS: `Auro Note: Cal.com booking made for ${formattedDate}. Budget: ${structured.budget || 'N/A'}`
+                        }, BITRIX_PROVIDENT_WEBHOOK_URL);
+                    } catch (e) { }
+
+                    result = await addLeadComment(bitrixId, comment, BITRIX_PROVIDENT_WEBHOOK_URL);
+                    console.log(`[VapiBookingWebhook] Successfully added comment to Lead ${bitrixId}`);
+                } catch (leadErr: any) {
+                    console.error(`[VapiBookingWebhook] Failed to update Bitrix completely: ${leadErr.message}`);
+                    return { statusCode: 500, body: JSON.stringify({ error: 'bitrix_update_failed' }) };
+                }
+            }
+
             return {
                 statusCode: 200,
-                body: JSON.stringify({ status: 'ignored', event: rawEvent }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    status: 'success',
+                    bitrixId: bitrixId,
+                    commentAdded: !!result
+                }),
+            };
+        } else {
+            console.log(`[Webhook] Unhandled event type: ${normalizedEvent}`);
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ status: 'ignored', event: normalizedEvent }),
             };
         }
 

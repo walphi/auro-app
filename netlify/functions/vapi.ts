@@ -177,7 +177,7 @@ function getStructuredData(body: any): any {
   const harvested: any = {};
   const fieldsToHarvest = [
     'meeting_scheduled', 'meeting_start_iso', 'first_name', 'last_name',
-    'email', 'phone', 'budget', 'property_type', 'preferred_area'
+    'email', 'phone', 'budget', 'property_type', 'preferred_area', 'raw_time_phrase'
   ];
 
   outputsArray.forEach(o => {
@@ -191,17 +191,14 @@ function getStructuredData(body: any): any {
     return harvested;
   }
 
-  // 3. Fallback to analysis.structuredData
-  const fallback = analysis.structuredData;
-  if (fallback) {
-    console.log("[VAPI] Using analysis.structuredData fallback");
-    return fallback;
+  // Final logging and extraction
+  const finalData = consolidated ? (consolidated.result || {}) : (harvested.meeting_scheduled !== undefined ? harvested : analysis.structuredData || {});
+
+  if (finalData.meeting_start_iso) {
+    console.log(`[VAPI DATE LOG] Calculated ISO: ${finalData.meeting_start_iso} | Raw Phrase: ${finalData.raw_time_phrase || 'Not captured'}`);
   }
 
-  console.log('[VAPI] No booking fields found in artifact/analysis', {
-    availableNames: outputsArray.map((o) => o.name),
-  });
-  return {};
+  return finalData;
 }
 
 const handler: Handler = async (event) => {
@@ -608,6 +605,58 @@ CURRENT LEAD PROFILE:
               });
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
+
+              // 4.5. Notify Bitrix via Webhook (Provident only)
+              if (tenant.id === 1) {
+                try {
+                  const dealIdMatch = leadData?.custom_field_1?.match(/DealID:\s*(\d+)/);
+                  const bitrixId = dealIdMatch ? dealIdMatch[1] : null;
+
+                  console.log(`[BitrixNotify] Calling Bitrix webhook for booking. Lead: ${leadId}, BitrixID: ${bitrixId}`);
+
+                  const bitrixPayload = {
+                    event: 'VAPI_BOOKING',
+                    bitrix_id: bitrixId,
+                    lead_id: leadId,
+                    tenant_id: tenant.id,
+                    phone: normalizedAttendeePhone,
+                    summary: summary || "Cal.com booking confirmed via Vapi voice call.",
+                    transcript: body.message?.transcript || body.call?.transcript || "No transcript available.",
+                    booking: {
+                      bookingId: calResult.bookingId,
+                      start: meetingStartIso,
+                      meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl,
+                      eventTypeId: eventTypeId
+                    },
+                    structured: {
+                      budget: structuredData.budget || leadData?.budget || "",
+                      property_type: structuredData.property_type || leadData?.property_type || "",
+                      preferred_area: structuredData.preferred_area || leadData?.location || "",
+                      meetingscheduled: true,
+                      meetingstartiso: meetingStartIso
+                    }
+                  };
+
+                  const bitrixWebhookResponse = await axios.post(
+                    'https://auroapp.com/.netlify/functions/provident-bitrix-webhook',
+                    bitrixPayload,
+                    {
+                      headers: {
+                        'x-auro-key': process.env.AURO_PROVIDENT_WEBHOOK_KEY || "",
+                        'Content-Type': 'application/json'
+                      }
+                    }
+                  );
+
+                  console.log(`[BitrixNotify] Webhook status: ${bitrixWebhookResponse.status}. Data:`, JSON.stringify(bitrixWebhookResponse.data));
+                } catch (bitrixError: any) {
+                  console.error(`[BitrixNotify] ❌ Failed to call Bitrix webhook:`, {
+                    message: bitrixError.message,
+                    status: bitrixError.response?.status,
+                    data: bitrixError.response?.data
+                  });
+                }
+              }
 
               // 5. Trigger Meeting Confirmation Netlify Function
               if (tenant.id === 1) {
