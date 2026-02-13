@@ -615,15 +615,15 @@ CURRENT LEAD PROFILE:
                   console.log(`[BitrixNotify] Calling Bitrix webhook for booking. Lead: ${leadId}, BitrixID: ${bitrixId}`);
 
                   const bitrixPayload = {
-                    event: 'VAPI_BOOKING',
-                    bitrix_id: bitrixId,
+                    event: 'BOOKING_CREATED',
+                    bitrixId: bitrixId,
                     lead_id: leadId,
                     tenant_id: tenant.id,
                     phone: normalizedAttendeePhone,
                     summary: summary || "Cal.com booking confirmed via Vapi voice call.",
-                    transcript: body.message?.transcript || body.call?.transcript || "No transcript available.",
+                    transcript: (body.message?.transcript || body.call?.transcript || "No transcript available.").substring(0, 2000),
                     booking: {
-                      bookingId: calResult.bookingId,
+                      id: calResult.bookingId,
                       start: meetingStartIso,
                       meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl,
                       eventTypeId: eventTypeId
@@ -637,6 +637,8 @@ CURRENT LEAD PROFILE:
                     }
                   };
 
+                  console.log(`[BitrixNotify] Sending full payload to Bitrix webhook:`, JSON.stringify(bitrixPayload, null, 2));
+
                   const bitrixWebhookResponse = await axios.post(
                     'https://auroapp.com/.netlify/functions/provident-bitrix-webhook',
                     bitrixPayload,
@@ -648,7 +650,7 @@ CURRENT LEAD PROFILE:
                     }
                   );
 
-                  console.log(`[BitrixNotify] Webhook status: ${bitrixWebhookResponse.status}. Data:`, JSON.stringify(bitrixWebhookResponse.data));
+                  console.log(`[BitrixNotify] Webhook response: ${bitrixWebhookResponse.status}. Data:`, JSON.stringify(bitrixWebhookResponse.data));
                 } catch (bitrixError: any) {
                   console.error(`[BitrixNotify] ❌ Failed to call Bitrix webhook:`, {
                     message: bitrixError.message,

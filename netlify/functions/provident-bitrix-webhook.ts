@@ -101,14 +101,19 @@ export const handler: Handler = async (event, context) => {
 
         const normalizedEvent = String(rawEvent || '').toUpperCase();
 
-        // Extract ID - Handle both JSON tree and flat form versions
-        const entityId = body.data?.FIELDS?.ID || body.id || (body.data?.id);
+        // Extract ID - Handle both JSON tree, flat form versions, and custom Auro payloads
+        const entityId = body.data?.FIELDS?.ID || body.id || body.data?.id || body.bitrixId || body.bitrix_id;
 
         if (!entityId || !rawEvent) {
             console.error(`[BitrixWebhook] Invalid payload: Missing entityId (${entityId}) or event (${rawEvent})`);
+            console.log(`[BitrixWebhook] Full received body for debugging:`, JSON.stringify(body, null, 2));
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'invalid_payload', received: { entityId, event: rawEvent } }),
+                body: JSON.stringify({
+                    error: 'invalid_payload',
+                    received: { entityId, event: rawEvent },
+                    tip: "Ensure 'event' and either 'bitrixId', 'id', or 'data.FIELDS.ID' are present."
+                }),
             };
         }
 
@@ -262,10 +267,10 @@ export const handler: Handler = async (event, context) => {
             };
         }
 
-        // --- VAPI BOOKING BRANCH ---
-        else if (normalizedEvent === "VAPI_BOOKING") {
+        // --- BOOKING CREATED BRANCH (Auro Internal) ---
+        else if (normalizedEvent === "BOOKING_CREATED") {
             const data = body.data || body; // Support both structures
-            const bitrixId = data.bitrix_id || data.bitrix_deal_id;
+            const bitrixId = data.bitrixId || data.bitrix_id || data.id;
             const leadId = data.lead_id;
             const phone = data.phone;
             const summary = data.summary;
@@ -273,7 +278,7 @@ export const handler: Handler = async (event, context) => {
             const booking = data.booking || {};
             const structured = data.structured || {};
 
-            console.log(`[VapiBookingWebhook] Processing VAPI_BOOKING for BitrixID ${bitrixId}, Lead ${leadId}`);
+            console.log(`[BitrixBookingWebhook] Processing BOOKING_CREATED for BitrixID ${bitrixId}, Lead ${leadId}`);
 
             if (!bitrixId) {
                 console.warn("[VapiBookingWebhook] No Bitrix ID provided in payload. Skipping update.");
