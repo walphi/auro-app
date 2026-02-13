@@ -411,26 +411,45 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
                     // Dynamic time variables for Vapi template injection
                     current_date: dubaiNow,
                     current_day: dayName,
-                    call_year: "2026"
-                },
-                model: {
-                    messages: [
-                        {
-                            role: "system",
-                            content: `
+                    call_year: "2026",
+                    // Pass the absolute date rules here for dashboard reference
+                    date_rules: `
 DATES AND TIMEZONE RULES (CRITICAL):
 - This call is occurring on ${dubaiNow} (Day: ${dayName}).
 - Timezone is Asia/Dubai (+04:00).
 - When the caller says "today", "tomorrow", "next Monday", "Monday", "next week", etc., you MUST calculate the actual calendar date relative to today (${dubaiNow}).
-- Output the 'meeting_start_iso' structured data field as a specific absolute ISO 8601 datetime in 2026 with +04:00 offset (e.g., 2026-02-16T14:00:00+04:00).
-- Output the 'raw_time_phrase' structured data field exactly as the user said it (e.g., "next Monday at 2pm").
-- Never guess a month far in the future unless the user specifically names that month.
+- Output the 'meeting_start_iso' structured data field as a specific absolute ISO 8601 datetime in 2026 with +04:00 offset (e.g. 2026-02-16T14:00:00+04:00).
+- Output the 'raw_time_phrase' structured data field exactly as the user said it.
 `.trim()
-                        }
-                    ]
                 }
             }
         };
+
+        // Guardrail: Only send model override if provider is explicitly known and valid
+        const VAPI_PROVIDER = process.env.VAPI_MODEL_PROVIDER;
+        const VAPI_MODEL = process.env.VAPI_MODEL_NAME;
+        const ALLOWED_PROVIDERS = [
+            'openai', 'azure-openai', 'together-ai', 'anyscale', 'openrouter', 'perplexity-ai',
+            'deepinfra', 'custom-llm', 'baseten', 'runpod', 'groq', 'vapi', 'anthropic',
+            'anthropic-bedrock', 'anthropic-vertex', 'google', 'xai', 'inflection-ai',
+            'cerebras', 'deep-seek', 'mistral'
+        ];
+
+        if (VAPI_PROVIDER && ALLOWED_PROVIDERS.includes(VAPI_PROVIDER)) {
+            console.log(`[VAPI] Applying model override for provider: ${VAPI_PROVIDER}`);
+            payload.assistantOverrides.model = {
+                provider: VAPI_PROVIDER,
+                model: VAPI_MODEL || 'gpt-4o',
+                messages: [
+                    {
+                        role: "system",
+                        content: payload.assistantOverrides.variableValues.date_rules
+                    }
+                ]
+            };
+        } else if (VAPI_PROVIDER) {
+            console.error(`[VAPI] ❌ Invalid VAPI_MODEL_PROVIDER: ${VAPI_PROVIDER}. Skipping model override.`);
+        }
 
         console.log("[VAPI CALL] Initiating call with payload:", JSON.stringify(payload, null, 2));
 
