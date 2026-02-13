@@ -607,12 +607,21 @@ CURRENT LEAD PROFILE:
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
 
               // 4.5. Notify Bitrix via Webhook (Provident only)
+              // --- BITRIX NOTIFICATION (Tenant 1 only) ---
               if (tenant.id === 1) {
                 try {
-                  const dealIdMatch = leadData?.custom_field_1?.match(/DealID:\s*(\d+)/);
-                  const bitrixId = dealIdMatch ? dealIdMatch[1] : null;
+                  // Robust extraction of Bitrix ID (Deal or Lead)
+                  // Priority: custom_field_1 regex, then check if leadId is actually a Bitrix ID (if it's numeric and large), 
+                  // then check call metadata/extra
+                  const dealIdMatch = leadData?.custom_field_1?.match(/(?:DealID|LeadID|BitrixID):\s*(\d+)/i);
+                  let bitrixId = dealIdMatch ? dealIdMatch[1] : null;
 
-                  console.log(`[BitrixNotify] Calling Bitrix webhook for booking. Lead: ${leadId}, BitrixID: ${bitrixId}`);
+                  if (!bitrixId) {
+                    bitrixId = body.call?.metadata?.bitrix_id || body.call?.extra?.bitrix_id ||
+                      body.message?.call?.metadata?.bitrix_id || body.message?.call?.extra?.bitrix_id;
+                  }
+
+                  console.log(`[BitrixNotify] Extracted IDs - Supabase Lead: ${leadId}, BitrixID: ${bitrixId}. CustomField: ${leadData?.custom_field_1}`);
 
                   const bitrixPayload = {
                     event: 'BOOKING_CREATED',
@@ -631,13 +640,14 @@ CURRENT LEAD PROFILE:
                     structured: {
                       budget: structuredData.budget || leadData?.budget || "",
                       property_type: structuredData.property_type || leadData?.property_type || "",
-                      preferred_area: structuredData.preferred_area || leadData?.location || "",
+                      preferred_area: structuredData.property_type || leadData?.location || "",
                       meetingscheduled: true,
                       meetingstartiso: meetingStartIso
-                    }
+                    },
+                    source: 'Auro Assistant'
                   };
 
-                  console.log(`[BitrixNotify] Sending full payload to Bitrix webhook:`, JSON.stringify(bitrixPayload, null, 2));
+                  console.log(`[BitrixNotify] POSTing to webhook:`, JSON.stringify(bitrixPayload));
 
                   const bitrixWebhookResponse = await axios.post(
                     'https://auroapp.com/.netlify/functions/provident-bitrix-webhook',
