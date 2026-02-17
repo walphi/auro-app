@@ -334,6 +334,27 @@ function isAffirmative(message: string): boolean {
 }
 
 /**
+ * Check for explicit requests for a phone call (bypasses offer window).
+ */
+function isExplicitCallRequest(message: string): boolean {
+    const clean = message.toLowerCase().trim().replace(/[?.!]/g, '');
+    const explicitPatterns = [
+        "call me now",
+        "could someone call me now",
+        "can you call me now",
+        "please call me now",
+        "give me a call",
+        "connect me with a specialist",
+        "call me please",
+        "i want a call",
+        "phone me",
+        "speak to a person",
+        "can you call"
+    ];
+    return explicitPatterns.some(p => clean.includes(p));
+}
+
+/**
  * Check if the message is clearly negative or postponing.
  */
 function isNegative(message: string): boolean {
@@ -977,13 +998,17 @@ CORE RULES:
             lastAiText.toLowerCase().includes("specialist call");
         const isRecentEnough = diffMinutes < 15;
         const callAffirmative = isAffirmative(userMessage);
+        const explicitCallRequest = isExplicitCallRequest(userMessage);
 
-        console.log(`[IntentDetection] Debug: msg="${userMessage}", lastAi="${lastAiText.substring(0, 30)}...", offer=${wasLastMessageOffer}, recent=${isRecentEnough}, affir=${callAffirmative}, diff=${Math.round(diffMinutes)}m`);
+        console.log(`[IntentDetection] Debug: msg="${userMessage}", lastAi="${lastAiText.substring(0, 30)}...", offer=${wasLastMessageOffer}, recent=${isRecentEnough}, affir=${callAffirmative}, explicit=${explicitCallRequest}, diff=${Math.round(diffMinutes)}m`);
 
         let skipGemini = false;
 
-        if (wasLastMessageOffer && isRecentEnough && callAffirmative && !isNegative(userMessage)) {
-            console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected. (Last offer was ${Math.round(diffMinutes)}m ago)`);
+        // Condition: Either explicit request OR (last message was an offer AND user said yes AND it was recent)
+        const shouldEscalate = (explicitCallRequest || (wasLastMessageOffer && isRecentEnough && callAffirmative)) && !isNegative(userMessage);
+
+        if (shouldEscalate) {
+            console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected.`);
             const context = {
                 ...(existingLead || {}),
                 lead_id: leadId,
@@ -991,7 +1016,7 @@ CORE RULES:
             };
 
             // DRY RUN / UNIT TEST LOG
-            console.log(`[IntentDetection] [TEST] Vapi Execution Plan: phone=${fromNumber}, lead=${leadId}, reason=Confirmation to offer: "${lastAiText.substring(0, 30)}..."`);
+            console.log(`[IntentDetection] [TEST] Vapi Execution Plan: phone=${fromNumber}, lead=${leadId}, reason=${explicitCallRequest ? 'Explicit Request' : 'Confirmation to offer'}`);
 
             const callStarted = await initiateVapiCall(fromNumber, tenant, context);
             if (callStarted) {
