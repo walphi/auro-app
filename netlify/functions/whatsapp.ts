@@ -318,14 +318,19 @@ function hasBuyingIntent(message: string, lead: any): boolean {
 
 /**
  * Check if the message is a simple affirmative to a call offer.
+ * Augmented with hard-coded patterns for "Call me now".
  */
 function isAffirmative(message: string): boolean {
     const clean = message.toLowerCase().trim().replace(/[👍!.?]/g, '');
-    const affirmitives = [
+    const affirmatives = [
         "yes", "sure", "okay", "ok", "yeah", "yup", "yep", "that's fine",
-        "call me", "let's do it", "alright", "k", "do it", "fine", "pls", "please"
+        "call me", "let's do it", "alright", "k", "do it", "fine", "pls", "please",
+        "call me now", "call me now please", "yes call", "ok call", "please call",
+        "now is fine", "yes now", "yes please call", "call now", "please call me",
+        "yes call me", "ok call me"
     ];
-    return affirmitives.includes(clean);
+    // Check for exact match or includes for the multi-word patterns
+    return affirmatives.some(a => clean === a || (a.length > 5 && clean.includes(a)));
 }
 
 /**
@@ -913,7 +918,7 @@ CORE RULES:
         if (leadId) {
             const { data: recentMessages } = await supabase
                 .from('messages')
-                .select('sender, content, type')
+                .select('sender, content, type, created_at')
                 .eq('lead_id', leadId)
                 .order('created_at', { ascending: false })
                 .limit(12);
@@ -955,22 +960,37 @@ CORE RULES:
             history: chatHistory
         });
 
-        // --- NEW: PROACTIVE CALL LOGIC (AFFIRMATIVE RESPONSE) ---
-        const lastAiMessage = chatHistory.filter(h => h.role === 'model').slice(-1)[0];
-        const lastAiText = lastAiMessage?.parts?.[0]?.text || "";
-        const wasLastMessageOffer = lastAiText.includes("Would you like a call now?");
+        // --- NEW: PROACTIVE CALL LOGIC (INTENT DETECTION) ---
+        // We bypass Gemini if the user confirms a call within a 15-minute window of an offer.
+        const lastAiMessageObj = (recentMessages || []).find(m => m.sender === 'AURO_AI');
+        const lastAiText = lastAiMessageObj?.content || "";
+        const lastAiTime = lastAiMessageObj?.created_at ? new Date(lastAiMessageObj.created_at).getTime() : 0;
+        const diffMinutes = (Date.now() - lastAiTime) / (1000 * 60);
+
+        const wasLastMessageOffer = lastAiText.includes("call you now") ||
+            lastAiText.includes("Would you like a call now?") ||
+            lastAiText.includes("Is now a good time?") ||
+            lastAiText.includes("schedule a time for later") ||
+            lastAiText.includes("consultation");
+        const isRecentEnough = diffMinutes < 15;
+        const callAffirmative = isAffirmative(userMessage);
 
         let skipGemini = false;
-        if (wasLastMessageOffer && isAffirmative(userMessage) && !isNegative(userMessage)) {
-            console.log("[CallPrompt] Affirmative detected to previous offer. Triggering call.");
+
+        if (wasLastMessageOffer && isRecentEnough && callAffirmative && !isNegative(userMessage)) {
+            console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected. (Last offer was ${Math.round(diffMinutes)}m ago)`);
             const context = {
                 ...(existingLead || {}),
                 lead_id: leadId,
                 name: existingLead?.name || "Client"
             };
+
+            // DRY RUN / UNIT TEST LOG
+            console.log(`[IntentDetection] [TEST] Vapi Execution Plan: phone=${fromNumber}, lead=${leadId}, reason=Confirmation to offer: "${lastAiText.substring(0, 30)}..."`);
+
             const callStarted = await initiateVapiCall(fromNumber, tenant, context);
             if (callStarted) {
-                responseText = "Great! I'm connecting you with a specialist now. You'll receive a call in just a moment.";
+                responseText = "Great! I'm connecting you with an off-plan specialist now. You'll receive a call in just a moment.";
                 skipGemini = true;
             }
         }
@@ -1162,7 +1182,8 @@ CORE RULES:
 
                     if (intentReached && !alreadyOfferedInHistory && !alreadyOfferedInResponse && !isNegative(userMessage)) {
                         console.log("[CallPrompt] Intent reached. Appending proactive call offer.");
-                        const offerSuffix = "\n\nI can share more details here on WhatsApp, or we can jump on a quick call with a specialist who can explain options and book a consultation. Would you like a call now, or schedule a time for later?";
+                        // Shortened, more dynamic offer to reduce repetition
+                        const offerSuffix = "\n\nShould I have a specialist call you now to discuss this in more detail?";
                         responseText += offerSuffix;
                     }
                 }
