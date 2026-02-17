@@ -360,8 +360,14 @@ function isExplicitCallRequest(message: string): boolean {
 function isNegative(message: string): boolean {
     const clean = message.toLowerCase().trim().replace(/[!.?]/g, '');
     const negatives = [
-        "not now", "maybe later", "just send info", "no thanks", "no", "nope", "dont call", "don't call"
+        "not now", "maybe later", "just send info", "no thanks", "nope", "dont call", "don't call", "stop"
     ];
+
+    // Exact match for "no" to avoid matching "now" or "know"
+    if (clean === 'no' || clean.startsWith('no ') || clean.endsWith(' no') || clean.includes(' no ')) {
+        return true;
+    }
+
     return negatives.some(n => clean.includes(n));
 }
 
@@ -538,6 +544,7 @@ export const handler: Handler = async (event) => {
         console.log(`[WhatsApp] Resolved tenant: ${tenant.short_name} (ID: ${tenant.id})`);
 
         let isVoiceResponse = false;
+        let skipGemini = false;
         let responseText = "";
         let responseImages: string[] = [];
 
@@ -614,6 +621,51 @@ export const handler: Handler = async (event) => {
 
             if (existingLead) {
                 leadId = existingLead.id;
+
+                // --- NEW: LEAD-LEVEL INTENT DETECTION (ESCALATION) ---
+                const { data: messages } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('lead_id', leadId)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                recentMessages = messages || [];
+
+                const lastAiMessageObj = recentMessages.find(m => m.sender === 'AURO_AI');
+                const lastAiText = lastAiMessageObj?.content || "";
+                const lastAiTime = lastAiMessageObj?.created_at ? new Date(lastAiMessageObj.created_at).getTime() : 0;
+                const diffMinutes = (Date.now() - lastAiTime) / (1000 * 60);
+
+                const wasLastMessageOffer = lastAiText.toLowerCase().includes("call you now") ||
+                    lastAiText.includes("Would you like a call now?") ||
+                    lastAiText.includes("Is now a good time?") ||
+                    lastAiText.includes("schedule a time for later") ||
+                    lastAiText.toLowerCase().includes("consultation") ||
+                    lastAiText.toLowerCase().includes("specialist call");
+
+                const isRecentEnough = diffMinutes < 15;
+                const callAffirmative = isAffirmative(userMessage);
+                const explicitCallRequest = isExplicitCallRequest(userMessage);
+                const negativeIntent = isNegative(userMessage);
+
+                console.log(`[IntentDetection] msg="${userMessage.substring(0, 30)}", explicit=${explicitCallRequest}, offer=${wasLastMessageOffer}, recent=${isRecentEnough}, affir=${callAffirmative}, neg=${negativeIntent}`);
+
+                const shouldEscalate = (explicitCallRequest || (wasLastMessageOffer && isRecentEnough && callAffirmative)) && !negativeIntent;
+
+                if (shouldEscalate) {
+                    console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected.`);
+                    const context = {
+                        ...existingLead,
+                        lead_id: leadId,
+                        name: existingLead.name || "Client"
+                    };
+
+                    const callStarted = await initiateVapiCall(fromNumber, tenant, context);
+                    if (callStarted) {
+                        responseText = "Great! I'm connecting you with an off-plan specialist now. You'll receive a call in just a moment.";
+                        skipGemini = true;
+                    }
+                }
                 // Build Context - Ensure we check for all fields
                 // Note: email and location might not exist in old schema, so we handle that gracefully
                 const email = existingLead.email || "Unknown";
@@ -982,48 +1034,6 @@ CORE RULES:
             tools: tools as any,
             history: chatHistory
         });
-
-        // --- NEW: PROACTIVE CALL LOGIC (INTENT DETECTION) ---
-        // We bypass Gemini if the user confirms a call within a 15-minute window of an offer.
-        const lastAiMessageObj = (recentMessages || []).find(m => m.sender === 'AURO_AI');
-        const lastAiText = lastAiMessageObj?.content || "";
-        const lastAiTime = lastAiMessageObj?.created_at ? new Date(lastAiMessageObj.created_at).getTime() : 0;
-        const diffMinutes = (Date.now() - lastAiTime) / (1000 * 60);
-
-        const wasLastMessageOffer = lastAiText.toLowerCase().includes("call you now") ||
-            lastAiText.includes("Would you like a call now?") ||
-            lastAiText.includes("Is now a good time?") ||
-            lastAiText.includes("schedule a time for later") ||
-            lastAiText.toLowerCase().includes("consultation") ||
-            lastAiText.toLowerCase().includes("specialist call");
-        const isRecentEnough = diffMinutes < 15;
-        const callAffirmative = isAffirmative(userMessage);
-        const explicitCallRequest = isExplicitCallRequest(userMessage);
-
-        console.log(`[IntentDetection] Debug: msg="${userMessage}", lastAi="${lastAiText.substring(0, 30)}...", offer=${wasLastMessageOffer}, recent=${isRecentEnough}, affir=${callAffirmative}, explicit=${explicitCallRequest}, diff=${Math.round(diffMinutes)}m`);
-
-        let skipGemini = false;
-
-        // Condition: Either explicit request OR (last message was an offer AND user said yes AND it was recent)
-        const shouldEscalate = (explicitCallRequest || (wasLastMessageOffer && isRecentEnough && callAffirmative)) && !isNegative(userMessage);
-
-        if (shouldEscalate) {
-            console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected.`);
-            const context = {
-                ...(existingLead || {}),
-                lead_id: leadId,
-                name: existingLead?.name || "Client"
-            };
-
-            // DRY RUN / UNIT TEST LOG
-            console.log(`[IntentDetection] [TEST] Vapi Execution Plan: phone=${fromNumber}, lead=${leadId}, reason=${explicitCallRequest ? 'Explicit Request' : 'Confirmation to offer'}`);
-
-            const callStarted = await initiateVapiCall(fromNumber, tenant, context);
-            if (callStarted) {
-                responseText = "Great! I'm connecting you with an off-plan specialist now. You'll receive a call in just a moment.";
-                skipGemini = true;
-            }
-        }
 
         // Check if voice note or text
         let promptContent: any = userMessage;
