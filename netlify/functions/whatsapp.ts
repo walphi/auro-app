@@ -969,11 +969,12 @@ CORE RULES:
         const lastAiTime = lastAiMessageObj?.created_at ? new Date(lastAiMessageObj.created_at).getTime() : 0;
         const diffMinutes = (Date.now() - lastAiTime) / (1000 * 60);
 
-        const wasLastMessageOffer = lastAiText.includes("call you now") ||
+        const wasLastMessageOffer = lastAiText.toLowerCase().includes("call you now") ||
             lastAiText.includes("Would you like a call now?") ||
             lastAiText.includes("Is now a good time?") ||
             lastAiText.includes("schedule a time for later") ||
-            lastAiText.includes("consultation");
+            lastAiText.toLowerCase().includes("consultation") ||
+            lastAiText.toLowerCase().includes("specialist call");
         const isRecentEnough = diffMinutes < 15;
         const callAffirmative = isAffirmative(userMessage);
 
@@ -1279,7 +1280,7 @@ CORE RULES:
         console.error("Error processing WhatsApp request:", error);
         return {
             statusCode: 500,
-            body: `<Response><Message>Error: ${error.message}</Message></Response>`,
+            body: "<Response><Message>Error processing request</Message></Response>",
             headers: { "Content-Type": "text/xml" }
         };
     }
