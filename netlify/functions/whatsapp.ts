@@ -915,13 +915,15 @@ CORE RULES:
         // --- GEMINI: History & Session Management ---
         // Since Netlify is stateless, we fetch the last interaction from Supabase to maintain flow
         let chatHistory: Content[] = [];
+        let recentMessages: any[] = [];
         if (leadId) {
-            const { data: recentMessages } = await supabase
+            const { data } = await supabase
                 .from('messages')
                 .select('sender, content, type, created_at')
                 .eq('lead_id', leadId)
                 .order('created_at', { ascending: false })
                 .limit(12);
+            recentMessages = data || [];
 
             if (recentMessages && recentMessages.length > 0) {
                 // We skip the 'current message' (index 0) because it's passed separately
