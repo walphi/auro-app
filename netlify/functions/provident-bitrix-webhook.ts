@@ -40,15 +40,23 @@ export const handler: Handler = async (event, context) => {
         };
     }
 
-    // 2. Read and validate custom header: x-auro-key
-    const auroKey = event.headers['x-auro-key'];
-    const validKey = process.env.AURO_PROVIDENT_WEBHOOK_KEY;
+    // 2. Read and validate custom header or query param
+    const auroKey = event.headers['x-auro-key'] ||
+        event.headers['X-Auro-Key'] ||
+        event.headers['x-webhook-key'] ||
+        event.headers['X-Webhook-Key'] ||
+        event.queryStringParameters?.key ||
+        event.queryStringParameters?.token;
+
+    const validKey = process.env.AURO_PROVIDENT_WEBHOOK_KEY ||
+        process.env.BITRIX_WEBHOOK_KEY ||
+        process.env.VAPI_WEBHOOK_SECRET;
 
     if (!auroKey || auroKey !== validKey) {
         console.error(`[Webhook] Unauthorized access attempt. Received key: ${auroKey ? 'present' : 'missing'}`);
         return {
             statusCode: 401,
-            body: JSON.stringify({ error: 'unauthorized' }),
+            body: JSON.stringify({ error: 'unauthorized', message: 'Missing or invalid authentication key' }),
         };
     }
 

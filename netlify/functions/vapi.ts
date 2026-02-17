@@ -19,6 +19,75 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/**
+ * Helper to notify Bitrix Webhook for Tenant 1 (Provident)
+ * Always called even if Cal.com fails, as per hard contract.
+ */
+async function triggerBitrixBookingWebhook(params: {
+  event: string,
+  bitrixId: string | null,
+  leadId: string,
+  tenant: any,
+  phone: string,
+  summary: string,
+  transcript: string,
+  booking: {
+    id: string | null, // null if Cal.com failed
+    start: string,
+    meetingUrl: string | null,
+    eventTypeId: number
+  },
+  structured: any
+}) {
+  const { event, bitrixId, leadId, tenant, phone, summary, transcript, booking, structured } = params;
+
+  if (tenant.id !== 1) return;
+
+  const bitrixPayload = {
+    event,
+    bitrixId,
+    lead_id: leadId,
+    tenant_id: tenant.id,
+    phone,
+    summary,
+    transcript: transcript.substring(0, 2000),
+    booking,
+    structured,
+    source: 'Auro Assistant'
+  };
+
+  // Robust Auth: Check multiple possible env var names
+  const webhookKey = process.env.AURO_PROVIDENT_WEBHOOK_KEY ||
+    process.env.BITRIX_WEBHOOK_KEY ||
+    process.env.VAPI_WEBHOOK_SECRET || "";
+
+  const webhookUrl = `https://auroapp.com/.netlify/functions/provident-bitrix-webhook?key=${webhookKey}`;
+
+  console.log(`[BitrixWebhook] Posting booking to ${webhookUrl.split('?')[0]} for lead=${leadId} (key: ${webhookKey ? 'present, len=' + webhookKey.length : 'MISSING'})`);
+
+  try {
+    const response = await axios.post(
+      webhookUrl,
+      bitrixPayload,
+      {
+        headers: {
+          'x-auro-key': webhookKey,
+          'X-Webhook-Key': webhookKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // Logs required by hard contract
+    console.log(`[BitrixBookingWebhook] Processing BOOKING_CREATED for BitrixID ${bitrixId}, Lead ${leadId}`);
+    console.log(`[BitrixWebhook] Success status=${response.status}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[BitrixWebhook] ERROR status=${error.response?.status} body=${JSON.stringify(error.response?.data || error.message)}`);
+    return false;
+  }
+}
+
 async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Promise<boolean> {
   try {
     const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
@@ -509,55 +578,36 @@ CURRENT LEAD PROFILE:
             }
             const eventTypeId = parseInt(eventTypeIdAttr);
 
+            // Preparation for Bitrix (Extracted early so we can call it even if Cal.com fails)
+            const dbName = leadData?.name && !leadData.name.includes('WhatsApp Lead') ? leadData.name : '';
+            const firstName = structuredData.first_name || dbName.split(' ')[0] || 'Client';
+            const lastName = structuredData.last_name || dbName.split(' ').slice(1).join(' ') || '';
+            const fullName = `${firstName} ${lastName}`.trim();
+
+            const sanitizeEmail = (e: string) => {
+              if (!e) return "";
+              return e.toLowerCase().replace(/\s+at\s+/g, '@').replace(/\s+dot\s+/g, '.').replace(/\s+/g, '');
+            };
+            const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+            let cleanEmail = sanitizeEmail(structuredData.email);
+            if (!isValidEmail(cleanEmail) && leadData?.email && isValidEmail(leadData.email)) {
+              cleanEmail = leadData.email;
+            }
+
+            const normalizedAttendeePhone = resolvePrioritizedPhone(
+              phoneNumber,
+              leadData?.phone,
+              structuredData.phone
+            );
+
+            let calResult: any = null;
+            let calErrorMsg: string | null = null;
+
             try {
-              // Improvement: Ignore 'WhatsApp' placeholder names
-              const dbName = leadData?.name && !leadData.name.includes('WhatsApp Lead') ? leadData.name : '';
-
-              const firstName = structuredData.first_name || dbName.split(' ')[0] || 'Client';
-              const lastName = structuredData.last_name || dbName.split(' ').slice(1).join(' ') || '';
-
-              // SANITIZATION HELPERS
-              const sanitizeEmail = (e: string) => {
-                if (!e) return "";
-                return e.toLowerCase()
-                  .replace(/\s+at\s+/g, '@')
-                  .replace(/\s+dot\s+/g, '.')
-                  .replace(/\s+/g, '');
-              };
-
-              const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-              let cleanEmail = sanitizeEmail(structuredData.email);
-
-              // If sanitized email from call is invalid, try leadData as fallback
-              if (!isValidEmail(cleanEmail)) {
-                console.log(`[VAPI] Call-derived email "${cleanEmail}" is invalid.`);
-                if (leadData?.email && isValidEmail(leadData.email)) {
-                  console.log(`[VAPI] Falling back to lead database email: ${leadData.email}`);
-                  cleanEmail = leadData.email;
-                }
-              }
-
-              // PHONE SOURCE PRIORITY: Vapi Customer Number > Lead Phone > Structured Assistant Data
-              // Note: 'phoneNumber' here is the Vapi customer number resolved at start of handler
-              const normalizedAttendeePhone = resolvePrioritizedPhone(
-                phoneNumber,
-                leadData?.phone,
-                structuredData.phone
-              );
-
-              console.log(`[VAPI] Prepared Cal.com booking for lead ${leadId}:`, {
-                attendeeName: `${firstName} ${lastName}`.trim(),
-                attendeeEmail: cleanEmail,
-                attendeePhone: normalizedAttendeePhone,
-                vapiNumber: phoneNumber,
-                leadPhone: leadData?.phone,
-                structuredPhone: structuredData.phone
-              });
-
-              const calResult = await createCalComBooking({
+              calResult = await createCalComBooking({
                 eventTypeId,
                 start: meetingStartIso,
-                name: `${firstName} ${lastName}`.trim(),
+                name: fullName,
                 email: cleanEmail,
                 phoneNumber: normalizedAttendeePhone,
                 metadata: {
@@ -570,11 +620,9 @@ CURRENT LEAD PROFILE:
                 }
               });
 
-              // Calculate end time
+              // Store in DB, Update Lead, etc.
               const endDate = new Date(new Date(meetingStartIso).getTime() + 30 * 60000);
-
-              // Store in DB (Upsert to handle retries gracefully)
-              const { error: insertError } = await supabase.from('bookings').upsert({
+              await supabase.from('bookings').upsert({
                 lead_id: leadId,
                 tenant_id: tenant.id,
                 booking_id: calResult.bookingId,
@@ -588,21 +636,13 @@ CURRENT LEAD PROFILE:
                   call_id: body.message?.call?.id || body.call?.id,
                   structured_data: structuredData
                 }
-              }, {
-                onConflict: 'lead_id,tenant_id,meeting_start_iso'
-              });
+              }, { onConflict: 'lead_id,tenant_id,meeting_start_iso' });
 
-              if (insertError) {
-                console.error('[VAPI] Booking DB Error:', insertError.message);
-              }
-
-              // Update Lead
               await supabase.from('leads').update({
                 booking_status: 'confirmed',
                 viewing_datetime: meetingStartIso
               }).eq('id', leadId);
 
-              // Log success note
               await supabase.from('messages').insert({
                 lead_id: leadId,
                 type: 'System_Note',
@@ -611,115 +651,70 @@ CURRENT LEAD PROFILE:
               });
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
+            } catch (calErr: any) {
+              calErrorMsg = calErr.message;
+              console.error(`[VAPI] Cal.com booking failed:`, calErrorMsg);
+            }
 
-              // 4.5. Notify Bitrix via Webhook (Provident only)
-              // --- BITRIX NOTIFICATION (Tenant 1 only) ---
-              if (tenant.id === 1) {
-                try {
-                  // Robust extraction of Bitrix ID (Deal or Lead)
-                  // Priority: custom_field_1 regex, then check if leadId is actually a Bitrix ID (if it's numeric and large), 
-                  // then check call metadata/extra
-                  const dealIdMatch = leadData?.custom_field_1?.match(/(?:DealID|LeadID|BitrixID):\s*(\d+)/i);
-                  let bitrixId = dealIdMatch ? dealIdMatch[1] : null;
-
-                  if (!bitrixId) {
-                    bitrixId = body.call?.metadata?.bitrix_id || body.call?.extra?.bitrix_id ||
-                      body.message?.call?.metadata?.bitrix_id || body.message?.call?.extra?.bitrix_id;
-                  }
-
-                  console.log(`[BitrixNotify] Extracted IDs - Supabase Lead: ${leadId}, BitrixID: ${bitrixId}. CustomField: ${leadData?.custom_field_1}`);
-
-                  const bitrixPayload = {
-                    event: 'BOOKING_CREATED',
-                    bitrixId: bitrixId,
-                    lead_id: leadId,
-                    tenant_id: tenant.id,
-                    phone: normalizedAttendeePhone,
-                    summary: summary || "Cal.com booking confirmed via Vapi voice call.",
-                    transcript: (body.message?.transcript || body.call?.transcript || "No transcript available.").substring(0, 2000),
-                    booking: {
-                      id: calResult.bookingId,
-                      start: meetingStartIso,
-                      meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl,
-                      eventTypeId: eventTypeId
-                    },
-                    structured: {
-                      budget: structuredData.budget || leadData?.budget || "",
-                      property_type: structuredData.property_type || leadData?.property_type || "",
-                      preferred_area: structuredData.property_type || leadData?.location || "",
-                      meetingscheduled: true,
-                      meetingstartiso: meetingStartIso
-                    },
-                    source: 'Auro Assistant'
-                  };
-
-                  console.log(`[BitrixNotify] POSTing to webhook:`, JSON.stringify(bitrixPayload));
-
-                  const bitrixWebhookResponse = await axios.post(
-                    'https://auroapp.com/.netlify/functions/provident-bitrix-webhook',
-                    bitrixPayload,
-                    {
-                      headers: {
-                        'x-auro-key': process.env.AURO_PROVIDENT_WEBHOOK_KEY || "",
-                        'Content-Type': 'application/json'
-                      }
-                    }
-                  );
-
-                  console.log(`[BitrixNotify] Webhook response: ${bitrixWebhookResponse.status}. Data:`, JSON.stringify(bitrixWebhookResponse.data));
-                } catch (bitrixError: any) {
-                  console.error(`[BitrixNotify] ❌ Failed to call Bitrix webhook:`, {
-                    message: bitrixError.message,
-                    status: bitrixError.response?.status,
-                    data: bitrixError.response?.data
-                  });
-                }
+            // --- BITRIX NOTIFICATION (Tenant 1 only) - HARD CONTRACT: CALL ALWAYS IF SCHEDULED ---
+            if (tenant.id === 1) {
+              const dealIdMatch = leadData?.custom_field_1?.match(/(?:DealID|LeadID|BitrixID):\s*(\d+)/i);
+              let bitrixId = dealIdMatch ? dealIdMatch[1] : null;
+              if (!bitrixId) {
+                bitrixId = body.call?.metadata?.bitrix_id || body.call?.extra?.bitrix_id ||
+                  body.message?.call?.metadata?.bitrix_id || body.message?.call?.extra?.bitrix_id;
               }
 
-              // 5. Trigger Meeting Confirmation (Direct call for reliability)
-              if (tenant.id === 1) {
-                const phoneForConfirmation = normalizedAttendeePhone;
-                const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
-                const projectName = structuredData.preferred_area || structuredData.property_type || 'Apartment';
-
-                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead ${leadId}, booking ${calResult.bookingId}`);
-
-                try {
-                  const sent = await sendSimpleWhatsAppConfirmation(
-                    phoneForConfirmation,
-                    firstName,
-                    meetingStartIso,
-                    meetingUrl,
-                    tenant,
-                    projectName
-                  );
-
-                  if (sent) {
-                    // Fetch existing meta to preserve data
-                    const { data: currentBooking } = await supabase
-                      .from('bookings')
-                      .select('meta')
-                      .eq('booking_id', calResult.bookingId)
-                      .single();
-
-                    await supabase.from('bookings').update({
-                      meta: {
-                        ...(currentBooking?.meta || {}),
-                        whatsapp_confirmation_sent: true,
-                        call_id: body.message?.call?.id || body.call?.id
-                      }
-                    }).eq('booking_id', calResult.bookingId);
-                  }
-                } catch (confirmError: any) {
-                  console.error(`[MeetingConfirmation] ❌ Failed to send WhatsApp confirmation:`, confirmError.message);
+              await triggerBitrixBookingWebhook({
+                event: 'BOOKING_CREATED',
+                bitrixId,
+                leadId,
+                tenant,
+                phone: normalizedAttendeePhone,
+                summary: summary || "Cal.com booking attempt via Vapi voice call.",
+                transcript: (body.message?.transcript || body.call?.transcript || "No transcript available."),
+                booking: {
+                  id: calResult?.bookingId || null,
+                  start: meetingStartIso,
+                  meetingUrl: calResult?.meetingUrl || calResult?.raw?.meetingUrl || null,
+                  eventTypeId: eventTypeId
+                },
+                structured: {
+                  budget: structuredData.budget || leadData?.budget || "",
+                  property_type: structuredData.property_type || leadData?.property_type || "",
+                  preferred_area: structuredData.preferred_area || leadData?.location || "",
+                  meetingscheduled: true,
+                  meetingstartiso: meetingStartIso
                 }
-              }
-            } catch (calError: any) {
-              console.error(`[VAPI] Cal.com booking failed:`, {
-                message: calError.message,
-                response: calError.response?.data || 'No response data',
-                status: calError.response?.status
               });
+            }
+
+            // --- WHATSAPP CONFIRMATION (Tenant 1, only if Cal.com succeeded) ---
+            if (calResult && tenant.id === 1) {
+              const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
+              const projectName = structuredData.preferred_area || structuredData.property_type || 'Apartment';
+              console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead ${leadId}`);
+              try {
+                const sent = await sendSimpleWhatsAppConfirmation(
+                  normalizedAttendeePhone,
+                  firstName,
+                  meetingStartIso,
+                  meetingUrl,
+                  tenant,
+                  projectName
+                );
+                if (sent) {
+                  await supabase.from('bookings').update({
+                    meta: {
+                      ...(calResult.meta || {}),
+                      whatsapp_confirmation_sent: true,
+                      call_id: body.message?.call?.id || body.call?.id
+                    }
+                  }).eq('booking_id', calResult.bookingId);
+                }
+              } catch (confirmError: any) {
+                console.error(`[MeetingConfirmation] ❌ Failed to send WhatsApp confirmation:`, confirmError.message);
+              }
             }
           } else {
             console.log(`[VAPI] Meeting scheduled but meeting_start_iso is missing in structuredData.`);
@@ -923,15 +918,18 @@ CURRENT LEAD PROFILE:
 
           // 4. Create Cal.com Booking immediately
           let calResult: any = null;
+          let calErrorMsg: string | null = null;
+
+          let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
+          if (tenant.id !== 1) {
+            const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
+            eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
+          }
+          const eventTypeId = parseInt(eventTypeIdAttr);
+
           const emailForBooking = leadData?.email;
           if (emailForBooking) {
             try {
-              // Resolve Event Type ID
-              let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
-              if (tenant.id !== 1) {
-                const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
-                eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
-              }
 
               const prioritizedPhone = resolvePrioritizedPhone(
                 phoneNumber,
@@ -1002,8 +1000,48 @@ CURRENT LEAD PROFILE:
               }
 
             } catch (calErr: any) {
-              console.error("[VAPI] Tool-call Cal.com failed:", calErr.message);
+              calErrorMsg = calErr.message;
+              console.error("[VAPI] Tool-call Cal.com failed:", calErrorMsg);
             }
+          }
+
+          // --- BITRIX NOTIFICATION (Tenant 1) - HARD CONTRACT ---
+          if (tenant.id === 1) {
+            const dealIdMatch = leadData?.custom_field_1?.match(/(?:DealID|LeadID|BitrixID):\s*(\d+)/i);
+            let bitrixId = dealIdMatch ? dealIdMatch[1] : null;
+            if (!bitrixId) {
+              bitrixId = body.call?.metadata?.bitrix_id || body.call?.extra?.bitrix_id ||
+                body.message?.call?.metadata?.bitrix_id || body.message?.call?.extra?.bitrix_id;
+            }
+
+            const prioritizedPhone = resolvePrioritizedPhone(
+              phoneNumber,
+              leadData?.phone,
+              args.phone
+            );
+
+            await triggerBitrixBookingWebhook({
+              event: 'BOOKING_CREATED',
+              bitrixId,
+              leadId,
+              tenant,
+              phone: prioritizedPhone,
+              summary: `Viewing booked for ${listingTitle} via Vapi tool call.`,
+              transcript: body.message?.transcript || body.call?.transcript || "Tool call booking.",
+              booking: {
+                id: calResult?.bookingId || null,
+                start: resolved_datetime,
+                meetingUrl: calResult?.meetingUrl || calResult?.raw?.meetingUrl || null,
+                eventTypeId: eventTypeId
+              },
+              structured: {
+                budget: leadData?.budget || "",
+                property_type: leadData?.property_type || "",
+                preferred_area: listingTitle,
+                meetingscheduled: true,
+                meetingstartiso: resolved_datetime
+              }
+            });
           }
 
           // 6. Send other generic notifications

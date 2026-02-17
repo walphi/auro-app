@@ -30,3 +30,10 @@ If testing an off-plan flow:
 1. Send a query about a specific off-plan project.
 2. Confirm the AI follows the **WhatsApp Off-Plan Nurturing Skill** (asks budget, location, etc.).
 3. Verify the booking link provided matches `tenant.booking_cal_link`.
+
+### Step 5: Bitrix Booking Contract (Hard Contract)
+For Tenant 1 (Provident), verify that after a Morgan booking (meeting scheduled):
+1. The `vapi.ts` logs show: `[BitrixBookingWebhook] Processing BOOKING_CREATED for BitrixID ..., Lead ...`
+2. The Bitrix webhook receives a populated JSON body with `meetingscheduled: true`.
+3. This must happen even if Cal.com fails.
+   - Run verification script: `npx tsx test_bitrix_webhook_contract.ts`
