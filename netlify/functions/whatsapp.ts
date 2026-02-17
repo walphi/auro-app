@@ -977,6 +977,8 @@ CORE RULES:
         const isRecentEnough = diffMinutes < 15;
         const callAffirmative = isAffirmative(userMessage);
 
+        console.log(`[IntentDetection] Debug: msg="${userMessage}", lastAi="${lastAiText.substring(0, 30)}...", offer=${wasLastMessageOffer}, recent=${isRecentEnough}, affir=${callAffirmative}, diff=${Math.round(diffMinutes)}m`);
+
         let skipGemini = false;
 
         if (wasLastMessageOffer && isRecentEnough && callAffirmative && !isNegative(userMessage)) {
