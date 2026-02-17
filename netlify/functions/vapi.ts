@@ -193,7 +193,7 @@ async function sendSimpleWhatsAppConfirmation(
     const result = await client.sendTextMessage(phoneCleaned, message);
 
     if (result.success) {
-      console.log(`[WhatsApp Helper] ✅ Sent successfully. SID: ${result.sid}`);
+      console.log(`[WhatsApp Helper] Sent successfully. SID=${result.sid}`);
       return true;
     } else {
       console.error(`[WhatsApp Helper] ❌ Twilio client returned failure: ${result.error}`);
@@ -693,7 +693,7 @@ CURRENT LEAD PROFILE:
             if (calResult && tenant.id === 1) {
               const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
               const projectName = structuredData.preferred_area || structuredData.property_type || 'Apartment';
-              console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead ${leadId}`);
+              console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead=${leadId} to=${normalizedAttendeePhone}`);
               try {
                 const sent = await sendSimpleWhatsAppConfirmation(
                   normalizedAttendeePhone,
@@ -971,7 +971,7 @@ CURRENT LEAD PROFILE:
 
               // 5. Trigger Meeting Confirmation (Direct call for reliability)
               if (tenant.id === 1) {
-                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tool success: ${calResult.bookingId}`);
+                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead=${leadId} to=${prioritizedPhone}`);
                 try {
                   const sent = await sendSimpleWhatsAppConfirmation(
                     prioritizedPhone,
