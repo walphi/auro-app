@@ -971,21 +971,31 @@ CURRENT LEAD PROFILE:
                 }
               }, { onConflict: 'lead_id,tenant_id,meeting_start_iso' });
 
-              // 5. Trigger Meeting Confirmation Netlify Function
+              // 5. Trigger Meeting Confirmation (Direct call for reliability)
               if (tenant.id === 1) {
-                console.log(`[MeetingConfirmation] Calling send-meeting-confirmation for tool success: ${calResult.bookingId}`);
+                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tool success: ${calResult.bookingId}`);
                 try {
-                  const confirmRes = await axios.post('https://auroapp.com/.netlify/functions/send-meeting-confirmation', {
-                    tenantId: tenant.id,
-                    leadId: leadId,
-                    leadPhone: prioritizedPhone,
-                    meetingStartIso: resolved_datetime,
-                    bookingId: calResult.bookingId,
-                    meetingUrl: calResult.meetingUrl,
-                    firstName: (leadData.name || 'Client').split(' ')[0],
-                    projectName: listingTitle
-                  });
-                  console.log(`[MeetingConfirmation] Tool confirmation response: ${confirmRes.status}`);
+                  const sent = await sendSimpleWhatsAppConfirmation(
+                    prioritizedPhone,
+                    (leadData.name || 'Client').split(' ')[0],
+                    resolved_datetime,
+                    calResult.meetingUrl,
+                    tenant,
+                    listingTitle
+                  );
+
+                  if (sent) {
+                    // Update booking record to mark confirmation as sent
+                    await supabase.from('bookings').update({
+                      meta: {
+                        ...(calResult.meta || {}),
+                        whatsapp_confirmation_sent: true,
+                        call_id: body.message?.call?.id || body.call?.id
+                      }
+                    }).eq('booking_id', calResult.bookingId);
+                  }
+
+                  console.log(`[MeetingConfirmation] Tool confirmation success: ${sent}`);
                 } catch (confirmErr: any) {
                   console.error(`[MeetingConfirmation] Tool confirmation call failed:`, confirmErr.message);
                 }

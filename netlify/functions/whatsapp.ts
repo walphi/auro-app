@@ -581,6 +581,7 @@ export const handler: Handler = async (event) => {
         let leadContext = "";
         let leadSource = "Source: WhatsApp";
         let existingLead: any = null;
+        let recentMessages: any[] = [];
 
         if (supabaseUrl && supabaseKey) {
             const { data: lead, error: findError } = await supabase
@@ -915,7 +916,6 @@ CORE RULES:
         // --- GEMINI: History & Session Management ---
         // Since Netlify is stateless, we fetch the last interaction from Supabase to maintain flow
         let chatHistory: Content[] = [];
-        let recentMessages: any[] = [];
         if (leadId) {
             const { data } = await supabase
                 .from('messages')
@@ -1186,10 +1186,7 @@ CORE RULES:
                     const alreadyOfferedInResponse = responseText.includes("Would you like a call now?");
 
                     if (intentReached && !alreadyOfferedInHistory && !alreadyOfferedInResponse && !isNegative(userMessage)) {
-                        console.log("[CallPrompt] Intent reached. Appending proactive call offer.");
-                        // Shortened, more dynamic offer to reduce repetition
-                        const offerSuffix = "\n\nShould I have a specialist call you now to discuss this in more detail?";
-                        responseText += offerSuffix;
+                        console.log("[CallPrompt] Intent reached. (Not appending offer per user feedback)");
                     }
                 }
             }
