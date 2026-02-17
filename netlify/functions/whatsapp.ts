@@ -1273,11 +1273,11 @@ CORE RULES:
             }
         };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error processing WhatsApp request:", error);
         return {
             statusCode: 500,
-            body: "<Response><Message>Error processing request</Message></Response>",
+            body: `<Response><Message>Error: ${error.message}</Message></Response>`,
             headers: { "Content-Type": "text/xml" }
         };
     }
