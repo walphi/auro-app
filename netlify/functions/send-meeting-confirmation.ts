@@ -62,18 +62,14 @@ export const handler: Handler = async (event) => {
         });
 
         // Build message exactly as requested
-        const finalProject = projectName || "your property inquiry";
+        const finalProject = projectName || "Apartment";
 
-        let message = `Your call about ${finalProject} with Provident has been scheduled.\n`;
-        message += `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n`;
-        message += `Join the meeting: ${meetingUrl || 'Link in calendar'}`;
+        const message = `Your call about ${finalProject} with ${tenant.name || 'Provident'} has been scheduled.\n` +
+            `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n` +
+            `Join the meeting: ${meetingUrl || 'Link in calendar invite'}\n\n` +
+            `In the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
 
-        // Add branded residences PDF for Provident
-        if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
-            message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
-        }
-
-        const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+        const messagingServiceSid = (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
 
         console.log(`[MEETING_CONFIRMATION] Debug Message Data:`, {
             meetingUrl,

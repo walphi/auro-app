@@ -78,7 +78,14 @@ async function sendWhatsAppMessage(to: string, text: string, tenant: Tenant): Pr
  * will return HTTP 400. For out-of-session sends, a Content Template is required
  * (future enhancement).
  */
-async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, meetingStartIso: string, meetingUrl: string, tenant: Tenant): Promise<boolean> {
+async function sendSimpleWhatsAppConfirmation(
+  phone: string,
+  firstName: string,
+  meetingStartIso: string,
+  meetingUrl: string,
+  tenant: Tenant,
+  projectName?: string
+): Promise<boolean> {
   try {
     // ── Guard: validate phone looks like E.164 ──────────────────────────
     const phoneCleaned = (phone || '').replace(/^whatsapp:/i, '').trim();
@@ -87,30 +94,29 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
       return false;
     }
 
-    console.log('[WhatsApp Helper] Preparing confirmation:', {
-      to: phoneCleaned,
-      firstName,
-      meetingStartIso,
-      meetingUrl: meetingUrl || '(none)',
-      tenantId: tenant.id,
-    });
-
     const client = new TwilioWhatsAppClient(
       tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID,
       tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN,
-      process.env.TWILIO_MESSAGING_SERVICE_SID
+      (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim()
     );
 
     const dateObj = new Date(meetingStartIso);
-    const dateStr = dateObj.toLocaleString('en-US', { day: 'numeric', month: 'long', timeZone: 'Asia/Dubai' });
+    const dateStr = dateObj.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' });
     const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
 
-    // Fixed copy as requested
-    const message = `Hi ${firstName}, your Provident consultation is confirmed for ${dateStr} at ${timeStr} (Dubai time). Join link: ${meetingUrl}\n\nYour property brochure: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+    // Build message exactly as requested
+    const finalProject = projectName || "Apartment";
+
+    const message = `Your call about ${finalProject} with ${tenant.name || 'Provident'} has been scheduled.\n` +
+      `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n` +
+      `Join the meeting: ${meetingUrl || 'Link in calendar invite'}\n\n` +
+      `In the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+
+    const messagingServiceSid = (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
 
     console.log('[WhatsApp Helper] Sending confirmation via Messaging Service:', {
       to: phoneCleaned,
-      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || '(not configured)',
+      messagingServiceSid: messagingServiceSid || '(not configured)',
       bodyLength: message.length,
       bodyPreview: message.substring(0, 120),
     });
@@ -118,10 +124,10 @@ async function sendSimpleWhatsAppConfirmation(phone: string, firstName: string, 
     const result = await client.sendTextMessage(phoneCleaned, message);
 
     if (result.success) {
-      console.log('[WhatsApp Helper] ✅ Sent successfully. SID:', result.sid);
+      console.log(`[WhatsApp Helper] ✅ Sent successfully. SID: ${result.sid}`);
       return true;
     } else {
-      console.error('[WhatsApp Helper] ❌ Twilio client returned failure:', result.error);
+      console.error(`[WhatsApp Helper] ❌ Twilio client returned failure: ${result.error}`);
       return false;
     }
   } catch (error: any) {
@@ -670,31 +676,25 @@ CURRENT LEAD PROFILE:
                 }
               }
 
-              // 5. Trigger Meeting Confirmation Netlify Function
+              // 5. Trigger Meeting Confirmation (Direct call for reliability)
               if (tenant.id === 1) {
                 const phoneForConfirmation = normalizedAttendeePhone;
                 const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
+                const projectName = structuredData.preferred_area || structuredData.property_type || 'Apartment';
 
-                console.log(`[MeetingConfirmation] Calling send-meeting-confirmation for tenant 1, lead ${leadId}, booking ${calResult.bookingId}`);
+                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead ${leadId}, booking ${calResult.bookingId}`);
 
                 try {
-                  // Use harvested data or fallbacks for project name
-                  const projectName = structuredData.preferred_area || structuredData.property_type || 'Property Consultation';
+                  const sent = await sendSimpleWhatsAppConfirmation(
+                    phoneForConfirmation,
+                    firstName,
+                    meetingStartIso,
+                    meetingUrl,
+                    tenant,
+                    projectName
+                  );
 
-                  const confirmationResponse = await axios.post('https://auroapp.com/.netlify/functions/send-meeting-confirmation', {
-                    tenantId: tenant.id,
-                    leadId: leadId,
-                    leadPhone: phoneForConfirmation,
-                    meetingStartIso: meetingStartIso,
-                    bookingId: calResult.bookingId,
-                    meetingUrl: meetingUrl,
-                    firstName: firstName,
-                    projectName: projectName
-                  });
-
-                  console.log(`[MeetingConfirmation] send-meeting-confirmation responded with ${confirmationResponse.status} ${JSON.stringify(confirmationResponse.data)}`);
-
-                  if (confirmationResponse.status === 200 || confirmationResponse.status === 201) {
+                  if (sent) {
                     // Fetch existing meta to preserve data
                     const { data: currentBooking } = await supabase
                       .from('bookings')
@@ -711,11 +711,7 @@ CURRENT LEAD PROFILE:
                     }).eq('booking_id', calResult.bookingId);
                   }
                 } catch (confirmError: any) {
-                  console.error(`[MeetingConfirmation] ❌ Failed to call send-meeting-confirmation:`, {
-                    message: confirmError.message,
-                    status: confirmError.response?.status,
-                    data: confirmError.response?.data
-                  });
+                  console.error(`[MeetingConfirmation] ❌ Failed to send WhatsApp confirmation:`, confirmError.message);
                 }
               }
             } catch (calError: any) {
@@ -1091,11 +1087,8 @@ RULES & BEHAVIOR:
    - Instead, verify: "I have you as ${leadData?.name || "Phillip"}, is that right?" or simply address them by name and only verify if unsure.
    - If you ask for a name you already have, you fail the interaction.
 
-2. VOICE-ADAPTED VISUALS:
-   - You are a VOICE agent. You cannot "send" cards directly, but you can describe images I am sending via WhatsApp.
-   - When discussing a property, say: "I've just sent a photo to your WhatsApp properly. It's a [describe based on type]..."
 
-3. KNOW YOUR FACTS (MANDATORY):
+2. KNOW YOUR FACTS (MANDATORY):
    - NEVER answer questions about specific projects, branded residences, pricing, payment plans, market trends, or agency history from memory.
    - GROUND responses in the RAG data provided or tool results.
    - FILTER MARKETING FLUFF: If RAG results mention "AI scoring", "pre-qualification", or "Proprietary AURO Systems", IGNORE IT. Do not mention it to the client.
