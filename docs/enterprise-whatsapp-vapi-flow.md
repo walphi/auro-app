@@ -75,3 +75,13 @@ Each entry includes a `payload` JSON object containing the `property_id`, `sourc
 1. **Bitrix Sync Back**: While inbound webhooks are handled, there is no automated "Push back to Bitrix" logic triggered upon qualification in the main handlers.
 2. **Redundant Vapi Handlers**: Both `vapi.ts` and `vapi-llm.ts` exist; the split between webhook handling and LLM streaming logic could be more unified for clarity.
 3. **Tool Context Duplication**: The `RAG_QUERY_TOOL` logic is duplicated across `whatsapp.ts`, `vapi.ts`, and `vapi-llm.ts`. Centralizing this into a library would improve maintenance.
+
+## Tenant 1 (Provident) Hard Contract
+
+For Provident (tenant_id = 1), certain behaviors are treated as non‑negotiable (Cal.com booking, Bitrix `BOOKING_CREATED` webhook, WhatsApp pre‑call and post‑booking confirmations, and Morgan escalation rules).
+
+These are defined in detail in:
+
+- `docs/provident-booking-flow-contract.md`
+
+Any change touching `whatsapp.ts`, `vapi.ts`, `provident-bitrix-webhook.ts`, or Cal.com/WhatsApp helpers **must** keep that contract passing.
