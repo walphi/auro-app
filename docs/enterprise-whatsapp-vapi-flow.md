@@ -85,3 +85,19 @@ These are defined in detail in:
 - `docs/provident-booking-flow-contract.md`
 
 Any change touching `whatsapp.ts`, `vapi.ts`, `provident-bitrix-webhook.ts`, or Cal.com/WhatsApp helpers **must** keep that contract passing.
+
+
+### Step 0: Compliant Session Opening (cold / stale leads)
+
+Before any freeform message can be sent, WhatsApp requires an approved template
+to contact a user who has not initiated a conversation within the last 24 hours.
+When [provident-bitrix-webhook.ts](cci:7://file:///c:/Users/phill/Downloads/2025/Auro%20App/netlify/functions/provident-bitrix-webhook.ts:0:0-0:0) fires for a new Bitrix deal or lead event,
+[triggerLeadEngagement](cci:1://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/auroWhatsApp.ts:15:0-68:1) in [lib/auroWhatsApp.ts](cci:7://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/auroWhatsApp.ts:0:0-0:0) checks for
+`TWILIO_PROVIDENT_CONTENT_SID`; if set, it calls
+`TwilioWhatsAppClient.sendTemplateMessage` with the approved `twilio/quick-reply`
+template (`HX4dacdc5e...`), populating `{{1}}` with the lead's first name and
+sending via `MessagingServiceSid`. The template includes pre-configured Yes / No
+quick-reply buttons. Once the lead sends any reply, the 24-hour session window
+opens and the flow continues from **Step 1** below exactly as previously
+documented — all WhatsApp qualification, Gemini tool use, Vapi escalation, and
+Bitrix sync are unchanged.

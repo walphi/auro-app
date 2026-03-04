@@ -205,3 +205,20 @@ If any step fails, **do not merge**.
     - “Your call about The Edit at d3 with Provident Real Estate has been scheduled. Date & time: Friday, February 20 at 2:00 PM (Dubai Time). Join the meeting: https://meet.google.com/jhh-mzvw-fvd …”
   - Pre‑call escalation and Auro summary both confirmed working.[file:1056]
 
+- **2026-03-04** – Compliant initial outreach via approved Content Template:
+  - Initial WhatsApp outreach for cold/stale Provident leads now uses the
+    approved `twilio/quick-reply` Content Template
+    (`TWILIO_PROVIDENT_CONTENT_SID` / `HX4dacdc5e...`).
+  - Template body: *"Hi {{1}}, this is Provident Real Estate. We received your
+    inquiry and would love to help. Is now a good time to chat?"*
+    with quick-reply buttons (Yes / No). Only `{{1}}` (lead first name) is used.
+  - Once the lead replies, the 24-hour freeform window opens and all subsequent
+    interactions continue exactly as documented above: Gemini-driven WhatsApp
+    qualification, optional Vapi voice escalation, Cal.com booking, and Bitrix
+    sync — all unchanged.
+  - Files changed: [lib/twilioWhatsAppClient.ts](cci:7://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/twilioWhatsAppClient.ts:0:0-0:0) (new [sendTemplateMessage](cci:1://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/twilioWhatsAppClient.ts:105:4-166:5)
+    method), [lib/auroWhatsApp.ts](cci:7://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/auroWhatsApp.ts:0:0-0:0) (template-first branch in
+    [triggerLeadEngagement](cci:1://file:///c:/Users/phill/Downloads/2025/Auro%20App/lib/auroWhatsApp.ts:15:0-68:1)), [.env.example](cci:7://file:///c:/Users/phill/Downloads/2025/Auro%20App/.env.example:0:0-0:0) (variable documented).
+  - Verified end-to-end: template delivered (Twilio status `accepted`),
+    quick-reply received, freeform Gemini flow engaged on reply (qualification,
+    off-plan discussion, market Q&A). No behavior changes to downstream flow.

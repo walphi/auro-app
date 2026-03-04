@@ -102,4 +102,67 @@ export class TwilioWhatsAppClient {
             return { success: false, error: twilioErr?.message || error.message };
         }
     }
+
+    async sendTemplateMessage(
+        to: string,
+        contentSid: string,
+        contentVariables: Record<string, string>
+    ): Promise<TwilioSendResult> {
+        try {
+            if (!this.accountSid || !this.authToken) {
+                throw new Error("Missing Twilio credentials.");
+            }
+            if (!this.messagingServiceSid) {
+                throw new Error('Missing TWILIO_MESSAGING_SERVICE_SID – WhatsApp template requires a Messaging Service');
+            }
+
+            const auth = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64');
+            const params = new URLSearchParams();
+
+            const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+
+            params.append('To', formattedTo);
+            params.append('MessagingServiceSid', this.messagingServiceSid);
+            params.append('ContentSid', contentSid);
+            params.append('ContentVariables', JSON.stringify(contentVariables));
+
+            console.log('[Twilio] sendTemplateMessage payload:', {
+                to: formattedTo,
+                messagingServiceSid: this.messagingServiceSid,
+                contentSid,
+                variables: contentVariables
+            });
+
+            const response = await axios.post(
+                `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`,
+                params,
+                {
+                    headers: {
+                        'Authorization': `Basic ${auth}`,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                }
+            );
+
+            console.log('[Twilio] sendTemplateMessage success:', {
+                sid: response.data.sid,
+                status: response.data.status,
+                to: response.data.to,
+                from: response.data.from,
+                dateCreated: response.data.date_created
+            });
+
+            return { success: true, sid: response.data.sid };
+        } catch (error: any) {
+            const twilioErr = error.response?.data;
+            console.error("[Twilio] Error sending template message:", {
+                httpStatus: error.response?.status,
+                twilioCode: twilioErr?.code,
+                twilioMessage: twilioErr?.message,
+                moreInfo: twilioErr?.more_info,
+                errorMessage: error.message
+            });
+            return { success: false, error: twilioErr?.message || error.message };
+        }
+    }
 }

@@ -38,8 +38,22 @@ export async function triggerLeadEngagement(params: EngagementParams): Promise<b
 
     const message = `Hi ${name}, this is Provident Real Estate. We received your inquiry regarding ${projectName} and would love to assist you. Are you looking for investment or personal use?`;
 
+    const contentSid = process.env.TWILIO_PROVIDENT_CONTENT_SID;
+
     try {
-        const result = await client.sendTextMessage(phone, message);
+        let result: { success: boolean; sid?: string; error?: string };
+
+        if (contentSid) {
+            // Approved WhatsApp template (twilio/quick-reply).
+            // Only {{1}} is used; quick-reply buttons are pre-configured in Twilio.
+            const firstName = name.split(' ')[0] || 'there';
+            console.log(`[AuroWhatsApp] Sending template ${contentSid} to ${phone}`);
+            result = await client.sendTemplateMessage(phone, contentSid, { '1': firstName });
+        } else {
+            // Fallback: freeform text (used when env var is absent, e.g. dev/staging).
+            console.log(`[AuroWhatsApp] Sending freeform message to ${phone} (no ContentSid configured)`);
+            result = await client.sendTextMessage(phone, message);
+        }
 
         if (result.success) {
             console.log(`[AuroWhatsApp] Initial engagement message sent to ${phone}. SID: ${result.sid}`);
