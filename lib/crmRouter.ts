@@ -1,0 +1,96 @@
+/**
+ * lib/crmRouter.ts — Auro CRM Routing Layer
+ *
+ * Routes generic CRM write actions to the correct backend based on
+ * the tenant's crm_type field. v1 handles 'hubspot' only.
+ *
+ * IMPORTANT: bitrixClient.ts is NOT imported here.
+ * Provident (tenant 1) never calls this router — it handles CRM writes
+ * directly inside its own functions (provident-bitrix-webhook.ts, whatsapp.ts).
+ *
+ * Future crm_types (e.g. 'salesforce') can be added as new cases below.
+ */
+
+import * as hubspot from './hubspotClient';
+import type { HubSpotContactProps } from './hubspotClient';
+
+// ---------------------------------------------------------------------------
+// Shared payload type
+// ---------------------------------------------------------------------------
+
+export interface CrmNotePayload {
+    tenantId: number;
+    phone: string;
+    name: string;
+    email?: string;
+    noteText: string;
+    qualificationData?: {
+        status?: string;
+        budget?: string;
+        propertyType?: string;
+        area?: string;
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Router actions
+// ---------------------------------------------------------------------------
+
+/**
+ * Upsert a lead contact in the tenant's CRM and post a note.
+ * Only handles 'hubspot' in v1.
+ *
+ * @returns contactId (HubSpot contact ID for this tenant)
+ */
+export async function syncLeadNote(
+    crmType: string,
+    payload: CrmNotePayload
+): Promise<{ contactId: string; created: boolean }> {
+    if (crmType === 'hubspot') {
+        const nameParts = payload.name.trim().split(' ');
+        const firstname = nameParts[0] || '';
+        const lastname = nameParts.slice(1).join(' ') || undefined;
+
+        const contactProps: HubSpotContactProps = {
+            phone: payload.phone,
+            firstname,
+            lastname,
+            email: payload.email,
+            // Qualification data mapped to HubSpot contact properties
+            ...(payload.qualificationData?.status && { hs_lead_status: payload.qualificationData.status }),
+            ...(payload.qualificationData?.budget && { budget_range: payload.qualificationData.budget }),
+            ...(payload.qualificationData?.propertyType && { property_type: payload.qualificationData.propertyType }),
+            ...(payload.qualificationData?.area && { preferred_area: payload.qualificationData.area }),
+        };
+
+        const { contactId, created } = await hubspot.upsertContact(payload.tenantId, contactProps);
+        await hubspot.addContactNote(payload.tenantId, contactId, payload.noteText);
+
+        return { contactId, created };
+    }
+
+    // No Bitrix case — Provident handles its own CRM writes independently.
+    const err = `[crmRouter] Unsupported crm_type: '${crmType}' for tenant ${payload.tenantId}`;
+    console.error(err);
+    throw new Error(err);
+}
+
+/**
+ * Update contact properties only (no note). Useful for status changes.
+ * Only handles 'hubspot' in v1.
+ */
+export async function updateLeadProperties(
+    crmType: string,
+    tenantId: number,
+    contactId: string,
+    props: Partial<HubSpotContactProps>
+): Promise<void> {
+    if (crmType === 'hubspot') {
+        await hubspot.updateContact(tenantId, contactId, props);
+        return;
+    }
+
+    const err = `[crmRouter] updateLeadProperties: Unsupported crm_type: '${crmType}' for tenant ${tenantId}`;
+    console.error(err);
+    throw new Error(err);
+}
