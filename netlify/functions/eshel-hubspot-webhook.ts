@@ -22,20 +22,30 @@ const HS_API = 'https://api.hubapi.com';
 
 function validateHubSpotSignature(
     clientSecret: string,
+    requestMethod: string,
+    requestUrl: string,
     requestBody: string,
     timestamp: string,
     receivedSignature: string | undefined
 ): boolean {
     if (!receivedSignature) return false;
 
-    // HubSpot v3: HMAC-SHA256(clientSecret + requestBody + timestamp)
-    const payload = `${clientSecret}${requestBody}${timestamp}`;
+    // HubSpot v3: HMAC-SHA256(requestMethod + requestUrl + requestBody + timestamp)
+    const sourceString = `${requestMethod}${requestUrl}${requestBody}${timestamp}`;
     const expected = crypto
         .createHmac('sha256', clientSecret)
-        .update(payload)
-        .digest('hex');
+        .update(sourceString)
+        .digest('base64');
 
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(receivedSignature));
+    const expectedBuffer = Buffer.from(expected);
+    const receivedBuffer = Buffer.from(receivedSignature);
+
+    // timingSafeEqual throws RangeError if buffer lengths differ
+    if (expectedBuffer.length !== receivedBuffer.length) {
+        return false;
+    }
+
+    return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
 // ---------------------------------------------------------------------------
@@ -73,8 +83,8 @@ export const handler: Handler = async (event) => {
         return { statusCode: 400, body: JSON.stringify({ error: 'event_too_old' }) };
     }
 
-    if (!validateHubSpotSignature(clientSecret, body, timestamp, signature)) {
-        console.error(`${LOG_PREFIX} Signature validation failed.`);
+    if (!validateHubSpotSignature(clientSecret, event.httpMethod, event.rawUrl, body, timestamp, signature)) {
+        console.error(`${LOG_PREFIX} Invalid HubSpot signature.`);
         return { statusCode: 401, body: JSON.stringify({ error: 'invalid_signature' }) };
     }
 
