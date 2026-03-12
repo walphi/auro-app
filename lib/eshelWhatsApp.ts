@@ -82,6 +82,33 @@ export async function triggerEshelLeadEngagement(
         return true;
     }
 
+    // --- Tenant 2 (Eshel Properties) Override ---
+    if (tenant.id === 2) {
+        try {
+            // @ts-ignore - twilio package may not be perfectly typed in this environment
+            const twilio = (await import('twilio')).default;
+            const client = twilio(
+                process.env.TWILIO_ACCOUNT_SID_ESHEL_T2!,
+                process.env.TWILIO_AUTH_TOKEN_ESHEL_T2!
+            );
+
+            console.log(`${label}[EshelWhatsApp] Sending wa_message_opt_in_eshel to ${phone} via Eshel Twilio account.`);
+
+            await client.messages.create({
+                from: process.env.ESHEL_T2_WHATSAPP_FROM!,        // whatsapp:+15558874631
+                to: `whatsapp:${phone}`,                         // contact phone from HubSpot
+                contentSid: process.env.ESHEL_T2_CONTENT_SID!,    // HX7471...
+                contentVariables: JSON.stringify({ "1": firstName }),
+            });
+
+            console.log(`${label}[EshelWhatsApp] Message sent via Eshel T2 account.`);
+            return true;
+        } catch (err: any) {
+            console.error(`${label}[EshelWhatsApp] Exception in Eshel T2 Twilio path for ${phone}:`, err.message);
+            return false;
+        }
+    }
+
     const client = new TwilioWhatsAppClient(
         tenant.twilio_account_sid,
         tenant.twilio_auth_token,
