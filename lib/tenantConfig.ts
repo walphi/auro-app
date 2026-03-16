@@ -22,6 +22,21 @@ export interface Tenant {
 }
 
 /**
+ * Applies environment-based overrides to tenant configuration
+ */
+function applyTenantOverrides(tenant: Tenant | null): Tenant | null {
+    if (!tenant) return null;
+
+    if (tenant.id === 1 && process.env.VAPI_ASSISTANT_ID) {
+        tenant.vapi_assistant_id = process.env.VAPI_ASSISTANT_ID;
+    } else if (tenant.id === 2 && process.env.VAPI_ASSISTANT_ID_ESHEL) {
+        tenant.vapi_assistant_id = process.env.VAPI_ASSISTANT_ID_ESHEL;
+    }
+
+    return tenant;
+}
+
+/**
  * Fetches tenant configuration by Twilio phone number (To number)
  */
 export async function getTenantByTwilioNumber(phone: string): Promise<Tenant | null> {
@@ -51,7 +66,7 @@ export async function getTenantByTwilioNumber(phone: string): Promise<Tenant | n
         console.log(`[TenantConfig] Resolved tenant ${data.short_name} (id=${data.id})`);
     }
 
-    return data as Tenant;
+    return applyTenantOverrides(data as Tenant);
 }
 
 /**
@@ -75,7 +90,7 @@ export async function getTenantByVapiId(vapiAssistantId: string): Promise<Tenant
         console.log(`[TenantConfig] Resolved tenant ${data.short_name} (id=${data.id})`);
     }
 
-    return data as Tenant;
+    return applyTenantOverrides(data as Tenant);
 }
 
 /**
@@ -95,7 +110,7 @@ export async function getTenantById(id: number): Promise<Tenant | null> {
         return null;
     }
 
-    return data as Tenant;
+    return applyTenantOverrides(data as Tenant);
 }
 
 /**
@@ -115,7 +130,7 @@ export async function getTenantByShortName(shortName: string): Promise<Tenant | 
         return null;
     }
 
-    return data as Tenant;
+    return applyTenantOverrides(data as Tenant);
 }
 
 /**
