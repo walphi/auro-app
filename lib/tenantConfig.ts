@@ -99,6 +99,26 @@ export async function getTenantById(id: number): Promise<Tenant | null> {
 }
 
 /**
+ * Fetches tenant configuration by Short Name
+ */
+export async function getTenantByShortName(shortName: string): Promise<Tenant | null> {
+    console.log(`[TenantConfig] Resolving tenant for Short Name: ${shortName}`);
+
+    const { data, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('short_name', shortName)
+        .maybeSingle();
+
+    if (error) {
+        console.warn(`[TenantConfig] Error fetching tenant by short name ${shortName}:`, error.message);
+        return null;
+    }
+
+    return data as Tenant;
+}
+
+/**
  * Helper to get default tenant (Provident) for fallback
  */
 export async function getDefaultTenant(): Promise<Tenant> {

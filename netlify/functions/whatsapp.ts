@@ -6,7 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { searchListings, formatListingsResponse, SearchFilters, PropertyListing, getListingById, getListingImageUrl, buildProxyImageUrl } from "./listings-helper";
 import { TwilioWhatsAppClient, resolveWhatsAppSender } from '../../lib/twilioWhatsAppClient';
 import { logLeadIntent } from "../../lib/enterprise/leadIntents";
-import { getTenantByTwilioNumber, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
+import { getTenantByTwilioNumber, getDefaultTenant, getTenantByShortName, Tenant } from "../../lib/tenantConfig";
 import { getLeadById as getBitrixLead, updateLead as updateBitrixLead } from "../../lib/bitrixClient";
 import { RAG_CONFIG, PROMPT_TEMPLATES } from "../../lib/rag/prompts";
 import { genAI, RobustChat, callGemini } from "../../lib/gemini";
@@ -536,7 +536,21 @@ export const handler: Handler = async (event) => {
         console.log(`[WhatsApp] Incoming request host: ${host}, mediaHost (forced for delivery): ${mediaHost}`);
 
         // --- TENANT RESOLUTION ---
-        let tenant = await getTenantByTwilioNumber(toNumber);
+        let tenant: Tenant | null = null;
+        
+        // Priority 1: Header-based override (for parallel entrypoints like eshel-whatsapp)
+        const forcedTenantKey = (event.headers["x-aurora-tenant"] || event.headers["X-Aurora-Tenant"]) as string | undefined;
+        if (forcedTenantKey) {
+            console.log(`[WhatsApp] Forced tenant detected in headers: ${forcedTenantKey}`);
+            tenant = await getTenantByShortName(forcedTenantKey);
+        }
+
+        // Priority 2: Standard Twilio "To" number resolution
+        if (!tenant) {
+            tenant = await getTenantByTwilioNumber(toNumber);
+        }
+
+        // Priority 3: Default fallback
         if (!tenant) {
             console.log(`[WhatsApp] No tenant found for ${toNumber}, falling back to default.`);
             tenant = await getDefaultTenant();
@@ -793,6 +807,13 @@ PROJECT CONTEXT (STRICTLY USE THIS):
 ${autoRagContext}
 
 RULE: The user is asking about a specific project listed above. You MUST share at least one concrete fact (e.g. location, unique amenity, payment plan detail, or developer) in your very first response. DO NOT give a generic "I am familiar" reply without facts.
+` : ''}
+
+${tenant.id === 2 || tenant.short_name === 'eshel' ? `
+ESHEL PRIORITY PROJECTS & FOCUS:
+- **Eshel Off-plan Projects**: Focus on the premium portfolio and high-yield investment opportunities.
+- **Investor Tone**: Speak clearly about potential ROI and the strategic location of Eshel developments.
+- **Brand Pride**: You represent Eshel Properties, known for excellence and personalized client service.
 ` : ''}
 
 CORE STRATEGY: 
