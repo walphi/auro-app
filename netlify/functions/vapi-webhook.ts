@@ -138,6 +138,16 @@ const handler: Handler = async (event) => {
 
         if (!meetingScheduled) {
             console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
+
+            // --- CRM SYNC: Vapi Call Ended Sidecar (No Booking) ---
+            if (tenant?.id === 2 && tenant?.crm_type === 'hubspot') {
+                const summary = analysis.summary || structuredData.summary || "Conversation completed.";
+                const duration = call?.duration || 0;
+                await triggerHubSpotSidecar(tenant, 'vapi_call_ended', leadData, summary, undefined, {
+                    vapi: { callId: call?.id, summary, duration }
+                });
+            }
+
             return { statusCode: 200, body: JSON.stringify({ message: "No meeting scheduled" }) };
         }
 
@@ -265,6 +275,18 @@ const handler: Handler = async (event) => {
             await sendWhatsAppNotification(finalPhone, finalProject, meetingStartIso, tenant);
         }
 
+        // --- CRM SYNC: Booking Created Sidecar ---
+        if (tenant?.id === 2 && tenant?.crm_type === 'hubspot' && calResult) {
+            await triggerHubSpotSidecar(tenant, 'booking_created', leadData, "Meeting Scheduled", undefined, {
+                booking: {
+                    meetingUrl: calResult.meetingUrl,
+                    bookingId: calResult.bookingId,
+                    startTime: meetingStartIso,
+                    projectName: finalProject
+                }
+            });
+        }
+
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -281,3 +303,37 @@ const handler: Handler = async (event) => {
 };
 
 export { handler };
+
+/**
+ * Triggers the Eshel CRM sidecar to log info to HubSpot.
+ * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
+ */
+async function triggerHubSpotSidecar(tenant: Tenant, eventType: string, lead: any, noteText: string, hsTimestamp?: string, extra?: any) {
+    if (tenant.id !== 2 || tenant.crm_type !== 'hubspot') return;
+
+    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
+    const sidecarKey = process.env.AURO_SIDECAR_KEY;
+
+    if (!sidecarKey) {
+        console.warn("[Sidecar] AURO_SIDECAR_KEY missing. Skipping sync.");
+        return;
+    }
+
+    try {
+        await axios.post(sidecarUrl, {
+            eventType,
+            tenantId: tenant.id,
+            phone: lead.phone,
+            name: lead.name,
+            email: lead.email,
+            noteText,
+            hsTimestamp: hsTimestamp || new Date().toISOString(),
+            ...extra
+        }, {
+            headers: { 'x-auro-sidecar-key': sidecarKey }
+        });
+        console.log(`[Sidecar] Triggered ${eventType} for ${lead.phone}`);
+    } catch (err: any) {
+        console.error(`[Sidecar] Failed to trigger ${eventType}:`, err.message);
+    }
+}

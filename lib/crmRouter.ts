@@ -30,6 +30,7 @@ export interface CrmNotePayload {
         propertyType?: string;
         area?: string;
     };
+    hsTimestamp?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +65,7 @@ export async function syncLeadNote(
         };
 
         const { contactId, created } = await hubspot.upsertContact(payload.tenantId, contactProps);
-        await hubspot.addContactNote(payload.tenantId, contactId, payload.noteText);
+        await hubspot.addContactNote(payload.tenantId, contactId, payload.noteText, payload.hsTimestamp);
 
         return { contactId, created };
     }

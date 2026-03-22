@@ -269,7 +269,8 @@ export async function upsertContact(
 export async function addContactNote(
     tenantId: number,
     contactId: string,
-    noteBody: string
+    noteBody: string,
+    hsTimestamp?: string
 ): Promise<void> {
     const token = await getAccessToken(tenantId);
 
@@ -279,7 +280,7 @@ export async function addContactNote(
         {
             properties: {
                 hs_note_body: noteBody,
-                hs_timestamp: new Date().toISOString(),
+                hs_timestamp: hsTimestamp || new Date().toISOString(),
             },
         },
         { headers: { Authorization: `Bearer ${token}` } }

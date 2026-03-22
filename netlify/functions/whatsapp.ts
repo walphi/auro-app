@@ -771,6 +771,11 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
             } catch (logError) {
                 console.error("Exception logging message to Supabase:", logError);
             }
+
+            // --- CRM SYNC: Lead Inbound Sidecar ---
+            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && userMessage) {
+                triggerHubSpotSidecar(tenant, 'whatsapp_inbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, userMessage);
+            }
         }
 
         // --- PROMPT ROUTER: Detect projects and pre-fetch RAG ---
@@ -1274,6 +1279,11 @@ CORE RULES:
                 content: responseText,
                 meta: meta
             });
+
+            // --- CRM SYNC: AI Outbound Sidecar ---
+            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && responseText) {
+                triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
+            }
         }
 
         // Helper to escape XML special characters
@@ -1338,4 +1348,37 @@ CORE RULES:
         };
     }
 };
+
+/**
+ * Triggers the Eshel CRM sidecar to log info to HubSpot.
+ * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
+ */
+async function triggerHubSpotSidecar(tenant: Tenant, eventType: string, lead: any, noteText: string, hsTimestamp?: string) {
+    if (tenant.id !== 2 || tenant.crm_type !== 'hubspot') return;
+
+    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
+    const sidecarKey = process.env.AURO_SIDECAR_KEY;
+
+    if (!sidecarKey) {
+        console.warn("[Sidecar] AURO_SIDECAR_KEY missing. Skipping sync.");
+        return;
+    }
+
+    try {
+        await axios.post(sidecarUrl, {
+            eventType,
+            tenantId: tenant.id,
+            phone: lead.phone,
+            name: lead.name,
+            email: lead.email,
+            noteText,
+            hsTimestamp: hsTimestamp || new Date().toISOString()
+        }, {
+            headers: { 'x-auro-sidecar-key': sidecarKey }
+        });
+        console.log(`[Sidecar] Triggered ${eventType} for ${lead.phone}`);
+    } catch (err: any) {
+        console.error(`[Sidecar] Failed to trigger ${eventType}:`, err.message);
+    }
+}
 

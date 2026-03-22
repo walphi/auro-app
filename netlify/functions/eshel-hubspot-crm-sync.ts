@@ -25,7 +25,12 @@ import { syncLeadNote } from '../../lib/crmRouter';
 // Payload types
 // ---------------------------------------------------------------------------
 
-type SidecarEventType = 'conversation_note' | 'booking_created';
+type SidecarEventType =
+    | 'conversation_note'
+    | 'booking_created'
+    | 'whatsapp_inbound'
+    | 'whatsapp_outbound'
+    | 'vapi_call_ended';
 
 interface SidecarPayload {
     eventType: SidecarEventType;
@@ -34,6 +39,7 @@ interface SidecarPayload {
     name: string;
     email?: string;
     noteText: string;
+    hsTimestamp?: string;
     hubspotContactId?: string;          // If already resolved upstream, skip upsert
     qualificationData?: {
         status?: string;
@@ -41,11 +47,17 @@ interface SidecarPayload {
         propertyType?: string;
         area?: string;
     };
-    // Booking-specific fields (eventType = 'booking_created')
+    // Booking / Vapi-specific fields
     booking?: {
         meetingUrl?: string;
         bookingId?: string;
         startTime?: string;
+        projectName?: string;
+    };
+    vapi?: {
+        callId?: string;
+        summary?: string;
+        duration?: number;
     };
 }
 
@@ -99,31 +111,36 @@ export const handler: Handler = async (event) => {
 
     const label = `[tenant=${tenantId}|${tenant.hubspot_label || 'eshel'}]`;
 
-    // --- Build note body for booking events ---
+    // --- Build final note body ---
     let finalNoteText = noteText;
-    if (eventType === 'booking_created' && payload.booking) {
-        const { meetingUrl, bookingId, startTime } = payload.booking;
+
+    if (eventType === 'whatsapp_inbound') {
+        finalNoteText = `[WhatsApp Inbound] Lead: ${noteText}`;
+    } else if (eventType === 'whatsapp_outbound') {
+        finalNoteText = `[WhatsApp Outbound] Auro: ${noteText}`;
+    } else if (eventType === 'vapi_call_ended') {
+        const summary = payload.vapi?.summary || 'No summary available';
+        const duration = payload.vapi?.duration ? `${Math.floor(payload.vapi.duration)}s` : 'N/A';
+        finalNoteText = `📞 AI Call Ended\n\nSummary: ${summary}\nDuration: ${duration}\nCall ID: ${payload.vapi?.callId || 'N/A'}`;
+    } else if (eventType === 'booking_created' && payload.booking) {
+        const { meetingUrl, startTime, projectName } = payload.booking;
         const formattedTime = startTime
             ? new Date(startTime).toLocaleString('en-US', {
-                day: 'numeric', month: 'long',
+                weekday: 'long', day: 'numeric', month: 'long',
                 hour: 'numeric', minute: '2-digit',
                 hour12: true, timeZone: 'Asia/Dubai',
             })
             : 'Not set';
 
+        const projectLabel = projectName || 'our latest properties';
+
+        // Provident-style formatting for Eshel
         finalNoteText =
-            `📅 AURO BOOKING SUMMARY\n\n` +
-            `STATUS: Consultation Booked\n` +
-            `TIME: ${formattedTime} (Dubai Time)\n` +
-            `LINK: ${meetingUrl || 'N/A'}\n` +
-            `BOOKING ID: ${bookingId || 'N/A'}\n\n` +
-            `--- LEAD DETAILS ---\n` +
-            `Name: ${name}\n` +
-            `Phone: ${phone}\n` +
-            (qualificationData?.budget ? `Budget: ${qualificationData.budget}\n` : '') +
-            (qualificationData?.propertyType ? `Property Type: ${qualificationData.propertyType}\n` : '') +
-            (qualificationData?.area ? `Preferred Area: ${qualificationData.area}\n` : '') +
-            `\nPowered by Auro AI`;
+            `Your call about ${projectLabel} with Eshel Properties has been scheduled.\n` +
+            `Date & time: ${formattedTime} (Dubai Time).\n` +
+            `Join the meeting: ${meetingUrl || 'N/A'}\n\n` +
+            `In the meantime, you can explore Eshel's property portfolio here:\n` +
+            `https://auroapp.com/eshel-properties`;
     }
 
     // --- Sync to HubSpot ---
@@ -135,6 +152,7 @@ export const handler: Handler = async (event) => {
             email,
             noteText: finalNoteText,
             qualificationData,
+            hsTimestamp: payload.hsTimestamp,
         });
 
         console.log(
