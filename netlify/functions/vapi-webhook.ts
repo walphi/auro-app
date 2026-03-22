@@ -37,9 +37,9 @@ async function sendWhatsAppNotification(to: string, projectName: string, startTi
         timeZone: 'Asia/Dubai'
     });
 
-    // Requirement: “Your call about [PROJECT_NAME] with Provident has been scheduled. You’ll be contacted at [TIME] on this number.”
-    // Plus Provident's Branded Residences PDF link
-    let message = `Your call about ${projectName} with Provident has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
+    // Dynamically set branding
+    const brandName = tenant.name || 'Eshel Properties';
+    let message = `Your call about ${projectName} with ${brandName} has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
 
     if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
         message += `\n\nIn the meantime, you can explore Provident’s Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
@@ -136,18 +136,22 @@ const handler: Handler = async (event) => {
             structuredData.meeting_scheduled === 'true' ||
             analysis.bookingMade === true;
 
-        if (!meetingScheduled) {
-            console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
+        // --- CRM SYNC: Vapi Call Ended Sidecar (Always triggered if Eshel) ---
+        if (tenant?.id === 2 && tenant?.crm_type === 'hubspot') {
+            const summary = analysis.summary || structuredData.summary || "Conversation completed.";
+            const duration = call?.duration || 0;
+            // We await here for the "No meeting scheduled" path, or just fire and forget for the booking path
+            const syncPromise = triggerHubSpotSidecar(tenant, 'vapi_call_ended', leadData, summary, undefined, {
+                vapi: { callId: call?.id, summary, duration }
+            });
 
-            // --- CRM SYNC: Vapi Call Ended Sidecar (No Booking) ---
-            if (tenant?.id === 2 && tenant?.crm_type === 'hubspot') {
-                const summary = analysis.summary || structuredData.summary || "Conversation completed.";
-                const duration = call?.duration || 0;
-                await triggerHubSpotSidecar(tenant, 'vapi_call_ended', leadData, summary, undefined, {
-                    vapi: { callId: call?.id, summary, duration }
-                });
+            if (!meetingScheduled) {
+                console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
+                await syncPromise; // Ensure it finishes before returning
+                return { statusCode: 200, body: JSON.stringify({ message: "No meeting scheduled" }) };
             }
-
+        } else if (!meetingScheduled) {
+            console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
             return { statusCode: 200, body: JSON.stringify({ message: "No meeting scheduled" }) };
         }
 
