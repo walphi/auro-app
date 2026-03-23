@@ -61,35 +61,51 @@ export const handler: Handler = async (event) => {
             timeZone: 'Asia/Dubai'
         });
 
-        // Build message exactly as requested
-        const finalProject = projectName || "Apartment";
+        // 1. Refactored: Tenant-aware branding & message
+        const brandName = tenant.id === 1 ? 'Provident Real Estate' : (tenant.name || 'Eshel Properties');
+        const projectLabel = projectName || (tenant.id === 1 ? 'Apartment' : 'our latest properties');
 
-        const message = `Your call about ${finalProject} with ${tenant.name || 'Provident'} has been scheduled.\n` +
+        let message = `Your call about ${projectLabel} with ${brandName} has been scheduled.\n` +
             `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n` +
-            `Join the meeting: ${meetingUrl || 'Link in calendar invite'}\n\n` +
-            `In the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+            `Join the meeting: ${meetingUrl || 'Link in calendar invite'}`;
 
-        const messagingServiceSid = (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+        if (tenant.id === 1) {
+            message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
+        } else if (tenant.id === 2) {
+            message += `\n\nIn the meantime, you can explore Eshel's property portfolio here: https://auroapp.com/eshel-properties`;
+        }
 
-        console.log(`[MEETING_CONFIRMATION] Debug Message Data:`, {
-            meetingUrl,
-            messageBody: message
-        });
+        // 2. Refactored: Resolve correct Twilio credentials by tenant
+        const accountSid = tenant.id === 2 
+            ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
+            : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
+        const authToken = tenant.id === 2 
+            ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
+            : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
+        const messagingServiceSid = tenant.id === 2 
+            ? undefined 
+            : (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+        const explicitFrom = tenant.id === 2 
+            ? process.env.ESHEL_T2_WHATSAPP_FROM 
+            : undefined;
 
         console.log(`[MEETING_CONFIRMATION] Twilio Call Config:`, {
-            messagingServiceSid,
+            accountSid: accountSid?.substring(0, 10) + '...',
+            messagingServiceSid: messagingServiceSid || 'DIRECT_FROM',
+            explicitFrom: explicitFrom || 'NOT_SET',
             to: leadPhone,
-            from: tenant.twilio_whatsapp_number || tenant.twilio_phone_number
+            brandName
         });
 
         // Use the same TwilioWhatsAppClient as the chat handler
         const twilioClient = new TwilioWhatsAppClient(
-            tenant.twilio_account_sid,
-            tenant.twilio_auth_token,
+            accountSid,
+            authToken,
             messagingServiceSid
         );
 
-        const result = await twilioClient.sendTextMessage(leadPhone, message);
+        // Pass the explicit 'from' number for Eshel/Tenant 2
+        const result = await twilioClient.sendTextMessage(leadPhone, message, explicitFrom);
 
         if (result.success) {
             console.log(`[MEETING_CONFIRMATION] ✅ Sent successfully. SID=${result.sid}`);
