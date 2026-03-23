@@ -163,12 +163,21 @@ async function sendSimpleWhatsAppConfirmation(
       return false;
     }
 
-    const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID } = process.env;
-    const client = new TwilioWhatsAppClient(
-      tenant.twilio_account_sid || TWILIO_ACCOUNT_SID,
-      tenant.twilio_auth_token || TWILIO_AUTH_TOKEN,
-      (TWILIO_MESSAGING_SERVICE_SID || '').trim()
-    );
+    // Refactored: Resolve correct Twilio credentials by tenant
+    const accountSid = tenant.id === 2 
+      ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
+      : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
+    const authToken = tenant.id === 2 
+      ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
+      : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
+    const messagingServiceSid = tenant.id === 2 
+      ? undefined 
+      : (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+    const explicitFrom = tenant.id === 2 
+      ? process.env.ESHEL_T2_WHATSAPP_FROM 
+      : undefined;
+
+    const client = new TwilioWhatsAppClient(accountSid, authToken, messagingServiceSid);
 
     const dateObj = new Date(meetingStartIso);
     const dateStr = dateObj.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'Asia/Dubai' });
@@ -188,16 +197,16 @@ async function sendSimpleWhatsAppConfirmation(
       message += `\n\nIn the meantime, you can explore Eshel's property portfolio here: https://auroapp.com/eshel-properties`;
     }
 
-    const messagingServiceSid = (TWILIO_MESSAGING_SERVICE_SID || '').trim();
-
-    console.log('[WhatsApp Helper] Sending confirmation via Messaging Service:', {
+    console.log('[WhatsApp Helper] Sending confirmation:', {
       to: phoneCleaned,
-      messagingServiceSid: messagingServiceSid || '(not configured)',
+      branding: brandName,
+      sender: explicitFrom ? `From: ${explicitFrom}` : `Messaging Service: ${messagingServiceSid}`,
       bodyLength: message.length,
       bodyPreview: message.substring(0, 120),
     });
 
-    const result = await client.sendTextMessage(phoneCleaned, message);
+    // Pass the explicit 'from' number for Eshel/Tenant 2
+    const result = await client.sendTextMessage(phoneCleaned, message, explicitFrom);
 
     if (result.success) {
       console.log(`[WhatsApp Helper] Sent successfully. SID=${result.sid}`);

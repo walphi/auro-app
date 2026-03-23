@@ -14,9 +14,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * Sends a WhatsApp notification to the lead about their scheduled call.
  */
 async function sendWhatsAppNotification(to: string, projectName: string, startTimeIso: string, tenant: Tenant) {
-    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
-    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
-    const from = resolveWhatsAppSender(tenant);
+    const accountSid = tenant.id === 2 
+        ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
+        : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
+    const authToken = tenant.id === 2 
+        ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
+        : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
+    const fromOverride = tenant.id === 2 ? process.env.ESHEL_T2_WHATSAPP_FROM : undefined;
+    const from = fromOverride || resolveWhatsAppSender(tenant);
 
     if (!accountSid || !authToken) {
         console.error('[MEETING_WHATSAPP] Missing Twilio credentials');

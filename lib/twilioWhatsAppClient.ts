@@ -41,7 +41,7 @@ export class TwilioWhatsAppClient {
         this.messagingServiceSid = messagingServiceSid || process.env.TWILIO_MESSAGING_SERVICE_SID;
     }
 
-    async sendTextMessage(to: string, body: string): Promise<TwilioSendResult> {
+    async sendTextMessage(to: string, body: string, from?: string): Promise<TwilioSendResult> {
         try {
             if (!this.accountSid || !this.authToken) {
                 throw new Error("Missing Twilio credentials.");
@@ -56,16 +56,19 @@ export class TwilioWhatsAppClient {
             params.append('To', formattedTo);
             params.append('Body', body);
 
-            // Use Messaging Service SID (Twilio will pick WhatsApp sender from service pool)
-            if (this.messagingServiceSid) {
+            // Use direct From number if provided, otherwise Messaging Service SID
+            if (from) {
+                const formattedFrom = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
+                params.append('From', formattedFrom);
+            } else if (this.messagingServiceSid) {
                 params.append('MessagingServiceSid', this.messagingServiceSid);
             } else {
-                throw new Error('Missing TWILIO_MESSAGING_SERVICE_SID – WhatsApp requires a Messaging Service');
+                throw new Error('Missing TWILIO_MESSAGING_SERVICE_SID or From number – WhatsApp requires a sender');
             }
 
             console.log('[Twilio] sendTextMessage payload:', {
                 to: formattedTo,
-                messagingServiceSid: this.messagingServiceSid,
+                sender: from ? `From: ${from}` : `MessagingService: ${this.messagingServiceSid}`,
                 bodyLength: body.length,
                 bodyPreview: body.substring(0, 120)
             });
