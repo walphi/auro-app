@@ -72,7 +72,7 @@ export const handler: Handler = async (event) => {
         if (tenant.id === 1) {
             message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
         } else if (tenant.id === 2) {
-            message += `\n\nIn the meantime, you can explore Eshel's property portfolio here: https://auroapp.com/eshel-properties`;
+            message += `\n\nIn the meantime, you can explore Eshel's 2026 UAE Off-Plan Playbook here: https://147683870.fs1.hubspotusercontent-eu1.net/hubfs/147683870/THE_2026_UAE_OFF-PLAN_PLAYBOOK_FINAL_%20(2).pdf`;
         }
 
         // 2. Refactored: Resolve correct Twilio credentials by tenant
