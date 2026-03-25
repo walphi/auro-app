@@ -630,6 +630,7 @@ export const handler: Handler = async (event) => {
                 .from('leads')
                 .select('*')
                 .eq('phone', fromNumber)
+                .eq('tenant_id', tenant.id)
                 .single();
             existingLead = lead;
 
