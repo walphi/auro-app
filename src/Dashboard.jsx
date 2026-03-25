@@ -26,6 +26,7 @@ import {
     Clock,
     ChevronLeft,
     ChevronRight as ChevronRightIcon,
+    ChevronDown,
     FileText,
     ListTodo,
     Video,
@@ -76,8 +77,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 // Sidebar Component
-const Sidebar = ({ activeView, setActiveView }) => {
+const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenantChange }) => {
     const { user } = useUser();
+    const [isTenantMenuOpen, setIsTenantMenuOpen] = useState(false);
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
@@ -91,14 +93,60 @@ const Sidebar = ({ activeView, setActiveView }) => {
 
     return (
         <div className="w-64 flex-shrink-0 bg-[#030305] border-r border-white/5 flex flex-col h-dvh relative z-20">
-            {/* Logo */}
-            <div className="h-20 flex items-center px-6">
-                <div className="flex items-center gap-2 group">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-lg shadow-white/10 transition-all">
-                        <Aperture size={20} className="text-black" />
+            {/* Logo & Tenant Switcher */}
+            <div className="pt-8 pb-4 px-6">
+                <div className="flex items-center gap-3 mb-6 relative group">
+                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-white/10 group-hover:scale-105 transition-all duration-500 overflow-hidden relative">
+                        <Aperture size={24} className="text-black relative z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">AURO</span>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold text-white tracking-widest leading-none">AURO</span>
+                        <span className="text-[10px] text-indigo-400 font-bold tracking-[0.2em] mt-1 opacity-80 uppercase">Cognitive CRM</span>
+                    </div>
                 </div>
+
+                {/* Tenant Switcher Tool */}
+                {allTenants?.length > 1 && (
+                    <div className="relative mt-2">
+                        <button
+                            onClick={() => setIsTenantMenuOpen(!isTenantMenuOpen)}
+                            className="w-full flex items-center justify-between px-4 py-3 bg-white/5 border border-white/5 hover:border-indigo-500/30 rounded-xl transition-all group overflow-hidden"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
+                                <span className="text-xs font-bold text-slate-200 truncate pr-2">{currentTenant?.name || 'Loading...'}</span>
+                            </div>
+                            <ChevronDown size={14} className={cn("text-slate-500 group-hover:text-indigo-400 transition-all", isTenantMenuOpen && "rotate-180")} />
+                        </button>
+
+                        {isTenantMenuOpen && (
+                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-[#0a0c10] border border-white/10 rounded-2xl shadow-2xl z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 overflow-hidden">
+                                <div className="px-3 pb-2 mb-2 border-b border-white/5">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Switch Workspace</span>
+                                </div>
+                                {allTenants.map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => {
+                                            onTenantChange(t);
+                                            setIsTenantMenuOpen(false);
+                                        }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-xs font-semibold transition-all flex items-center justify-between group/item",
+                                            currentTenant?.id === t.id ? "text-indigo-400 bg-indigo-500/5" : "text-slate-400 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        <span className="truncate">{t.name}</span>
+                                        {currentTenant?.id === t.id && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Navigation */}
@@ -860,6 +908,7 @@ function CRMApp() {
     const [filter, setFilter] = useState('All');
     const [currentTenant, setCurrentTenant] = useState(null);
     const [isLoadingTenant, setIsLoadingTenant] = useState(true);
+    const [allTenants, setAllTenants] = useState([]);
 
     const selectedLead = leads.find(l => l.id === selectedLeadId);
 
@@ -910,6 +959,16 @@ function CRMApp() {
                             rag_client_id: 'demo'
                         });
                     }
+                }
+
+                // Fetch all tenants for superadmins / onboarding ease
+                const { data: tenantsData } = await supabase
+                    .from('tenants')
+                    .select('*')
+                    .order('name', { ascending: true });
+
+                if (tenantsData) {
+                    setAllTenants(tenantsData);
                 }
             } catch (err) {
                 console.error('[Dashboard] Tenant resolution error:', err);
@@ -1137,7 +1196,13 @@ function CRMApp() {
                     </button>
                 </div>
             )}
-            <Sidebar activeView={activeView} setActiveView={setActiveView} />
+            <Sidebar
+                activeView={activeView}
+                setActiveView={setActiveView}
+                currentTenant={currentTenant}
+                allTenants={allTenants}
+                onTenantChange={setCurrentTenant}
+            />
             {renderView()}
         </div>
     );
