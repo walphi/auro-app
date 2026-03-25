@@ -804,6 +804,8 @@ TONE & STYLE:
     * "Would you like a call now, or schedule a time for later?"
     * "I'd be happy to assist you with that."
 - **Mirroring**: Mirror the user's level of formality and brevity while maintaining professional authority.
+- **FINAL OUTPUT ONLY**: Your response must be an actual message to the user. NEVER include internal notes, bracketed placeholders like "[Project Name]", or descriptions of what tools you need to call. 
+- **NO SCAFFOLDING**: NEVER say "Requires RAG_QUERY_TOOL" or "Searching listings...". Just provide the answer or a professional follow-up.
 
 ${leadContext}
 
@@ -855,6 +857,8 @@ CORE RULES:
 3. **VISUALS**: For listings, use SEARCH_LISTINGS. For projects, describe them vividly using RAG data.
 4. **CALL INTENT**: Use INITIATE_CALL immediately if they ask for it.
 5. **WHATSAPP CONSTRAINTS**: Max 2 tool calls per turn to keep latency low.
+6. **STRICT: NO PLACEHOLDERS**: NEVER output bracketed text like "[Project Name]" or notes about required tool calls. If a tool fails or returns no data, inform the user you are looking into it or provide a related alternative from the knowledge base.
+7. **STRICT: NO INTERNAL META**: NEVER mention tool names (e.g., RAG_QUERY_TOOL, SEARCH_LISTINGS) or internal requirements to the user. Only output the final, professional response. If you don't have a piece of info, tell the user politely rather than using a placeholder.
 `;
 
         const tools = [
