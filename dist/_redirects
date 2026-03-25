@@ -1,2 +1,6 @@
+
+/property-image/:id/:index /.netlify/functions/image-proxy?listingId=:id&index=:index 200!
+/vapi-llm/* /.netlify/functions/vapi-llm 200!
+/api/* /.netlify/functions/:splat 200
 /sites/* /sites/index.html 200
 /* /index.html 200
