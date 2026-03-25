@@ -268,6 +268,7 @@ const handler: Handler = async (event) => {
         // Fallback for name and email from Vapi variables if missing in DB
         const nameFromVars = call?.assistantOverrides?.variableValues?.name;
         const emailFromVars = call?.assistantOverrides?.variableValues?.email;
+        const whatsappSummaryFromVars = call?.assistantOverrides?.variableValues?.whatsapp_summary || '';
 
         if (leadData) {
             if (!leadData.name && nameFromVars) leadData.name = nameFromVars;
@@ -297,6 +298,9 @@ CURRENT LEAD PROFILE:
 - Most recent property interest: ${propertyContext}
 - Project context: ${leadData?.project_id || "None"}
 - Booking: ${leadData?.viewing_datetime || "None"}
+
+${whatsappSummaryFromVars && whatsappSummaryFromVars !== 'No prior WhatsApp conversation.' ? `PRIOR WHATSAPP CONVERSATION (read before speaking — do NOT ask questions already answered here):
+${whatsappSummaryFromVars}` : ''}
 ` : "NEW LEAD - No context.";
 
         let dubaiTime = "";

@@ -440,6 +440,8 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
                     property_type: context?.property_type || "",
                     financing: context?.financing || "",
                     email: context?.email || "",
+                    // WhatsApp conversation context for voice agent continuity
+                    whatsapp_summary: context?.whatsapp_summary || "No prior WhatsApp conversation.",
                     // Dynamic time variables for Vapi template injection
                     current_date: dubaiNow,
                     current_day: dayName,
@@ -537,7 +539,7 @@ export const handler: Handler = async (event) => {
 
         // --- TENANT RESOLUTION ---
         let tenant: Tenant | null = null;
-        
+
         // Priority 1: Header-based override (for parallel entrypoints like eshel-whatsapp)
         const forcedTenantKey = (event.headers["x-aurora-tenant"] || event.headers["X-Aurora-Tenant"]) as string | undefined;
         if (forcedTenantKey) {
@@ -636,8 +638,6 @@ export const handler: Handler = async (event) => {
 
             if (existingLead) {
                 leadId = existingLead.id;
-
-                // --- NEW: LEAD-LEVEL INTENT DETECTION (ESCALATION) ---
                 const { data: messages } = await supabase
                     .from('messages')
                     .select('*')
@@ -669,10 +669,21 @@ export const handler: Handler = async (event) => {
 
                 if (shouldEscalate) {
                     console.log(`[IntentDetection] Escalating to Vapi call: positive call-confirmation detected.`);
+
+                    // Build a WhatsApp conversation summary to give the voice agent full context
+                    const recentForVapi = recentMessages.slice(0, 10).reverse();
+                    const whatsapp_summary = recentForVapi.length > 0
+                        ? recentForVapi
+                            .filter(m => m.content && m.type !== 'Voice_Transcript')
+                            .map(m => `${m.sender === 'Lead' ? 'Lead' : 'Auro'}: ${(m.content || '').substring(0, 120)}`)
+                            .join('\n')
+                        : 'No prior WhatsApp conversation.';
+
                     const context = {
                         ...existingLead,
                         lead_id: leadId,
-                        name: existingLead.name || "Client"
+                        name: existingLead.name || "Client",
+                        whatsapp_summary
                     };
 
                     const callStarted = await initiateVapiCall(fromNumber, tenant, context);
@@ -907,7 +918,7 @@ CORE RULES:
                     },
                     {
                         name: "INITIATE_CALL",
-                        description: "Initiate an outbound voice call to the user immediately. Use this when the user asks to be called.",
+                        description: "Initiate an outbound voice call to the user immediately. ONLY use this when the user EXPLICITLY asks to be called (e.g. 'call me', 'give me a call', 'can someone call me'). NEVER use this tool in response to a simple greeting like 'hi', 'hello', or any first message. For greetings, respond with a friendly question about their goals instead.",
                         parameters: {
                             type: "OBJECT",
                             properties: {
@@ -1155,13 +1166,21 @@ CORE RULES:
                                 toolResult = "No lead ID found.";
                             }
                         } else if (name === 'INITIATE_CALL') {
-                            let context = null;
-                            if (leadId) {
-                                const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
-                                context = { ...data, lead_id: leadId };
+                            // Guard: Don't fire on the very first message or unless the user explicitly asked for a call
+                            const isFirstMessage = chatHistory.length === 0;
+                            const userExplicitlyWantsCall = isExplicitCallRequest(userMessage) || isAffirmative(userMessage);
+                            if (isFirstMessage && !userExplicitlyWantsCall) {
+                                console.log('[INITIATE_CALL] Blocked: First message and no explicit call request. Returning greeting prompt.');
+                                toolResult = "SYSTEM: Do not initiate a call. This is the user's first message. Reply with a warm greeting and ask about their investment goals instead.";
+                            } else {
+                                let context = null;
+                                if (leadId) {
+                                    const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
+                                    context = { ...data, lead_id: leadId };
+                                }
+                                const callStarted = await initiateVapiCall(fromNumber, tenant, context);
+                                toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";
                             }
-                            const callStarted = await initiateVapiCall(fromNumber, tenant, context);
-                            toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";
                         } else if (name === 'SEARCH_LISTINGS') {
                             const filters: SearchFilters = {
                                 property_type: (args as any).property_type,

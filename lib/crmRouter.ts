@@ -48,14 +48,17 @@ export async function syncLeadNote(
     payload: CrmNotePayload
 ): Promise<{ contactId: string; created: boolean }> {
     if (crmType === 'hubspot') {
-        const nameParts = payload.name.trim().split(' ');
-        const firstname = nameParts[0] || '';
+        // Guard: never overwrite a real HubSpot name with a placeholder like "WhatsApp Lead +971..."
+        const isPlaceholderName = !payload.name || /^whatsapp lead/i.test(payload.name.trim());
+        const nameParts = isPlaceholderName ? [] : payload.name.trim().split(' ');
+        const firstname = nameParts[0] || undefined;
         const lastname = nameParts.slice(1).join(' ') || undefined;
 
         const contactProps: HubSpotContactProps = {
             phone: payload.phone,
-            firstname,
-            lastname,
+            // Only include name fields if we have a real name — prevents overwriting existing HubSpot names
+            ...(firstname && { firstname }),
+            ...(lastname && { lastname }),
             email: payload.email,
             // Qualification data mapped to HubSpot contact properties
             ...(payload.qualificationData?.status && { hs_lead_status: payload.qualificationData.status }),
