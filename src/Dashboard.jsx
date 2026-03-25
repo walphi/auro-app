@@ -363,8 +363,13 @@ const CalendarView = ({ currentTenant }) => {
         { id: 3, title: 'Contract Signing', time: '11:00 AM', type: 'meeting', day: 18 },
     ];
 
-    // If Eshel Properties (Tenant 2), show their Google Calendar
-    if (currentTenant?.id === 2) {
+    // Render Google Calendar for supported tenants (State-aware integration)
+    const calendarMap = {
+        1: 'c_127da107820e1c9b01e31abba33f79a23b3471a8a364e1c09d1e0f5832c207b3%40group.calendar.google.com',
+        2: 'c_052083b76b1f81bc97ceca6aa6e382ceee80e98d90fb38435e20ab8eb12fef9a%40group.calendar.google.com'
+    };
+
+    if (currentTenant?.id && calendarMap[currentTenant.id]) {
         return (
             <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
                 <div className="flex items-center justify-between mb-8">
@@ -373,10 +378,10 @@ const CalendarView = ({ currentTenant }) => {
                             <CalendarIcon size={24} className="text-indigo-400" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Booking Calendar</h1>
-                            <p className="text-slate-400 text-sm flex items-center gap-2">
+                            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">System Calendar</h1>
+                            <p className="text-slate-400 text-sm flex items-center gap-2 uppercase tracking-[0.1em] font-bold opacity-80">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                Synchronized with {currentTenant.name} Google Calendar
+                                {currentTenant.name} Sync Active
                             </p>
                         </div>
                     </div>
@@ -388,7 +393,7 @@ const CalendarView = ({ currentTenant }) => {
                     {/* Google Calendar Iframe */}
                     <div className="w-full h-full relative z-10 bg-[#f8f9fa]/[0.02] backdrop-blur-3xl p-1">
                         <iframe 
-                            src="https://calendar.google.com/calendar/embed?src=c_052083b76b1f81bc97ceca6aa6e382ceee80e98d90fb38435e20ab8eb12fef9a%40group.calendar.google.com&ctz=Asia%2FDubai&mode=WEEK&showTabs=1&showPrint=0&showCalendars=0&showTz=0" 
+                            src={`https://calendar.google.com/calendar/embed?src=${calendarMap[currentTenant.id]}&ctz=Asia%2FDubai&mode=WEEK&showTabs=1&showPrint=0&showCalendars=0&showTz=0`} 
                             style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg) brightness(0.8) contrast(1.2)' }} 
                             width="100%" 
                             height="100%" 
