@@ -427,7 +427,8 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
             customer: {
                 number: phoneNumber,
                 name: context?.name || "",
-                email: context?.email || ""
+                // VAPI 400 fix: Only include email if it is a non-empty string
+                ...(context?.email && context.email.includes('@') ? { email: context.email } : {})
             },
             assistantOverrides: {
                 variableValues: {
@@ -715,19 +716,47 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
                 leadSource = existingLead.custom_field_1 || leadSource;
             } else {
                 console.log("Creating new lead for", fromNumber, "under tenant", tenant.id);
+                
+                // --- WARM ISOLATION: Try to find name/email from other tenants to avoid placeholders ---
+                let initialName = `WhatsApp Lead ${fromNumber}`;
+                let initialEmail = null;
+                
+                try {
+                    const { data: globalLead } = await supabase
+                        .from('leads')
+                        .select('name, email')
+                        .eq('phone', fromNumber)
+                        .not('name', 'ilike', 'WhatsApp Lead %')
+                        .order('last_interaction', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                        
+                    if (globalLead) {
+                        console.log(`[WarmIsolation] Found existing identity for ${fromNumber}: ${globalLead.name}`);
+                        initialName = globalLead.name;
+                        initialEmail = globalLead.email;
+                    }
+                } catch (warmError) {
+                    console.error("[WarmIsolation] Global lookup failed:", warmError);
+                }
+
                 const { data: newLead, error: createError } = await supabase
                     .from('leads')
                     .insert({
                         phone: fromNumber,
-                        name: `WhatsApp Lead ${fromNumber}`,
+                        name: initialName,
+                        email: initialEmail,
                         status: 'New',
                         custom_field_1: 'Source: WhatsApp',
                         tenant_id: tenant.id
                     })
-                    .select('id')
+                    .select('*')
                     .single();
 
-                if (newLead) leadId = newLead.id;
+                if (newLead) {
+                    leadId = newLead.id;
+                    existingLead = newLead; // Set this so sidecar gets the 'Warm' data
+                }
                 if (createError) console.error("Error creating lead:", createError);
             }
         } else {
