@@ -350,7 +350,7 @@ const Dashboard = ({ leads }) => {
 };
 
 // Calendar View Component
-const CalendarView = () => {
+const CalendarView = ({ currentTenant }) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentDate = new Date();
     const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
@@ -362,6 +362,48 @@ const CalendarView = () => {
         { id: 2, title: 'Call with Sarah Wilson', time: '02:30 PM', type: 'call', day: 15 },
         { id: 3, title: 'Contract Signing', time: '11:00 AM', type: 'meeting', day: 18 },
     ];
+
+    // If Eshel Properties (Tenant 2), show their Google Calendar
+    if (currentTenant?.id === 2) {
+        return (
+            <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-xl shadow-indigo-500/5">
+                            <CalendarIcon size={24} className="text-indigo-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Booking Calendar</h1>
+                            <p className="text-slate-400 text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Synchronized with {currentTenant.name} Google Calendar
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex-1 glass-panel rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.02] to-transparent pointer-events-none" />
+                    
+                    {/* Google Calendar Iframe */}
+                    <div className="w-full h-full relative z-10 bg-[#f8f9fa]/[0.02] backdrop-blur-3xl p-1">
+                        <iframe 
+                            src="https://calendar.google.com/calendar/embed?src=c_052083b76b1f81bc97ceca6aa6e382ceee80e98d90fb38435e20ab8eb12fef9a%40group.calendar.google.com&ctz=Asia%2FDubai&mode=WEEK&showTabs=1&showPrint=0&showCalendars=0&showTz=0" 
+                            style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg) brightness(0.8) contrast(1.2)' }} 
+                            width="100%" 
+                            height="100%" 
+                            frameBorder="0" 
+                            scrolling="no"
+                            className="rounded-[2.2rem]"
+                        />
+                    </div>
+                    
+                    {/* Corner Decoration */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
@@ -1149,7 +1191,7 @@ function CRMApp() {
             case 'dashboard':
                 return <Dashboard leads={leads} />;
             case 'calendar':
-                return <CalendarView />;
+                return <CalendarView currentTenant={currentTenant} />;
             case 'agent-folders':
                 return <AgentFolders currentTenant={currentTenant} />;
             case 'tenant-admin':
