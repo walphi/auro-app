@@ -2,66 +2,61 @@ import { Handler } from '@netlify/functions';
 import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 
+/**
+ * netlify/functions/hubspot-oauth-callback.ts
+ *
+ * Minimal, non-timing-out OAuth callback for HubSpot.
+ * Handles code exchange, token persistence, and redirects.
+ */
 
-const HS_TOKEN_URL = 'https://api.hubapi.com/oauth/v1/token';
+const HS_TOKEN_URL = 'https://api.hubapi.com/oauth/v3/token';
+const BASE_URL = process.env.URL || 'https://auroapp.com';
 
 export const handler: Handler = async (event) => {
     console.log('[HubSpotOAuth] Callback received');
 
-    if (event.httpMethod !== 'GET') {
-        return { statusCode: 405, body: JSON.stringify({ error: 'method_not_allowed' }) };
-    }
-
     const { code, state } = event.queryStringParameters || {};
 
-    // --- Validate required params ---
+    const errorRedirect = (reason: string) => ({
+        statusCode: 302,
+        headers: { Location: `${BASE_URL}/eshel/hubspot-error?error=${encodeURIComponent(reason)}` },
+        body: '',
+    });
+
     if (!code || !state) {
-        console.error('[HubSpotOAuth] Missing code or state query param');
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: 'missing_params', detail: 'code and state are required' }),
-        };
+        console.error('[HubSpotOAuth] Missing code or state');
+        return errorRedirect('missing_params');
     }
 
     const tenantId = parseInt(state, 10);
-    if (isNaN(tenantId) || tenantId < 1) {
-        console.error(`[HubSpotOAuth] Invalid state value: ${state}`);
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: 'invalid_state', detail: 'state must be a valid tenant ID' }),
-        };
+    if (isNaN(tenantId)) {
+        console.error(`[HubSpotOAuth] Invalid state: ${state}`);
+        return errorRedirect('invalid_tenant');
     }
 
-    // --- Validate env vars ---
     const clientId = process.env.HUBSPOT_CLIENT_ID;
     const clientSecret = process.env.HUBSPOT_CLIENT_SECRET;
     const redirectUri = process.env.HUBSPOT_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
-        console.error('[HubSpotOAuth] Missing HUBSPOT_CLIENT_ID / HUBSPOT_CLIENT_SECRET / HUBSPOT_REDIRECT_URI env vars');
-        return { statusCode: 500, body: JSON.stringify({ error: 'server_misconfiguration' }) };
+        console.error('[HubSpotOAuth] Missing env vars');
+        return errorRedirect('server_config_error');
     }
 
-    // --- Validate that the tenant exists in Supabase ---
-    const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .select('id, short_name, hubspot_label')
-        .eq('id', tenantId)
-        .single();
-
-    if (tenantError || !tenant) {
-        console.error(`[HubSpotOAuth] Tenant ${tenantId} not found:`, tenantError?.message);
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: 'unknown_tenant', detail: `No tenant found with id=${tenantId}` }),
-        };
-    }
-
-    console.log(`[tenant=${tenantId}|${tenant.short_name}][HubSpotOAuth] Exchanging code for tokens...`);
-
-    // --- Exchange code for tokens ---
-    let tokenData: any;
     try {
+        // 1. Verify tenant exists
+        const { data: tenant, error: tenantErr } = await supabase
+            .from('tenants')
+            .select('id, short_name, hubspot_label')
+            .eq('id', tenantId)
+            .single();
+
+        if (tenantErr || !tenant) {
+            console.error(`[HubSpotOAuth] Tenant ${tenantId} not found`);
+            return errorRedirect('tenant_not_found');
+        }
+
+        // 2. Exchange code for tokens
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: clientId,
@@ -74,30 +69,14 @@ export const handler: Handler = async (event) => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         });
 
-        tokenData = resp.data;
-    } catch (err: any) {
-        const detail = err.response?.data;
-        console.error(`[tenant=${tenantId}][HubSpotOAuth] Token exchange failed:`, detail || err.message);
-        return {
-            statusCode: 502,
-            body: JSON.stringify({
-                error: 'hubspot_token_error',
-                detail: detail?.message || err.message,
-            }),
-        };
-    }
+        const { access_token, refresh_token, expires_in, hub_id, scopes } = resp.data;
+        const expires_at = new Date(Date.now() + (expires_in || 1800) * 1000).toISOString();
+        const hubspot_label = tenant.hubspot_label || tenant.short_name.toLowerCase().replace(/\s+/g, '_');
 
-    const { access_token, refresh_token, expires_in, hub_id, scopes } = tokenData;
-    const expires_at = new Date(Date.now() + (expires_in || 1800) * 1000).toISOString();
-    const hubspot_label = tenant.hubspot_label || tenant.short_name.toLowerCase().replace(/\s+/g, '_');
-
-    console.log(`[tenant=${tenantId}|${hubspot_label}][HubSpotOAuth] Tokens received. Portal ID: ${hub_id}. Expires: ${expires_at}`);
-
-    // --- Upsert tokens into hubspot_tokens ---
-    const { error: upsertError } = await supabase
-        .from('hubspot_tokens')
-        .upsert(
-            {
+        // 3. Upsert tokens
+        const { error: upsertErr } = await supabase
+            .from('hubspot_tokens')
+            .upsert({
                 tenant_id: tenantId,
                 hubspot_portal_id: hub_id,
                 hubspot_portal_name: `${tenant.short_name} HubSpot`,
@@ -107,41 +86,27 @@ export const handler: Handler = async (event) => {
                 scopes: Array.isArray(scopes) ? scopes.join(' ') : (scopes || ''),
                 expires_at,
                 updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'tenant_id' }
-        );
+            }, { onConflict: 'tenant_id' });
 
-    if (upsertError) {
-        console.error(`[tenant=${tenantId}][HubSpotOAuth] Supabase upsert failed:`, upsertError.message);
+        if (upsertErr) throw upsertErr;
+
+        // 4. Ensure tenant crm_type is set
+        await supabase
+            .from('tenants')
+            .update({ crm_type: 'hubspot', hubspot_label })
+            .eq('id', tenantId);
+
+        console.log(`[tenant=${tenantId}][HubSpotOAuth] Success for Portal ${hub_id}`);
+
         return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'database_error', detail: upsertError.message }),
+            statusCode: 302,
+            headers: { Location: `${BASE_URL}/eshel/hubspot-connected` },
+            body: '',
         };
+    } catch (err: any) {
+        const detail = err.response?.data?.message || err.message;
+        console.error(`[tenant=${tenantId}][HubSpotOAuth] Failed:`, detail);
+        return errorRedirect(detail);
     }
-
-    // --- Ensure tenants row has crm_type and hubspot_label set ---
-    const { error: tenantUpdateError } = await supabase
-        .from('tenants')
-        .update({ crm_type: 'hubspot', hubspot_label })
-        .eq('id', tenantId);
-
-    if (tenantUpdateError) {
-        // Non-fatal — token is saved. Log and continue.
-        console.warn(`[tenant=${tenantId}][HubSpotOAuth] Could not update tenant crm_type:`, tenantUpdateError.message);
-    }
-
-    console.log(`[tenant=${tenantId}|${hubspot_label}][HubSpotOAuth] Install complete. Portal ${hub_id} connected.`);
-
-    return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            status: 'installed',
-            tenant_id: tenantId,
-            hubspot_portal_id: hub_id,
-            hubspot_label,
-            expires_at,
-            message: `HubSpot portal ${hub_id} successfully connected to Auro tenant ${tenantId} (${tenant.short_name}).`,
-        }),
-    };
 };
+

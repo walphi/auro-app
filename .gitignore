@@ -7,3 +7,4 @@
 # Ignore Netlify/Node artifacts
 /node_modules
 .netlify
+auro-hubspot-app/

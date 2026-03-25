@@ -1,19 +1,19 @@
 import axios from 'axios';
 import { supabase } from './supabase';
+import { getHubSpotAccessTokenForTenant } from './hubspotAuth';
 
 /**
  * HubSpot CRM v3 Client — Auro
  *
  * Handles contacts and notes (engagements) for HubSpot-integrated tenants.
  * Does NOT manage deals or pipelines (out of scope for v1).
- * Token refresh is transparent: every exported function calls getAccessToken()
+ * Token refresh is transparent: every exported function calls getHubSpotAccessTokenForTenant()
  * which silently refreshes when expiry is within 5 minutes.
  *
  * Logging convention: [tenant=<id>|<label>][HubSpotClient] ...
  */
 
 const HS_API = 'https://api.hubapi.com';
-const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000; // 5-minute buffer before expiry
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,89 +31,6 @@ export interface HubSpotContactProps {
     [key: string]: string | undefined;
 }
 
-interface HubSpotTokenRow {
-    tenant_id: number;
-    hubspot_portal_id: number;
-    hubspot_label: string;
-    access_token: string;
-    refresh_token: string;
-    expires_at: string;
-    scopes: string | null;
-}
-
-// ---------------------------------------------------------------------------
-// Token management
-// ---------------------------------------------------------------------------
-
-/**
- * Returns a valid access token for the given tenant.
- * Silently refreshes if the token is within 5 minutes of expiry.
- */
-export async function getAccessToken(tenantId: number): Promise<string> {
-    const { data, error } = await supabase
-        .from('hubspot_tokens')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .single();
-
-    if (error || !data) {
-        throw new Error(
-            `[HubSpotClient] No HubSpot token found for tenant ${tenantId}. ` +
-            `Complete the OAuth install flow first.`
-        );
-    }
-
-    const row = data as HubSpotTokenRow;
-    const expiresAt = new Date(row.expires_at).getTime();
-    const now = Date.now();
-
-    if (expiresAt - now > TOKEN_REFRESH_BUFFER_MS) {
-        return row.access_token;
-    }
-
-    // Token expired or about to expire — refresh
-    console.log(`[tenant=${tenantId}|${row.hubspot_label}][HubSpotClient] Access token expiring soon. Refreshing...`);
-    return refreshAccessToken(tenantId, row.refresh_token, row.hubspot_label);
-}
-
-async function refreshAccessToken(
-    tenantId: number,
-    refreshToken: string,
-    label: string
-): Promise<string> {
-    const params = new URLSearchParams({
-        grant_type: 'refresh_token',
-        client_id: process.env.HUBSPOT_CLIENT_ID || '',
-        client_secret: process.env.HUBSPOT_CLIENT_SECRET || '',
-        refresh_token: refreshToken,
-    });
-
-    try {
-        const resp = await axios.post(`${HS_API}/oauth/v1/token`, params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        });
-
-        const { access_token, refresh_token: new_refresh, expires_in } = resp.data;
-        const expires_at = new Date(Date.now() + expires_in * 1000).toISOString();
-
-        const { error } = await supabase
-            .from('hubspot_tokens')
-            .update({ access_token, refresh_token: new_refresh, expires_at, updated_at: new Date().toISOString() })
-            .eq('tenant_id', tenantId);
-
-        if (error) {
-            console.error(`[tenant=${tenantId}|${label}][HubSpotClient] Failed to persist refreshed token:`, error.message);
-        } else {
-            console.log(`[tenant=${tenantId}|${label}][HubSpotClient] Token refreshed. Expires at ${expires_at}`);
-        }
-
-        return access_token;
-    } catch (err: any) {
-        const detail = err.response?.data;
-        console.error(`[tenant=${tenantId}|${label}][HubSpotClient] Token refresh failed:`, detail || err.message);
-        throw new Error(`HubSpot token refresh failed for tenant ${tenantId}: ${detail?.message || err.message}`);
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Contact search
@@ -124,7 +41,7 @@ async function refreshAccessToken(
  * Returns the HubSpot contact ID string, or null if not found.
  */
 export async function findContactByPhone(tenantId: number, phone: string): Promise<string | null> {
-    const token = await getAccessToken(tenantId);
+    const token = await getHubSpotAccessTokenForTenant(tenantId);
 
     try {
         const resp = await axios.post(
@@ -152,7 +69,7 @@ export async function findContactByPhone(tenantId: number, phone: string): Promi
  * Returns the HubSpot contact ID string, or null if not found.
  */
 export async function findContactByEmail(tenantId: number, email: string): Promise<string | null> {
-    const token = await getAccessToken(tenantId);
+    const token = await getHubSpotAccessTokenForTenant(tenantId);
 
     try {
         const resp = await axios.post(
@@ -183,7 +100,7 @@ export async function findContactByEmail(tenantId: number, email: string): Promi
  * Create a new HubSpot contact. Returns the new contact's ID.
  */
 export async function createContact(tenantId: number, props: HubSpotContactProps): Promise<string> {
-    const token = await getAccessToken(tenantId);
+    const token = await getHubSpotAccessTokenForTenant(tenantId);
 
     // Strip undefined values before sending
     const properties = Object.fromEntries(
@@ -208,7 +125,7 @@ export async function updateContact(
     contactId: string,
     props: Partial<HubSpotContactProps>
 ): Promise<void> {
-    const token = await getAccessToken(tenantId);
+    const token = await getHubSpotAccessTokenForTenant(tenantId);
 
     const properties = Object.fromEntries(
         Object.entries(props).filter(([, v]) => v !== undefined && v !== '')
@@ -272,7 +189,7 @@ export async function addContactNote(
     noteBody: string,
     hsTimestamp?: string
 ): Promise<void> {
-    const token = await getAccessToken(tenantId);
+    const token = await getHubSpotAccessTokenForTenant(tenantId);
 
     // HubSpot Notes API: create the note object
     const noteResp = await axios.post(

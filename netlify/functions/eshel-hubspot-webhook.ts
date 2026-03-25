@@ -4,6 +4,7 @@ import axios from 'axios';
 import { supabase } from '../../lib/supabase';
 import { triggerEshelLeadEngagement } from '../../lib/eshelWhatsApp';
 import { normalizePhone } from '../../lib/phoneUtils';
+import { getHubSpotAccessTokenForTenant } from '../../lib/hubspotAuth';
 
 /**
  * netlify/functions/eshel-hubspot-webhook.ts
@@ -120,16 +121,13 @@ export const handler: Handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: 'tenant_load_failed' }) };
     }
 
-    // --- Load HubSpot access token for API calls ---
-    const { data: tokenRow, error: tokenErr } = await supabase
-        .from('hubspot_tokens')
-        .select('access_token')
-        .eq('tenant_id', ESHEL_TENANT_ID)
-        .single();
-
-    if (tokenErr || !tokenRow) {
-        console.error(`${LOG_PREFIX} No HubSpot token for tenant 2. Complete OAuth install first.`);
-        return { statusCode: 500, body: JSON.stringify({ error: 'no_hubspot_token' }) };
+    // --- Get HubSpot access token using helper (handles refresh) ---
+    let accessToken: string;
+    try {
+        accessToken = await getHubSpotAccessTokenForTenant(ESHEL_TENANT_ID);
+    } catch (err: any) {
+        console.error(`${LOG_PREFIX} HubSpot auth failed:`, err.message);
+        return { statusCode: 500, body: JSON.stringify({ error: 'hubspot_auth_failed', detail: err.message }) };
     }
 
     // --- Process each contact.creation event ---
@@ -150,7 +148,7 @@ export const handler: Handler = async (event) => {
                 `${HS_API}/crm/v3/objects/contacts/${objectId}`,
                 {
                     params: { properties: 'phone,email,firstname,lastname' },
-                    headers: { Authorization: `Bearer ${tokenRow.access_token}` },
+                    headers: { Authorization: `Bearer ${accessToken}` },
                 }
             );
             contact = resp.data.properties;
