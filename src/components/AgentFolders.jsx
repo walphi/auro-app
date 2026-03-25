@@ -121,13 +121,18 @@ const AgentFolders = ({ currentTenant }) => {
         try {
             const { data, error } = await supabase
                 .from('projects')
-                .insert({ name, status: 'Active' })
+                .insert({ 
+                    name, 
+                    status: 'Active',
+                    tenant_id: currentTenant?.id || 1
+                })
                 .select()
                 .single();
 
             if (error) throw error;
 
             setFolders([...folders, data]);
+            setAllProjects([...allProjects, data]);
             setActiveFolder(data);
             setIsFolderDropdownOpen(false);
         } catch (err) {
