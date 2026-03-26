@@ -341,22 +341,30 @@ const handler: Handler = async (event) => {
     let leadData: any = null;
 
     if (phoneNumber && supabaseUrl && supabaseKey) {
-      const { data: existingLead, error: findError } = await supabase
+      // FIX: Filter by phone AND tenant.id to avoid multiple-row errors
+      // and order by created_at DESC to get the latest canonical lead.
+      console.log(`[VAPI] Looking up lead for ${phoneNumber} in tenant ${tenant.id}...`);
+      const { data: leads, error: findError } = await supabase
         .from('leads')
         .select('*')
         .eq('phone', phoneNumber)
-        .single();
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false });
 
       if (findError) {
         console.log("[VAPI] Lead lookup error:", findError.message);
       }
 
-      if (existingLead) {
-        leadId = existingLead.id;
-        leadData = existingLead;
-        console.log("[VAPI] Found existing lead:", leadId);
+      if (leads && leads.length > 0) {
+        leadData = leads[0];
+        leadId = leadData.id;
+        if (leads.length > 1) {
+          console.warn(`[VAPI] Found ${leads.length} leads for ${phoneNumber} (tenant: ${tenant.id}). Using most recent (ID: ${leadId})`);
+        } else {
+          console.log("[VAPI] Resolved existing lead:", leadId);
+        }
       } else {
-        console.log("[VAPI] Creating new lead for:", phoneNumber);
+        console.log("[VAPI] Lead not found. Creating new lead for:", phoneNumber);
         const { data: newLead, error: createError } = await supabase
           .from('leads')
           .insert({
@@ -367,7 +375,7 @@ const handler: Handler = async (event) => {
             tenant_id: tenant.id
           })
           .select('*')
-          .single();
+          .maybeSingle(); // maybeSingle to avoid errors if a race condition lead was created
 
         if (createError) {
           console.error("[VAPI] Error creating lead:", createError);
@@ -433,6 +441,35 @@ CURRENT LEAD PROFILE:
     }
 
     // Handle different message types from Vapi
+    // 1. assistant.started (Server URL hook)
+    if (messageType === 'assistant.started' || messageType === 'assistant-started') {
+      console.log(`[VAPI] Call started hook - returning overrides for lead ${leadId}`);
+      const whatsappSummary = body.message?.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
+                              body.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
+                              "No prior WhatsApp conversation.";
+
+      return {
+        statusCode: 200,
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
+        },
+        body: JSON.stringify({
+          assistantOverrides: {
+            variableValues: {
+              lead_id: leadId || "",
+              name: leadData?.name || nameFromVars || "Client",
+              email: leadData?.email || emailFromVars || "",
+              budget: leadData?.budget || "",
+              location: leadData?.location || "",
+              property_type: leadData?.property_type || "",
+              whatsapp_summary: whatsappSummary
+            }
+          }
+        })
+      };
+    }
+
     if (leadId) {
       if (messageType === 'conversation-update') {
         console.log("[VAPI] Processing conversation-update message");

@@ -121,15 +121,28 @@ const handler: Handler = async (event) => {
 
         let leadData: any = null;
         if (leadId) {
-            const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
+            console.log(`[Vapi Webhook] Looking up lead by ID: ${leadId}`);
+            const { data } = await supabase.from('leads').select('*').eq('id', leadId).maybeSingle();
             leadData = data;
         } else if (phoneNumber) {
-            const { data } = await supabase.from('leads').select('*').eq('phone', phoneNumber).single();
-            leadData = data;
+            console.log(`[Vapi Webhook] Looking up lead by phone: ${phoneNumber} (tenant: ${tenant.id})`);
+            const { data: leads } = await supabase
+                .from('leads')
+                .select('*')
+                .eq('phone', phoneNumber)
+                .eq('tenant_id', tenant.id)
+                .order('created_at', { ascending: false });
+            
+            if (leads && leads.length > 0) {
+                leadData = leads[0];
+                if (leads.length > 1) {
+                    console.warn(`[Vapi Webhook] Found ${leads.length} leads for phone. Using latest.`);
+                }
+            }
         }
 
         if (!leadData) {
-            console.error(`[Vapi Webhook] Lead not found for phone: ${phoneNumber} or leadId: ${leadId}`);
+            console.error(`[Vapi Webhook] Lead not found for phone: ${phoneNumber} or leadId: ${leadId} (tenant: ${tenant?.id})`);
             return { statusCode: 200, body: JSON.stringify({ error: "Lead not found" }) };
         }
         leadId = leadData.id;
