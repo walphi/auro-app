@@ -421,14 +421,19 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
 
         const dayName = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Dubai' }).format(new Date());
 
+        const email = (context?.email || "").trim();
+        const customer: any = {
+            number: phoneNumber,
+            name: context?.name || `WhatsApp Lead ${phoneNumber}`,
+        };
+        if (email) {
+            customer.email = email;
+        }
+
         const payload: any = {
             phoneNumberId: tenant.vapi_phone_number_id || process.env.VAPI_PHONE_NUMBER,
             assistantId: tenant.vapi_assistant_id || process.env.VAPI_ASSISTANT_ID,
-            customer: {
-                number: phoneNumber,
-                name: context?.name || "",
-                email: context?.email || ""
-            },
+            customer,
             assistantOverrides: {
                 variableValues: {
                     lead_id: context?.lead_id || "",
