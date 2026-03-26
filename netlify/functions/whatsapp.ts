@@ -439,19 +439,11 @@ async function initiateVapiCall(phoneNumber: string, tenant: Tenant, context?: a
                     lead_id: context?.lead_id || "",
                     tenant_id: tenant.id.toString(),
                     name: context?.name || "",
+                    email: context?.email || "",
                     budget: context?.budget || "",
                     location: context?.location || "",
-                    current_listing_id: context?.current_listing_id || "",
                     property_type: context?.property_type || "",
-                    financing: context?.financing || "",
-                    email: context?.email || "",
-                    // WhatsApp conversation context for voice agent continuity
                     whatsapp_summary: context?.whatsapp_summary || "No prior WhatsApp conversation.",
-                    // Dynamic time variables for Vapi template injection
-                    current_date: dubaiNow,
-                    current_day: dayName,
-                    call_year: "2026",
-                    // Pass the absolute date rules here for dashboard reference
                     date_rules: `
 DATES AND TIMEZONE RULES (CRITICAL):
 - This call is occurring on ${dubaiNow} (Day: ${dayName}).
@@ -791,7 +783,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
 
             // --- CRM SYNC: Lead Inbound Sidecar ---
             if (tenant.id === 2 && tenant.crm_type === 'hubspot' && userMessage) {
-                triggerHubSpotSidecar(tenant, 'whatsapp_inbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, userMessage);
+                await triggerHubSpotSidecar(tenant, 'whatsapp_inbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, userMessage);
             }
         }
 
@@ -1336,7 +1328,7 @@ CORE RULES (HARD CONSTRAINTS):
 
             // --- CRM SYNC: AI Outbound Sidecar ---
             if (tenant.id === 2 && tenant.crm_type === 'hubspot' && responseText) {
-                triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
+                await triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
             }
         }
 
@@ -1432,7 +1424,7 @@ async function triggerHubSpotSidecar(tenant: Tenant, eventType: string, lead: an
         });
         console.log(`[Sidecar] Triggered ${eventType} for ${lead.phone}`);
     } catch (err: any) {
-        console.error(`[Sidecar] Failed to trigger ${eventType}:`, err.message);
+        console.error(`[Sidecar] Failed to trigger ${eventType}:`, err.response?.data || err.message);
     }
 }
 
