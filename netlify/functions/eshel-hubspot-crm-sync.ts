@@ -183,7 +183,7 @@ export const handler: Handler = async (event) => {
             `about ${budget}, ${propType}, ${area}.\n\n` +
             `Join the meeting: ${meetingUrl || 'N/A'}\n\n` +
             `📚 Explore Eshel's 2026 UAE Off-Plan Playbook: https://bit.ly/eshel-prop-uae-playbook\n` +
-            `🏠 Explore Eshel's property portfolio: https://auroapp.com/eshel-properties`;
+            `🏠 Explore Eshel's property portfolio: https://www.eshelproperties.com/property-listings`;
     }
 
     // --- Sync to HubSpot ---
