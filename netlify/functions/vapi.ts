@@ -245,51 +245,74 @@ function buildWhatsappConfirmationMessage(firstName: string, meetingStartIso: st
 }
 
 function getStructuredData(body: any): any {
-  const analysis = body.message?.analysis || body.call?.analysis || {};
-  const artifact = body.message?.artifact || body.call?.artifact || {};
+  const message = body.message || {};
+  const analysis = message.analysis || body.call?.analysis || body.analysis || {};
+  const artifact = message.artifact || body.call?.artifact || body.artifact || {};
   const structuredOutputs = artifact.structuredOutputs || {};
 
-  // Vapi sends structuredOutputs as an object keyed by ID
-  const outputsArray = Object.values(structuredOutputs) as any[];
+  // Vapi sends structuredOutputs as an object keyed by ID or as an array
+  const outputsArray = Array.isArray(structuredOutputs) ? structuredOutputs : Object.values(structuredOutputs);
 
-  // 1. Look for a consolidated booking artifact first
-  const consolidated = outputsArray.find((o: any) =>
-    o.name === 'Morgan Booking' ||
-    o.name === 'Consultation Booking' ||
-    (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
-  );
-
-  if (consolidated) {
-    console.log("[VAPI] Found consolidated booking artifact:", consolidated.name);
-    return consolidated.result || {};
-  }
-
-  // 2. Harvesting individual fields from the array of structured outputs
   const harvested: any = {};
-  const fieldsToHarvest = [
-    'meeting_scheduled', 'meeting_start_iso', 'first_name', 'last_name',
-    'email', 'phone', 'budget', 'property_type', 'preferred_area', 'raw_time_phrase'
-  ];
+  
+  // Map of common variations to our internal keys
+  const variations: Record<string, string> = {
+    'meetingscheduled': 'meeting_scheduled',
+    'meeting_scheduled': 'meeting_scheduled',
+    'meetingstartiso': 'meeting_start_iso',
+    'meeting_start_iso': 'meeting_start_iso',
+    'firstname': 'first_name',
+    'first_name': 'first_name',
+    'lastname': 'last_name',
+    'last_name': 'last_name',
+    'email': 'email',
+    'phone': 'phone',
+    'budget': 'budget',
+    'propertytype': 'property_type',
+    'property_type': 'property_type',
+    'preferredarea': 'preferred_area',
+    'preferred_area': 'preferred_area',
+    'raw_time_phrase': 'raw_time_phrase',
+    'summary': 'summary'
+  };
 
-  outputsArray.forEach(o => {
-    if (o.name && fieldsToHarvest.includes(o.name)) {
-      harvested[o.name] = o.result;
+  // 1. Check artifact.structuredOutputs
+  outputsArray.forEach((o: any) => {
+    if (!o || !o.name) return;
+    const name = o.name.toLowerCase().replace(/_/g, '');
+    const internalKey = variations[name] || o.name;
+    if (internalKey) {
+      harvested[internalKey] = o.result;
     }
   });
 
-  if (harvested.meeting_scheduled !== undefined) {
-    console.log("[VAPI] Successfully harvested individual structured fields:", Object.keys(harvested));
-    return harvested;
+  // 2. Check analysis.structuredData
+  const structuredData = analysis.structuredData || {};
+  Object.entries(structuredData).forEach(([key, value]) => {
+    const internalKey = variations[key.toLowerCase().replace(/_/g, '')] || key;
+    if (harvested[internalKey] === undefined) {
+      harvested[internalKey] = value;
+    }
+  });
+
+  // 3. Fallback: Check for specific "Morgan Booking" or similar result objects
+  const consolidated = outputsArray.find((o: any) => 
+    o.name?.toLowerCase().includes('booking') || o.name?.toLowerCase().includes('consultation')
+  );
+  if (consolidated?.result) {
+    Object.entries(consolidated.result).forEach(([k, v]) => {
+      const internalKey = variations[k.toLowerCase().replace(/_/g, '')] || k;
+      if (harvested[internalKey] === undefined) {
+        harvested[internalKey] = v;
+      }
+    });
   }
 
-  // Final logging and extraction
-  const finalData = consolidated ? (consolidated.result || {}) : (harvested.meeting_scheduled !== undefined ? harvested : analysis.structuredData || {});
-
-  if (finalData.meeting_start_iso) {
-    console.log(`[VAPI DATE LOG] Calculated ISO: ${finalData.meeting_start_iso} | Raw Phrase: ${finalData.raw_time_phrase || 'Not captured'}`);
+  if (harvested.meeting_start_iso || harvested.meeting_scheduled) {
+    console.log(`[VAPI] Harvested structured data:`, Object.keys(harvested));
   }
 
-  return finalData;
+  return harvested;
 }
 
 const handler: Handler = async (event) => {
