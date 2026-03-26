@@ -325,6 +325,11 @@ const handler: Handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     console.log("[VAPI] Received payload:", JSON.stringify(body, null, 2));
 
+    // Extract WhatsApp conversation summary early (available for all message types)
+    const whatsappSummary = body.message?.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
+                          body.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
+                          "No prior WhatsApp conversation.";
+
     // --- TENANT RESOLUTION ---
     let tenant: Tenant | null = null;
     const vapiAssistantId = body.message?.call?.assistantId || body.call?.assistantId;
@@ -474,9 +479,6 @@ CURRENT LEAD PROFILE:
     // 1. assistant.started (Server URL hook)
     if (messageType === 'assistant.started' || messageType === 'assistant-started') {
       console.log(`[VAPI] Call started hook - returning overrides for lead ${leadId}`);
-      const whatsappSummary = body.message?.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
-                              body.call?.assistantOverrides?.variableValues?.whatsapp_summary || 
-                              "No prior WhatsApp conversation.";
 
       return {
         statusCode: 200,
@@ -587,7 +589,8 @@ CURRENT LEAD PROFILE:
                 propertyType: structuredData.property_type || minimalLeadData?.property_type || "",
                 area: structuredData.preferred_area || minimalLeadData?.location || ""
               },
-              vapi: { callId: body.message?.call?.id || body.call?.id, summary: syncSummary, duration }
+              vapi: { callId: body.message?.call?.id || body.call?.id, summary: syncSummary, duration },
+              whatsappContext: whatsappSummary  // Include WhatsApp conversation history
             });
           }
         }

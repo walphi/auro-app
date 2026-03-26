@@ -172,9 +172,13 @@ const handler: Handler = async (event) => {
             if (!effectiveLeadData.phone) {
                 console.warn(`[Vapi Webhook] Cannot create HubSpot note: no phone number available`);
             } else {
+                // Extract WhatsApp conversation summary from call variables
+                const whatsappSummary = varValues.whatsapp_summary || "No prior WhatsApp conversation.";
+                
                 // We await here for the "No meeting scheduled" path, or just fire and forget for the booking path
                 const syncPromise = triggerHubSpotSidecar(tenant, 'vapi_call_ended', effectiveLeadData, summary, undefined, {
-                    vapi: { callId: call?.id, summary, duration }
+                    vapi: { callId: call?.id, summary, duration },
+                    whatsappContext: whatsappSummary
                 });
 
                 if (!meetingScheduled) {
