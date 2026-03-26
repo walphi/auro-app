@@ -287,8 +287,13 @@ const handler: Handler = async (event) => {
 
         let contextString = "NEW LEAD - No context.";
         if (leadData || nameFromVars || emailFromVars) {
-            contextString = `
-CURRENT LEAD PROFILE:
+            // Move WhatsApp summary to text top as requested for better attention
+            let summaryPart = "";
+            if (whatsappSummaryFromVars && whatsappSummaryFromVars !== 'No prior WhatsApp conversation.') {
+                summaryPart = `PRIOR WHATSAPP CONVERSATION (read before speaking — CRITICAL: acknowledge this in turn 1):\n${whatsappSummaryFromVars}\n\n`;
+            }
+
+            contextString = `${summaryPart}CURRENT LEAD PROFILE:
 - Name: ${leadData?.name || nameFromVars || "Unknown"}
 - Phone: ${leadData?.phone || phoneNumber || "Unknown"}
 - Email: ${leadData?.email || emailFromVars || "Unknown"}
@@ -300,10 +305,6 @@ CURRENT LEAD PROFILE:
 - Most recent property interest: ${propertyContext}
 - Project context: ${leadData?.project_id || "None"}
 - Booking: ${leadData?.viewing_datetime || "None"}`;
-
-            if (whatsappSummaryFromVars && whatsappSummaryFromVars !== 'No prior WhatsApp conversation.') {
-                contextString += `\n\nPRIOR WHATSAPP CONVERSATION (read before speaking — do NOT ask questions already answered here):\n${whatsappSummaryFromVars}`;
-            }
         }
 
         let dubaiTime = "";
@@ -333,12 +334,15 @@ RULES & BEHAVIOR:
    - Instead, verify: "I have your email as [email], is that still the best one?" if you want to be safe, but generally just use it.
    - If you ask for information you already have (unless it's a generic placeholder), you fail the interaction.
 
-2. VOICE-ADAPTED VISUALS:
+2. WHATSAPP CONTEXT & CONTINUITY (ESHEL RULE):
+   - If tenant is Eshel (ID 2), you MUST acknowledge "PRIOR WHATSAPP CONVERSATION" in your very first turn.
+   - Never start with generic "How can I help you today?" if context exists. Start with "I saw on WhatsApp you were interested in..." or "I see you've been asking about...".
+3. VOICE-ADAPTED VISUALS:
    - You are a VOICE agent. You cannot "send" cards directly, but you can describe images I am sending via WhatsApp.
    - When discussing a property, say: "I've just sent a photo to your WhatsApp properly. It's a [describe based on type]..."
    - Use 'SEARCH_LISTINGS' to finding matching properties, then describe the top 1-2 options verbally while I send the full list to WhatsApp.
- 
-2. SEQUENTIAL GALLERY:
+
+4. SEQUENTIAL GALLERY:
    - If the user asks for "more photos" or "what does the kitchen look like?":
    - Say: "Let me send you an interior shot on WhatsApp now." (Then trigger the system to send it if possible, or just describe it from the data).
    - "Does that style match what you're looking for?"

@@ -1188,6 +1188,23 @@ CORE RULES (HARD CONSTRAINTS):
                                 if (leadId) {
                                     const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
                                     context = { ...data, lead_id: leadId };
+                                    
+                                    // Build eager WhatsApp summary for voice continuity
+                                    if (leadId) {
+                                        const { data } = await supabase.from('leads').select('*').eq('id', leadId).single();
+                                        context = { ...data, lead_id: leadId };
+                                        
+                                        // Include history + current message
+                                        let summaryLines: string[] = [];
+                                        if (chatHistory && chatHistory.length > 0) {
+                                            const recent = chatHistory.slice(-9); // last 9 history items
+                                            summaryLines = recent.map(m => `${m.role === 'user' || m.role === 'model' ? (m.role === 'user' ? 'Lead' : 'Auro') : 'Auro'}: ${m.parts?.[0]?.text || ''}`);
+                                        }
+                                        summaryLines.push(`Lead: ${userMessage}`); // The message that just came in
+                                        
+                                        context.whatsapp_summary = summaryLines.join('\n');
+                                        console.log(`[INITIATE_CALL] Attached context (total ${summaryLines.length} lines) for lead ${leadId}`);
+                                    }
                                 }
                                 const callStarted = await initiateVapiCall(fromNumber, tenant, context);
                                 toolResult = callStarted ? "Assistant will call you in a few minutes." : "Failed to initiate call.";

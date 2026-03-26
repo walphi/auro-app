@@ -179,13 +179,13 @@ const handler: Handler = async (event) => {
         if (existingBooking) {
             console.log(`[Vapi Webhook] Booking already exists for lead ${leadId} at ${meetingStartIso}`);
             return { statusCode: 200, body: JSON.stringify({ message: "Booking already exists (idempotent)" }) };
-        }
-
-        // --- RESOLVE EVENT TYPE ID ---
+        }        // --- RESOLVE EVENT TYPE ID ---
         // User provided specific ID: 4644939 for Provident
         let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
 
-        if (tenant.id !== 1) {
+        if (tenant.id === 2 || tenant.short_name?.toLowerCase() === 'eshel') {
+            eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_ESHEL || process.env.CALCOM_EVENT_TYPE_ID_TENANT_2 || eventTypeIdAttr;
+        } else if (tenant.id !== 1) {
             const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
             eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
         }
@@ -197,11 +197,31 @@ const handler: Handler = async (event) => {
         const lastName = structuredData.last_name || leadData.name?.split(' ').slice(1).join(' ') || '';
         const fullName = `${firstName} ${lastName}`.trim();
 
+        let email = structuredData.email || leadData.email;
+        if (email) {
+            email = normalizeSTTEmail(email);
+        }
+
+        // ESHEL Fallback: If no email found for Tenant 2, use a unique phone-based placeholder
+        if (!email && (tenant.id === 2 || tenant.short_name?.toLowerCase() === 'eshel')) {
+            const fallbackEmail = `${phoneNumber.replace('+', '')}@no-email.auro`;
+            console.log(`[Vapi Webhook] Using Eshel fallback email: ${fallbackEmail} (Original STT might have been unusable)`);
+            email = fallbackEmail;
+            
+            // Log fallback usage for monitoring
+            await supabase.from('messages').insert({
+                lead_id: leadId,
+                type: 'System_Note',
+                sender: 'System',
+                content: `ℹ️ Note: Used fallback email (${fallbackEmail}) for Cal.com booking as no valid email was detected during the call.`
+            });
+        }
+
         const bookingDetails = {
             eventTypeId,
             start: meetingStartIso,
             name: fullName,
-            email: structuredData.email || leadData.email,
+            email: email,
             phoneNumber: structuredData.phone || phoneNumber || leadData.phone,
             metadata: {
                 budget: String(structuredData.budget || leadData.budget || ''),
@@ -226,7 +246,7 @@ const handler: Handler = async (event) => {
         }
 
         // --- CREATE CAL.COM BOOKING ---
-        console.log(`[Vapi Webhook] Creating Cal.com booking for ${fullName} at ${meetingStartIso}`);
+        console.log(`[Vapi Webhook] Creating Cal.com booking for ${fullName} at ${meetingStartIso}. Email: ${bookingDetails.email}, EventType: ${eventTypeId}`);
         let calResult;
         try {
             calResult = await createCalComBooking(bookingDetails);
@@ -267,11 +287,12 @@ const handler: Handler = async (event) => {
         }).eq('id', leadId);
 
         // --- LOG SUCCESS TO LEAD TIMELINE ---
+        const systemNotePrefix = (tenant.id === 2) ? '✅ Eshel Consultation Booked' : '✅ Cal.com Consultation Booked';
         await supabase.from('messages').insert({
             lead_id: leadId,
             type: 'System_Note',
             sender: 'System',
-            content: `✅ Cal.com Consultation Booked\nTime: ${new Date(meetingStartIso).toLocaleString('en-US', { timeZone: 'Asia/Dubai' })} Dubai Time\nLink: ${calResult.meetingUrl || 'See Cal.com invitation'}`
+            content: `${systemNotePrefix}\nTime: ${new Date(meetingStartIso).toLocaleString('en-US', { timeZone: 'Asia/Dubai' })} Dubai Time\nLink: ${calResult.meetingUrl || 'See Cal.com invitation'}`
         });
 
         console.log(`[Vapi Webhook] Success: Booking ${calResult.bookingId} created for lead ${leadId}`);
@@ -312,57 +333,92 @@ const handler: Handler = async (event) => {
     }
 };
 
-export { handler };
-
 /**
  * Extracts correctly structured data from Vapi payload.
+ * Supports varied nesting (analysis vs artifact) and casing/naming.
  */
 function getStructuredData(body: any): any {
-    const analysis = body.message?.analysis || body.call?.analysis || {};
-    const artifact = body.message?.artifact || body.call?.artifact || {};
+    const message = body.message || body || {};
+    const analysis = message.analysis || body.call?.analysis || {};
+    const artifact = message.artifact || body.call?.artifact || {};
     const structuredOutputs = artifact.structuredOutputs || {};
 
-    // Vapi sends structuredOutputs as an object keyed by ID
-    const outputsArray = Object.values(structuredOutputs) as any[];
+    // Vapi sends structuredOutputs as an object keyed by ID or sometimes an array
+    const outputsArray = Array.isArray(structuredOutputs) ? structuredOutputs : Object.values(structuredOutputs);
 
-    // 1. Look for a consolidated booking artifact first
-    const consolidated = outputsArray.find((o: any) =>
-        o.name === 'Morgan Booking' ||
-        o.name === 'Consultation Booking' ||
-        (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
-    );
-
-    if (consolidated) {
-        console.log("[VAPI Webhook] Found consolidated booking artifact:", consolidated.name);
-        return consolidated.result || {};
-    }
-
-    // 2. Harvesting individual fields from the array of structured outputs
     const harvested: any = {};
-    const fieldsToHarvest = [
-        'meeting_scheduled', 'meeting_start_iso', 'first_name', 'last_name',
-        'email', 'phone', 'budget', 'property_type', 'preferred_area', 'raw_time_phrase'
-    ];
 
-    outputsArray.forEach(o => {
-        if (o.name && fieldsToHarvest.includes(o.name)) {
-            harvested[o.name] = o.result;
+    // Map of common variations to our internal keys
+    const variations: Record<string, string> = {
+        'meetingscheduled': 'meeting_scheduled',
+        'meeting_scheduled': 'meeting_scheduled',
+        'meetingstartiso': 'meeting_start_iso',
+        'meeting_start_iso': 'meeting_start_iso',
+        'firstname': 'first_name',
+        'first_name': 'first_name',
+        'lastname': 'last_name',
+        'last_name': 'last_name',
+        'email': 'email',
+        'phone': 'phone',
+        'budget': 'budget',
+        'propertytype': 'property_type',
+        'property_type': 'property_type',
+        'preferredarea': 'preferred_area',
+        'preferred_area': 'preferred_area',
+        'raw_time_phrase': 'raw_time_phrase',
+        'summary': 'summary'
+    };
+
+    // 1. Check artifact.structuredOutputs
+    outputsArray.forEach((o: any) => {
+        const name = o.name?.toLowerCase().replace(/_/g, '');
+        const internalKey = variations[name] || o.name;
+        if (internalKey) {
+            harvested[internalKey] = o.result;
         }
     });
 
-    if (harvested.meeting_scheduled !== undefined) {
-        console.log("[VAPI Webhook] Successfully harvested individual structured fields:", Object.keys(harvested));
-        return harvested;
+    // 2. Check analysis.structuredData
+    const structuredData = analysis.structuredData || {};
+    Object.entries(structuredData).forEach(([key, value]) => {
+        const internalKey = variations[key.toLowerCase().replace(/_/g, '')] || key;
+        if (harvested[internalKey] === undefined) {
+            harvested[internalKey] = value;
+        }
+    });
+
+    // 3. Fallback: Check for specific "Morgan Booking" or similar result objects
+    const consolidated = outputsArray.find((o: any) => 
+        o.name?.toLowerCase().includes('booking') || o.name?.toLowerCase().includes('consultation')
+    );
+    if (consolidated?.result) {
+        Object.entries(consolidated.result).forEach(([k, v]) => {
+            const internalKey = variations[k.toLowerCase().replace(/_/g, '')] || k;
+            if (harvested[internalKey] === undefined) {
+                harvested[internalKey] = v;
+            }
+        });
     }
 
-    // Final logging and extraction
-    const finalData = consolidated ? (consolidated.result || {}) : (harvested.meeting_scheduled !== undefined ? harvested : analysis.structuredData || {});
-
-    if (finalData.meeting_start_iso) {
-        console.log(`[VAPI Webhook DATE LOG] Calculated ISO: ${finalData.meeting_start_iso} | Raw Phrase: ${finalData.raw_time_phrase || 'Not captured'}`);
+    if (harvested.meeting_start_iso || harvested.meeting_scheduled) {
+        console.log(`[VAPI Webhook] Harvested data keys:`, Object.keys(harvested));
     }
 
-    return finalData;
+    return harvested;
+}
+
+/**
+ * Normalizes speech-to-text email strings (e.g. "name at domain dot com")
+ */
+function normalizeSTTEmail(email: string): string {
+    if (!email || typeof email !== 'string') return "";
+    let normalized = email.toLowerCase().trim();
+    // Replace common STT patterns
+    normalized = normalized.replace(/\s+at\s+/g, "@");
+    normalized = normalized.replace(/\s+dot\s+/g, ".");
+    normalized = normalized.replace(/\s+underscore\s+/g, "_");
+    normalized = normalized.replace(/\s+/g, ""); // Remove all other spaces
+    return normalized;
 }
 
 /**

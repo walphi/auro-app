@@ -111,8 +111,24 @@ export const handler: Handler = async (event) => {
 
     const label = `[tenant=${tenantId}|${tenant.hubspot_label || 'eshel'}]`;
 
-    // --- Build final note body ---
+    // --- Build final note body and check priority (Eshel T2 only) ---
+    // User requested to prioritize certain System_Note content for CRM sync.
     let finalNoteText = noteText;
+    const priorityPatterns = [
+        "Cal.com Consultation Booked",
+        "Booking successful",
+        "Eshel Consultation Booked",
+        "WhatsApp outreach sent",
+        "AI Call Ended"
+    ];
+
+    if (tenantId === 2 && (eventType as string) === 'conversation_note') {
+        const isPriority = priorityPatterns.some(p => noteText.includes(p));
+        if (!isPriority) {
+            console.log(`${label}[EshelCrmSync] Skipping non-priority conversation note: "${noteText.substring(0, 40)}..."`);
+            return { statusCode: 200, body: JSON.stringify({ status: 'skipped', reason: 'non_priority' }) };
+        }
+    }
 
     if (eventType === 'whatsapp_inbound') {
         finalNoteText = `[WhatsApp Inbound] Lead: ${noteText}`;
