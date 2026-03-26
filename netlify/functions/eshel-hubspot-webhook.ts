@@ -183,6 +183,64 @@ export const handler: Handler = async (event) => {
             },
         });
 
+        // --- LOG TEMPLATE MESSAGE TO SUPABASE ---
+        // This ensures the "Yes" reply is recognized as a call confirmation
+        if (whatsappSent) {
+            try {
+                // First, look up the lead by phone
+                let { data: existingLead } = await supabase
+                    .from('leads')
+                    .select('id, name')
+                    .eq('phone', phone)
+                    .eq('tenant_id', ESHEL_TENANT_ID)
+                    .maybeSingle();
+
+                let leadId = existingLead?.id;
+
+                // Create lead if doesn't exist
+                if (!leadId) {
+                    const firstName = name.split(' ')[0] || 'there';
+                    const { data: newLead, error: createError } = await supabase
+                        .from('leads')
+                        .insert({
+                            phone: phone,
+                            name: name,
+                            status: 'New',
+                            source: 'HubSpot',
+                            tenant_id: ESHEL_TENANT_ID,
+                            email: contact.email || undefined
+                        })
+                        .select('id')
+                        .single();
+                    
+                    if (createError) {
+                        console.error(`${LOG_PREFIX} Failed to create lead:`, createError.message);
+                    } else if (newLead) {
+                        leadId = newLead.id;
+                        console.log(`${LOG_PREFIX} Created new lead ${leadId} for ${phone}`);
+                    }
+                }
+
+                // Log the template message as AURO_AI so "Yes" replies work
+                if (leadId) {
+                    const firstName = (existingLead?.name || name || 'there').split(' ')[0];
+                    const templateContent = `Hi ${firstName}, this is Eshel Properties. We received your enquiry, is now a good time to chat?`;
+                    
+                    await supabase.from('messages').insert({
+                        lead_id: leadId,
+                        type: 'Message',
+                        sender: 'AURO_AI',
+                        content: templateContent
+                    });
+                    
+                    console.log(`${LOG_PREFIX} Logged template message to lead ${leadId}`);
+                }
+            } catch (logError: any) {
+                console.error(`${LOG_PREFIX} Failed to log template message:`, logError.message);
+                // Non-critical - don't fail the webhook
+            }
+        }
+
         // Fire-and-forget: post initial note to HubSpot via sidecar
         const sidecarKey = process.env.AURO_SIDECAR_KEY;
         const sidecarUrl = `${process.env.URL || 'https://auroapp.com'}/.netlify/functions/eshel-hubspot-crm-sync`;
