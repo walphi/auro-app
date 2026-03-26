@@ -285,7 +285,9 @@ const handler: Handler = async (event) => {
             }
         }
 
-        const contextString = (leadData || nameFromVars || emailFromVars) ? `
+        let contextString = "NEW LEAD - No context.";
+        if (leadData || nameFromVars || emailFromVars) {
+            contextString = `
 CURRENT LEAD PROFILE:
 - Name: ${leadData?.name || nameFromVars || "Unknown"}
 - Phone: ${leadData?.phone || phoneNumber || "Unknown"}
@@ -297,11 +299,12 @@ CURRENT LEAD PROFILE:
 - Financing: ${leadData?.financing || "Unknown"}
 - Most recent property interest: ${propertyContext}
 - Project context: ${leadData?.project_id || "None"}
-- Booking: ${leadData?.viewing_datetime || "None"}
+- Booking: ${leadData?.viewing_datetime || "None"}`;
 
-${whatsappSummaryFromVars && whatsappSummaryFromVars !== 'No prior WhatsApp conversation.' ? `PRIOR WHATSAPP CONVERSATION (read before speaking — do NOT ask questions already answered here):
-${whatsappSummaryFromVars}` : ''}
-` : "NEW LEAD - No context.";
+            if (whatsappSummaryFromVars && whatsappSummaryFromVars !== 'No prior WhatsApp conversation.') {
+                contextString += `\n\nPRIOR WHATSAPP CONVERSATION (read before speaking — do NOT ask questions already answered here):\n${whatsappSummaryFromVars}`;
+            }
+        }
 
         let dubaiTime = "";
         try {

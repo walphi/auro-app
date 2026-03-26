@@ -135,9 +135,8 @@ const handler: Handler = async (event) => {
         leadId = leadData.id;
 
         // --- EXTRACT STRUCTURED DATA ---
-        // Vapi places structured data in analysis.structuredData or artifact.structuredData
-        const analysis = message?.analysis || call?.analysis || {};
-        const structuredData = analysis.structuredData || {};
+        const structuredData = getStructuredData(body);
+        const analysis = body.message?.analysis || body.call?.analysis || {};
 
         const meetingScheduled = structuredData.meeting_scheduled === true ||
             structuredData.meeting_scheduled === 'true' ||
@@ -314,6 +313,57 @@ const handler: Handler = async (event) => {
 };
 
 export { handler };
+
+/**
+ * Extracts correctly structured data from Vapi payload.
+ */
+function getStructuredData(body: any): any {
+    const analysis = body.message?.analysis || body.call?.analysis || {};
+    const artifact = body.message?.artifact || body.call?.artifact || {};
+    const structuredOutputs = artifact.structuredOutputs || {};
+
+    // Vapi sends structuredOutputs as an object keyed by ID
+    const outputsArray = Object.values(structuredOutputs) as any[];
+
+    // 1. Look for a consolidated booking artifact first
+    const consolidated = outputsArray.find((o: any) =>
+        o.name === 'Morgan Booking' ||
+        o.name === 'Consultation Booking' ||
+        (o.result && o.result.meeting_scheduled !== undefined && o.result.meeting_start_iso !== undefined)
+    );
+
+    if (consolidated) {
+        console.log("[VAPI Webhook] Found consolidated booking artifact:", consolidated.name);
+        return consolidated.result || {};
+    }
+
+    // 2. Harvesting individual fields from the array of structured outputs
+    const harvested: any = {};
+    const fieldsToHarvest = [
+        'meeting_scheduled', 'meeting_start_iso', 'first_name', 'last_name',
+        'email', 'phone', 'budget', 'property_type', 'preferred_area', 'raw_time_phrase'
+    ];
+
+    outputsArray.forEach(o => {
+        if (o.name && fieldsToHarvest.includes(o.name)) {
+            harvested[o.name] = o.result;
+        }
+    });
+
+    if (harvested.meeting_scheduled !== undefined) {
+        console.log("[VAPI Webhook] Successfully harvested individual structured fields:", Object.keys(harvested));
+        return harvested;
+    }
+
+    // Final logging and extraction
+    const finalData = consolidated ? (consolidated.result || {}) : (harvested.meeting_scheduled !== undefined ? harvested : analysis.structuredData || {});
+
+    if (finalData.meeting_start_iso) {
+        console.log(`[VAPI Webhook DATE LOG] Calculated ISO: ${finalData.meeting_start_iso} | Raw Phrase: ${finalData.raw_time_phrase || 'Not captured'}`);
+    }
+
+    return finalData;
+}
 
 /**
  * Triggers the Eshel CRM sidecar to log info to HubSpot.
