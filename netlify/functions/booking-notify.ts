@@ -9,6 +9,7 @@ const supabase = createClient(
 
 import { resolveWhatsAppSender } from '../../lib/twilioWhatsAppClient';
 import { getTenantById } from '../../lib/tenantConfig';
+import { orchestratePostMeetingNotification } from '../../lib/notificationOrchestrator';
 
 // Email provider: Resend (or fallback to log-only for demo)
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -162,11 +163,23 @@ export const handler: Handler = async (event) => {
             tenant_id: lead.tenant_id
         };
 
-        // Send both notifications
-        const [emailSent, whatsappSent] = await Promise.all([
-            sendEmailNotification(booking),
-            sendWhatsAppNotification(booking)
-        ]);
+        // Use unified orchestrator for WhatsApp notification
+        const tenant = lead.tenant_id ? await getTenantById(lead.tenant_id) : null;
+        const notificationResult = tenant ? await orchestratePostMeetingNotification({
+            tenant,
+            leadId: booking.lead_id,
+            phone: booking.lead_phone || '',
+            email: booking.lead_email,
+            name: booking.lead_name,
+            meetingStartIso: booking.viewing_datetime,
+            projectName: booking.property_title,
+            notificationType: 'viewing_booked',
+            source: 'booking_notify'
+        }) : { whatsappSent: false, emailSent: false, deduplicated: false };
+
+        // Email notification (separate, not yet integrated into orchestrator)
+        const emailSent = await sendEmailNotification(booking);
+        const whatsappSent = notificationResult.whatsappSent;
 
         // Log notification attempt
         await supabase.from('messages').insert({

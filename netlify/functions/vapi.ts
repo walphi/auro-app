@@ -10,6 +10,7 @@ import { resolveWhatsAppSender, TwilioWhatsAppClient } from "../../lib/twilioWha
 import { generateAuroSummary } from "../../lib/auroSummary";
 import { addDealComment } from "../../lib/bitrixClient";
 import { normalizePhone, resolvePrioritizedPhone } from "../../lib/phoneUtils";
+import { orchestratePostMeetingNotification } from "../../lib/notificationOrchestrator";
 
 const { BITRIX_PROVIDENT_WEBHOOK_URL } = process.env;
 
@@ -420,7 +421,13 @@ const handler: Handler = async (event) => {
     const emailFromVars = body.message?.call?.assistantOverrides?.variableValues?.email ||
       body.call?.assistantOverrides?.variableValues?.email;
 
-    if (leadData) {
+    if (!leadData) {
+      leadData = {
+        phone: phoneNumber,
+        name: nameFromVars || "Client",
+        email: emailFromVars || ""
+      };
+    } else {
       if (!leadData.name && nameFromVars) leadData.name = nameFromVars;
       if (!leadData.email && emailFromVars) leadData.email = emailFromVars;
     }
@@ -481,7 +488,15 @@ CURRENT LEAD PROFILE:
           assistantOverrides: {
             variableValues: {
               lead_id: leadId || "",
-              name: leadData?.name || nameFromVars || "Client",
+              // Split name into first_name/last_name for consistency with structured data parsing
+              // Handle single-word names gracefully (last_name empty if no space)
+              first_name: ((leadData?.name || nameFromVars || "Client").split(' ')[0]) || "Client",
+              last_name: (() => {
+                const fullName = leadData?.name || nameFromVars || "Client";
+                const parts = fullName.split(' ');
+                return parts.length > 1 ? parts.slice(1).join(' ') : "";
+              })(),
+              name: leadData?.name || nameFromVars || "Client",  // Keep for backward compatibility
               email: leadData?.email || emailFromVars || "",
               budget: leadData?.budget || "",
               location: leadData?.location || "",
@@ -553,9 +568,28 @@ CURRENT LEAD PROFILE:
         if (tenant.id === 2 && tenant.crm_type === 'hubspot') {
           const syncSummary = summary || "Conversation completed.";
           const duration = body.message?.call?.duration || body.call?.duration || 0;
-          await triggerHubSpotSidecar(tenant, 'vapi_call_ended', leadData, syncSummary, undefined, {
-            vapi: { callId: body.message?.call?.id || body.call?.id, summary: syncSummary, duration }
-          });
+          const structuredData = getStructuredData(body);
+          
+          // Build minimal lead data if Supabase lookup failed - ensures HubSpot note is always created
+          const minimalLeadData = leadData || {
+            phone: phoneNumber || "",
+            name: nameFromVars || "Unknown",
+            email: emailFromVars || ""
+          };
+          
+          // Only proceed if we have at least a phone number to identify the lead
+          if (!minimalLeadData.phone) {
+            console.warn('[VAPI] Cannot create HubSpot note: no phone number available');
+          } else {
+            await triggerHubSpotSidecar(tenant, 'vapi_call_ended', minimalLeadData, syncSummary, undefined, {
+              qualificationData: {
+                budget: structuredData.budget || minimalLeadData?.budget || "",
+                propertyType: structuredData.property_type || minimalLeadData?.property_type || "",
+                area: structuredData.preferred_area || minimalLeadData?.location || ""
+              },
+              vapi: { callId: body.message?.call?.id || body.call?.id, summary: syncSummary, duration }
+            });
+          }
         }
 
         // Trigger RAG learning for completed calls
@@ -784,31 +818,36 @@ CURRENT LEAD PROFILE:
 
             // --- WHATSAPP CONFIRMATION (Tenant 1 or 2, only if Cal.com succeeded) ---
             if (calResult && (tenant.id === 1 || tenant.id === 2)) {
-              const meetingUrl = calResult.meetingUrl || calResult.raw?.meetingUrl || '';
-              const projectName = structuredData.preferred_area || structuredData.property_type || 
-                                 (tenant.id === 2 ? 'our latest properties' : 'Apartment');
-                                 
               console.log(`[MeetingConfirmation] Sending WhatsApp confirmation for tenant ${tenant.id}, lead=${leadId} to=${normalizedAttendeePhone}`);
-              try {
-                const sent = await sendSimpleWhatsAppConfirmation(
-                  normalizedAttendeePhone,
-                  firstName,
-                  meetingStartIso,
-                  meetingUrl,
-                  tenant,
-                  projectName
-                );
-                if (sent) {
-                  await supabase.from('bookings').update({
-                    meta: {
-                      ...(calResult.meta || {}),
-                      whatsapp_confirmation_sent: true,
-                      call_id: body.message?.call?.id || body.call?.id
-                    }
-                  }).eq('booking_id', calResult.bookingId);
-                }
-              } catch (confirmError: any) {
-                console.error(`[MeetingConfirmation] ❌ Failed to send WhatsApp confirmation:`, confirmError.message);
+              
+              // Use unified orchestrator with deduplication
+              const notificationResult = await orchestratePostMeetingNotification({
+                tenant,
+                leadId,
+                phone: normalizedAttendeePhone,
+                email: finalEmail,
+                name: fullName,
+                meetingStartIso,
+                meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl || '',
+                projectName: structuredData.preferred_area || structuredData.property_type || 
+                            (tenant.id === 2 ? 'our latest properties' : 'Apartment'),
+                bookingId: calResult.bookingId,
+                notificationType: 'booking_confirmed',
+                source: 'vapi'
+              });
+              
+              if (notificationResult.whatsappSent) {
+                console.log(`[MeetingConfirmation] WhatsApp confirmation sent via orchestrator`);
+                // Record is already updated by orchestrator, but update call_id if needed
+                await supabase.from('bookings').update({
+                  meta: {
+                    call_id: body.message?.call?.id || body.call?.id
+                  }
+                }).eq('booking_id', calResult.bookingId);
+              } else if (notificationResult.deduplicated) {
+                console.log(`[MeetingConfirmation] Notification deduplicated (already sent)`);
+              } else {
+                console.error(`[MeetingConfirmation] WhatsApp confirmation failed`);
               }
             }
 
@@ -1082,33 +1121,29 @@ CURRENT LEAD PROFILE:
                 }
               }, { onConflict: 'lead_id,tenant_id,meeting_start_iso' });
 
-              // 5. Trigger Meeting Confirmation (Direct call for reliability)
-              if (tenant.id === 1) {
-                console.log(`[MeetingConfirmation] Sending direct WhatsApp confirmation for tenant 1, lead=${leadId} to=${prioritizedPhone}`);
-                try {
-                  const sent = await sendSimpleWhatsAppConfirmation(
-                    prioritizedPhone,
-                    (leadData.name || 'Client').split(' ')[0],
-                    resolved_datetime,
-                    calResult.meetingUrl,
-                    tenant,
-                    listingTitle
-                  );
-
-                  if (sent) {
-                    // Update booking record to mark confirmation as sent
-                    await supabase.from('bookings').update({
-                      meta: {
-                        ...(calResult.meta || {}),
-                        whatsapp_confirmation_sent: true,
-                        call_id: body.message?.call?.id || body.call?.id
-                      }
-                    }).eq('booking_id', calResult.bookingId);
-                  }
-
-                  console.log(`[MeetingConfirmation] Tool confirmation success: ${sent}`);
-                } catch (confirmErr: any) {
-                  console.error(`[MeetingConfirmation] Tool confirmation call failed:`, confirmErr.message);
+              // 5. Trigger Meeting Confirmation via orchestrator
+              if (tenant.id === 1 || tenant.id === 2) {
+                console.log(`[MeetingConfirmation] Sending WhatsApp confirmation via orchestrator for tenant ${tenant.id}, lead=${leadId} to=${prioritizedPhone}`);
+                
+                const notificationResult = await orchestratePostMeetingNotification({
+                  tenant,
+                  leadId,
+                  phone: prioritizedPhone,
+                  name: leadData?.name,
+                  meetingStartIso: resolved_datetime,
+                  meetingUrl: calResult?.meetingUrl || '',
+                  projectName: listingTitle,
+                  bookingId: calResult?.bookingId,
+                  notificationType: 'viewing_booked',
+                  source: 'tool_call'
+                });
+                
+                if (notificationResult.whatsappSent) {
+                  console.log(`[MeetingConfirmation] Tool confirmation sent via orchestrator`);
+                } else if (notificationResult.deduplicated) {
+                  console.log(`[MeetingConfirmation] Tool confirmation deduplicated`);
+                } else {
+                  console.error(`[MeetingConfirmation] Tool confirmation failed`);
                 }
               }
 
@@ -1308,15 +1343,10 @@ export { handler };
  * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
  */
 async function triggerHubSpotSidecar(tenant: any, eventType: string, lead: any, noteText: string, hsTimestamp?: string, extra?: any) {
-  if (tenant.id !== 2 || tenant.crm_type !== 'hubspot') return;
+  if (tenant.id !== 2 || tenant.crm_type !== 'hubspot' || !lead) return;
 
   const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
   const sidecarKey = process.env.AURO_SIDECAR_KEY;
-
-  if (!sidecarKey) {
-    console.warn("[Sidecar] AURO_SIDECAR_KEY missing. Skipping sync.");
-    return;
-  }
 
   try {
     await axios.post(sidecarUrl, {

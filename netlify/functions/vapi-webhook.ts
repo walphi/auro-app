@@ -4,6 +4,7 @@ import axios from "axios";
 import { createCalComBooking } from "../../lib/calCom";
 import { getTenantByVapiId, getTenantById, getDefaultTenant, Tenant } from "../../lib/tenantConfig";
 import { resolveWhatsAppSender } from "../../lib/twilioWhatsAppClient";
+import { orchestratePostMeetingNotification } from "../../lib/notificationOrchestrator";
 
 // Initialize Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
@@ -143,9 +144,9 @@ const handler: Handler = async (event) => {
 
         if (!leadData) {
             console.error(`[Vapi Webhook] Lead not found for phone: ${phoneNumber} or leadId: ${leadId} (tenant: ${tenant?.id})`);
-            return { statusCode: 200, body: JSON.stringify({ error: "Lead not found" }) };
+            // Continue processing - we'll create HubSpot note with minimal data instead of returning early
         }
-        leadId = leadData.id;
+        leadId = leadData?.id;
 
         // --- EXTRACT STRUCTURED DATA ---
         const structuredData = getStructuredData(body);
@@ -159,15 +160,28 @@ const handler: Handler = async (event) => {
         if (tenant?.id === 2 && tenant?.crm_type === 'hubspot') {
             const summary = analysis.summary || structuredData.summary || "Conversation completed.";
             const duration = call?.duration || 0;
-            // We await here for the "No meeting scheduled" path, or just fire and forget for the booking path
-            const syncPromise = triggerHubSpotSidecar(tenant, 'vapi_call_ended', leadData, summary, undefined, {
-                vapi: { callId: call?.id, summary, duration }
-            });
+            
+            // Build effective lead data - use existing lead or construct minimal version
+            const effectiveLeadData = leadData || {
+                phone: phoneNumber || "",
+                name: (varValues.name || call?.customer?.name || "Unknown"),
+                email: varValues.email || ""
+            };
+            
+            // Only proceed if we have a phone number to identify the lead
+            if (!effectiveLeadData.phone) {
+                console.warn(`[Vapi Webhook] Cannot create HubSpot note: no phone number available`);
+            } else {
+                // We await here for the "No meeting scheduled" path, or just fire and forget for the booking path
+                const syncPromise = triggerHubSpotSidecar(tenant, 'vapi_call_ended', effectiveLeadData, summary, undefined, {
+                    vapi: { callId: call?.id, summary, duration }
+                });
 
-            if (!meetingScheduled) {
-                console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
-                await syncPromise; // Ensure it finishes before returning
-                return { statusCode: 200, body: JSON.stringify({ message: "No meeting scheduled" }) };
+                if (!meetingScheduled) {
+                    console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
+                    await syncPromise; // Ensure it finishes before returning
+                    return { statusCode: 200, body: JSON.stringify({ message: "No meeting scheduled" }) };
+                }
             }
         } else if (!meetingScheduled) {
             console.log(`[Vapi Webhook] No meeting scheduled for call: ${call?.id}`);
@@ -312,12 +326,24 @@ const handler: Handler = async (event) => {
 
         // --- SEND WHATSAPP NOTIFICATION ---
         const finalPhone = structuredData.phone || phoneNumber || leadData.phone;
-        const finalProject = structuredData.project_name || structuredData.property_interest || "your property inquiry";
-
-        if (finalPhone) {
-            // We fire and forget or await depending on whether we want to block the webhook response
-            await sendWhatsAppNotification(finalPhone, finalProject, meetingStartIso, tenant);
-        }
+        const finalProject = structuredData.project_name || structuredData.property_interest || "your property inquiry";        
+        console.log(`[Vapi Webhook] Sending WhatsApp notification via orchestrator for lead ${leadId}`);
+        
+        const notificationResult = await orchestratePostMeetingNotification({
+            tenant,
+            leadId,
+            phone: finalPhone,
+            email: structuredData.email || leadData.email,
+            name: leadData?.name,
+            meetingStartIso,
+            meetingUrl: calResult.meetingUrl,
+            projectName: finalProject,
+            bookingId: calResult.bookingId,
+            notificationType: 'booking_confirmed',
+            source: 'vapi_webhook'
+        });
+        
+        console.log(`[Vapi Webhook] Notification result: whatsapp=${notificationResult.whatsappSent}, deduplicated=${notificationResult.deduplicated}`);
 
         // --- CRM SYNC: Booking Created Sidecar ---
         if (tenant?.id === 2 && tenant?.crm_type === 'hubspot' && calResult) {
