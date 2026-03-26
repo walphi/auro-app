@@ -53,6 +53,9 @@ interface SidecarPayload {
         bookingId?: string;
         startTime?: string;
         projectName?: string;
+        budget?: string;
+        propertyType?: string;
+        area?: string;
     };
     vapi?: {
         callId?: string;
@@ -148,15 +151,16 @@ export const handler: Handler = async (event) => {
             })
             : 'Not set';
 
-        const projectLabel = projectName || 'our latest properties';
+        const projectLabel = payload.booking?.projectName || 'our latest properties';
+        const budget = qualificationData?.budget || payload.booking?.budget || 'Not specified';
+        const propType = qualificationData?.propertyType || payload.booking?.propertyType || 'Not specified';
+        const area = qualificationData?.area || payload.booking?.area || projectLabel;
 
-        // Provident-style formatting for Eshel
         finalNoteText =
-            `Your call about ${projectLabel} with Eshel Properties has been scheduled.\n` +
-            `Date & time: ${formattedTime} (Dubai Time).\n` +
-            `Join the meeting: ${meetingUrl || 'N/A'}\n\n` +
-            `In the meantime, you can explore Eshel's property portfolio here:\n` +
-            `https://auroapp.com/eshel-properties`;
+            `Eshel Consultation Booked – 30 min call on ${formattedTime} (Dubai Time) ` +
+            `about ${budget}, ${propType}, ${area}.\n\n` +
+            `Join the meeting: ${meetingUrl || 'N/A'}\n` +
+            `Explore Eshel's property portfolio here: https://auroapp.com/eshel-properties`;
     }
 
     // --- Sync to HubSpot ---

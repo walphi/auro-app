@@ -669,21 +669,23 @@ CURRENT LEAD PROFILE:
             const lastName = structuredData.last_name || dbName.split(' ').slice(1).join(' ') || '';
             const fullName = `${firstName} ${lastName}`.trim();
 
+            const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
             const sanitizeEmail = (e: string) => {
               if (!e) return "";
               return e.toLowerCase().replace(/\s+at\s+/g, '@').replace(/\s+dot\s+/g, '.').replace(/\s+/g, '');
             };
-            const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
             let cleanEmail = sanitizeEmail(structuredData.email);
-            if (!isValidEmail(cleanEmail) && leadData?.email && isValidEmail(leadData.email)) {
-              cleanEmail = leadData.email;
-            }
+            // LOCK: Prefer existing valid email from DB over STT
+            const finalEmail = leadData?.email && isValidEmail(leadData.email) ? leadData.email : cleanEmail;
 
             const normalizedAttendeePhone = resolvePrioritizedPhone(
               phoneNumber,
               leadData?.phone,
               structuredData.phone
             );
+            // LOCK: Prefer existing phone from DB over STT (unless new caller ID)
+            const finalPhone = leadData?.phone ? leadData.phone : (phoneNumber || normalizedAttendeePhone);
 
             let calResult: any = null;
             let calErrorMsg: string | null = null;
@@ -693,8 +695,8 @@ CURRENT LEAD PROFILE:
                 eventTypeId,
                 start: meetingStartIso,
                 name: fullName,
-                email: cleanEmail,
-                phoneNumber: normalizedAttendeePhone,
+                email: finalEmail,
+                phoneNumber: finalPhone,
                 metadata: {
                   budget: String(structuredData.budget || leadData?.budget || ""),
                   property_type: String(structuredData.property_type || leadData?.property_type || ""),
@@ -728,11 +730,17 @@ CURRENT LEAD PROFILE:
                 viewing_datetime: meetingStartIso
               }).eq('id', leadId);
 
+              const dubaiTimeStr = new Date(meetingStartIso).toLocaleString('en-US', { timeZone: 'Asia/Dubai', dateStyle: 'full', timeStyle: 'short' });
+              const budget = structuredData.budget || leadData?.budget || "Not specified";
+              const propType = structuredData.property_type || leadData?.property_type || "Not specified";
+              const area = structuredData.preferred_area || leadData?.location || "Not specified";
+              const notePrefix = tenant.id === 2 ? "Eshel Consultation Booked" : "✅ Cal.com Consultation Booked";
+
               await supabase.from('messages').insert({
                 lead_id: leadId,
                 type: 'System_Note',
                 sender: 'System',
-                content: `✅ Cal.com Consultation Booked via Vapi\nTime: ${new Date(meetingStartIso).toLocaleString('en-US', { timeZone: 'Asia/Dubai' })}\nLink: ${calResult.meetingUrl || 'Check Cal.com'}`
+                content: `${notePrefix} – 30 min call on ${dubaiTimeStr} about ${budget}, ${propType}, ${area}. Cal.com link: ${calResult.meetingUrl || 'Check Cal.com'}`
               });
 
               console.log(`[VAPI] Successfully created Cal.com booking: ${calResult.bookingId}`);
@@ -806,8 +814,13 @@ CURRENT LEAD PROFILE:
 
             // --- CRM SYNC: Booking Created Sidecar (Tenant 2 / Eshel) ---
             if (tenant.id === 2 && tenant.crm_type === 'hubspot' && calResult) {
-              const finalProject = structuredData.project_name || structuredData.property_interest || "our latest properties";
+              const finalProject = structuredData.project_name || structuredData.preferred_area || leadData?.location || "our latest properties";
+              const budget = structuredData.budget || leadData?.budget || "";
+              const propertyType = structuredData.property_type || leadData?.property_type || "";
+              const area = structuredData.preferred_area || leadData?.location || "";
+
               await triggerHubSpotSidecar(tenant, 'booking_created', leadData, "Meeting Scheduled", undefined, {
+                qualificationData: { budget, propertyType, area },
                 booking: {
                   meetingUrl: calResult.meetingUrl,
                   bookingId: calResult.bookingId,
