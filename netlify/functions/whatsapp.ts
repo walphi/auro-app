@@ -648,12 +648,13 @@ export const handler: Handler = async (event) => {
                 const lastAiTime = lastAiMessageObj?.created_at ? new Date(lastAiMessageObj.created_at).getTime() : 0;
                 const diffMinutes = (Date.now() - lastAiTime) / (1000 * 60);
 
-                const wasLastMessageOffer = lastAiText.toLowerCase().includes("call you now") ||
+                const wasLastMessageOffer = (lastAiText.toLowerCase().includes("call you now") ||
                     lastAiText.includes("Would you like a call now?") ||
                     lastAiText.includes("Is now a good time?") ||
                     lastAiText.includes("schedule a time for later") ||
                     lastAiText.toLowerCase().includes("consultation") ||
-                    lastAiText.toLowerCase().includes("specialist call");
+                    lastAiText.toLowerCase().includes("specialist call")) 
+                    && !lastAiText.includes("received your enquiry");  // Exclude initial template - it's a greeting, not a call offer
 
                 const isRecentEnough = diffMinutes < 15;
                 const callAffirmative = isAffirmative(userMessage);
