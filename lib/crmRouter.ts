@@ -60,11 +60,9 @@ export async function syncLeadNote(
             ...(firstname && { firstname }),
             ...(lastname && { lastname }),
             email: payload.email,
-            // Qualification data mapped to HubSpot contact properties
-            ...(payload.qualificationData?.status && { hs_lead_status: payload.qualificationData.status }),
-            ...(payload.qualificationData?.budget && { budget_range: payload.qualificationData.budget }),
-            ...(payload.qualificationData?.propertyType && { property_type: payload.qualificationData.propertyType }),
-            ...(payload.qualificationData?.area && { preferred_area: payload.qualificationData.area }),
+            // Note: Qualification data (budget, propertyType, area, status) is included in the 
+            // note text itself (formatted in eshel-hubspot-crm-sync.ts), not as contact properties
+            // to avoid 400 errors from missing custom properties in HubSpot
         };
 
         const { contactId, created } = await hubspot.upsertContact(payload.tenantId, contactProps);
