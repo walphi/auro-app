@@ -190,7 +190,7 @@ export const handler: Handler = async (event) => {
                 // First, look up the lead by phone
                 let { data: existingLead } = await supabase
                     .from('leads')
-                    .select('id, name')
+                    .select('id, name, email')
                     .eq('phone', phone)
                     .eq('tenant_id', ESHEL_TENANT_ID)
                     .maybeSingle();
@@ -219,6 +219,15 @@ export const handler: Handler = async (event) => {
                         leadId = newLead.id;
                         console.log(`${LOG_PREFIX} Created new lead ${leadId} for ${phone}`);
                     }
+                }
+
+                // Update email if lead exists but email is missing or different from HubSpot
+                if (leadId && contact.email && existingLead?.email !== contact.email) {
+                    await supabase
+                        .from('leads')
+                        .update({ email: contact.email })
+                        .eq('id', leadId);
+                    console.log(`${LOG_PREFIX} Updated email for lead ${leadId}: ${contact.email}`);
                 }
 
                 // Log the template message as AURO_AI so "Yes" replies work
