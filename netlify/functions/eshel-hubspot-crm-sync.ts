@@ -62,6 +62,7 @@ interface SidecarPayload {
         summary?: string;
         duration?: number;
     };
+    whatsappContext?: string;  // WhatsApp conversation summary before the call
 }
 
 // ---------------------------------------------------------------------------
@@ -83,13 +84,9 @@ export const handler: Handler = async (event) => {
     }
 
     // --- Parse body ---
-    let payload: SidecarPayload;
-    try {
-        payload = JSON.parse(event.body || '{}');
-    } catch {
-        console.error('[EshelCrmSync] Could not parse request body as JSON');
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', reason: 'invalid_json' }) };
-    }
+    const body = JSON.parse(event.body || "{}");
+    console.log(`[EshelCrmSync] Received ${body.eventType} for tenant ${body.tenantId}. Phone: ${body.phone}`);
+    const payload: SidecarPayload = body;
 
     const { tenantId, phone, name, email, noteText, eventType, hubspotContactId, qualificationData } = payload;
 
@@ -140,7 +137,32 @@ export const handler: Handler = async (event) => {
     } else if (eventType === 'vapi_call_ended') {
         const summary = payload.vapi?.summary || 'No summary available';
         const duration = payload.vapi?.duration ? `${Math.floor(payload.vapi.duration)}s` : 'N/A';
-        finalNoteText = `📞 AI Call Ended\n\nSummary: ${summary}\nDuration: ${duration}\nCall ID: ${payload.vapi?.callId || 'N/A'}`;
+        const callId = payload.vapi?.callId || 'N/A';
+        
+        // Build enhanced note with WhatsApp context and qualification data
+        let noteParts = [`📞 AI Call Ended`];
+        
+        // Add WhatsApp conversation context if available
+        if (payload.whatsappContext) {
+            noteParts.push(`\n📱 WhatsApp Conversation (before call):\n${payload.whatsappContext}`);
+        }
+        
+        // Add voice call summary
+        noteParts.push(`\n🎙️ Voice Call Summary: ${summary}`);
+        
+        // Add qualification details if available
+        if (qualificationData) {
+            noteParts.push(`\n📋 Qualification Details:`);
+            if (qualificationData.budget) noteParts.push(`• Budget: ${qualificationData.budget}`);
+            if (qualificationData.propertyType) noteParts.push(`• Property Type: ${qualificationData.propertyType}`);
+            if (qualificationData.area) noteParts.push(`• Preferred Area: ${qualificationData.area}`);
+            if (qualificationData.status) noteParts.push(`• Status: ${qualificationData.status}`);
+        }
+        
+        // Add call metadata
+        noteParts.push(`\n⏱️ Duration: ${duration}\n🆔 Call ID: ${callId}`);
+        
+        finalNoteText = noteParts.join('');
     } else if (eventType === 'booking_created' && payload.booking) {
         const { meetingUrl, startTime, projectName } = payload.booking;
         const formattedTime = startTime
@@ -159,8 +181,9 @@ export const handler: Handler = async (event) => {
         finalNoteText =
             `Eshel Consultation Booked – 30 min call on ${formattedTime} (Dubai Time) ` +
             `about ${budget}, ${propType}, ${area}.\n\n` +
-            `Join the meeting: ${meetingUrl || 'N/A'}\n` +
-            `Explore Eshel's property portfolio here: https://auroapp.com/eshel-properties`;
+            `Join the meeting: ${meetingUrl || 'N/A'}\n\n` +
+            `📚 Explore Eshel's 2026 UAE Off-Plan Playbook: https://bit.ly/eshel-prop-uae-playbook\n` +
+            `🏠 Explore Eshel's property portfolio: https://auroapp.com/eshel-properties`;
     }
 
     // --- Sync to HubSpot ---
