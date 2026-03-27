@@ -495,55 +495,65 @@ export const handler: Handler = async (event) => {
             },
         });
 
-        // --- LOG TEMPLATE MESSAGE TO SUPABASE ---
-        // This ensures the "Yes" reply is recognized as a call confirmation
-        if (whatsappSent) {
-            try {
-                // First, look up the lead by phone
-                let { data: existingLead } = await supabase
+        console.log(`${LOG_PREFIX} WhatsApp send result: ${whatsappSent ? 'success' : 'failed'}`);
+
+        // --- ENSURE LEAD EXISTS IN SUPABASE ---
+        // Look up or create lead regardless of WhatsApp success
+        let leadId: string | undefined;
+        let existingLead: any;
+        
+        try {
+            // Look up existing lead
+            const { data: leadData } = await supabase
+                .from('leads')
+                .select('id, name, email')
+                .eq('phone', phone)
+                .eq('tenant_id', ESHEL_TENANT_ID)
+                .maybeSingle();
+            
+            existingLead = leadData;
+            leadId = existingLead?.id;
+
+            // Create lead if doesn't exist
+            if (!leadId) {
+                const { data: newLead, error: createError } = await supabase
                     .from('leads')
-                    .select('id, name, email')
-                    .eq('phone', phone)
-                    .eq('tenant_id', ESHEL_TENANT_ID)
-                    .maybeSingle();
-
-                let leadId = existingLead?.id;
-
-                // Create lead if doesn't exist
-                if (!leadId) {
-                    const firstName = name.split(' ')[0] || 'there';
-                    const { data: newLead, error: createError } = await supabase
-                        .from('leads')
-                        .insert({
-                            phone: phone,
-                            name: name,
-                            status: 'New',
-                            source: 'HubSpot',
-                            tenant_id: ESHEL_TENANT_ID,
-                            email: contact.email || undefined
-                        })
-                        .select('id')
-                        .single();
-                    
-                    if (createError) {
-                        console.error(`${LOG_PREFIX} Failed to create lead:`, createError.message);
-                    } else if (newLead) {
-                        leadId = newLead.id;
-                        console.log(`${LOG_PREFIX} Created new lead ${leadId} for ${phone}`);
-                    }
+                    .insert({
+                        phone: phone,
+                        name: name,
+                        status: 'New',
+                        source: 'HubSpot',
+                        tenant_id: ESHEL_TENANT_ID,
+                        email: contact.email || undefined
+                    })
+                    .select('id')
+                    .single();
+                
+                if (createError) {
+                    console.error(`${LOG_PREFIX} Failed to create lead:`, createError.message);
+                } else if (newLead) {
+                    leadId = newLead.id;
+                    console.log(`${LOG_PREFIX} Created new lead ${leadId} for ${phone}`);
                 }
+            } else {
+                console.log(`${LOG_PREFIX} Found existing lead ${leadId} for ${phone}`);
+            }
 
-                // Update email if lead exists but email is missing or different from HubSpot
-                if (leadId && contact.email && existingLead?.email !== contact.email) {
-                    await supabase
-                        .from('leads')
-                        .update({ email: contact.email })
-                        .eq('id', leadId);
-                    console.log(`${LOG_PREFIX} Updated email for lead ${leadId}: ${contact.email}`);
-                }
+            // Update email if different
+            if (leadId && contact.email && existingLead?.email !== contact.email) {
+                await supabase.from('leads').update({ email: contact.email }).eq('id', leadId);
+                console.log(`${LOG_PREFIX} Updated email for lead ${leadId}: ${contact.email}`);
+            }
+        } catch (leadError: any) {
+            console.error(`${LOG_PREFIX} Lead lookup/creation error:`, leadError.message);
+        }
 
-                // Log the template message as AURO_AI so "Yes" replies work
-                if (leadId) {
+        // --- LOG TEMPLATE MESSAGE AND PUSH NOTE TO HUBSPOT ---
+        // Only proceed if we have a lead and objectId
+        if (leadId && objectId) {
+            try {
+                // Log template message for WhatsApp nurturing (if WhatsApp was sent)
+                if (whatsappSent) {
                     const firstName = (existingLead?.name || name || 'there').split(' ')[0];
                     const templateContent = `Hi ${firstName}, this is Eshel Properties. We received your enquiry, is now a good time to chat?`;
                     
@@ -555,38 +565,35 @@ export const handler: Handler = async (event) => {
                     });
                     
                     console.log(`${LOG_PREFIX} Logged template message to lead ${leadId}`);
-                    
-                    // --- PUSH NOTE TO HUBSPOT CONTACT TIMELINE ---
-                    // Create engagement note in HubSpot for this new lead
-                    if (objectId) {
-                        const noteContent = buildHubSpotNoteContent({
-                            name: existingLead?.name || name || 'there',
-                            phone: phone,
-                            email: contact.email,
-                            source: 'HubSpot Webhook',
-                            leadStatus: 'New',
-                            // TODO: Pull from lead record when available:
-                            // budget: existingLead?.budget,
-                            // preferredArea: existingLead?.preferred_area,
-                            // propertyType: existingLead?.property_type,
-                        });
-                        
-                        const noteResult = await addNoteToHubSpotContact(
-                            { contactId: String(objectId), noteBody: noteContent },
-                            LOG_PREFIX
-                        );
-                        
-                        if (noteResult.success) {
-                            console.log(`${LOG_PREFIX} Note created in HubSpot: ${noteResult.noteId}`);
-                        } else {
-                            console.warn(`${LOG_PREFIX} Note creation skipped or failed: ${noteResult.error}`);
-                        }
-                    }
                 }
-            } catch (logError: any) {
-                console.error(`${LOG_PREFIX} Failed to log template message:`, logError.message);
-                // Non-critical - don't fail the webhook
+
+                // --- PUSH NOTE TO HUBSPOT CONTACT TIMELINE ---
+                // Always create note in HubSpot when we have lead + contact
+                console.log(`${LOG_PREFIX} [NotePush] Preparing note for contact ${objectId}, lead ${leadId}`);
+                
+                const noteContent = buildHubSpotNoteContent({
+                    name: existingLead?.name || name || 'there',
+                    phone: phone,
+                    email: contact.email,
+                    source: 'HubSpot Webhook',
+                    leadStatus: 'New',
+                });
+                
+                const noteResult = await addNoteToHubSpotContact(
+                    { contactId: String(objectId), noteBody: noteContent },
+                    LOG_PREFIX
+                );
+                
+                if (noteResult.success) {
+                    console.log(`${LOG_PREFIX} Note created in HubSpot: ${noteResult.noteId}`);
+                } else {
+                    console.warn(`${LOG_PREFIX} Note creation failed: ${noteResult.error}`);
+                }
+            } catch (processingError: any) {
+                console.error(`${LOG_PREFIX} Error in post-processing:`, processingError.message);
             }
+        } else {
+            console.warn(`${LOG_PREFIX} Skipping note creation: leadId=${leadId}, objectId=${objectId}`);
         }
 
         // Fire-and-forget: post initial note to HubSpot via sidecar
