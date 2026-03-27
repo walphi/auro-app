@@ -32,7 +32,7 @@ function validateHubSpotSignature(
     debugMode: boolean
 ): boolean {
     if (!receivedSignature) {
-        if (debugMode) console.log(`${logPrefix} [SIG_DEBUG] No received signature`);
+        console.log(`${logPrefix} [SIG_DEBUG] No received signature`);
         return false;
     }
 
@@ -40,35 +40,34 @@ function validateHubSpotSignature(
     // Note: requestUrl should be path + query only (no protocol/host)
     const sourceString = `${requestMethod}${requestUrl}${requestBody}${timestamp}`;
     
-    if (debugMode) {
-        console.log(`${logPrefix} [SIG_DEBUG] Components:`, {
-            method: requestMethod,
-            url: requestUrl,
-            bodyPreview: requestBody.substring(0, 200),
-            bodyLength: requestBody.length,
-            timestamp: timestamp,
-        });
-        console.log(`${logPrefix} [SIG_DEBUG] Source string length: ${sourceString.length}`);
-        console.log(`${logPrefix} [SIG_DEBUG] Source string preview: ${sourceString.substring(0, 250)}`);
-    }
+    // ALWAYS log components for debugging (temporary)
+    console.log(`${logPrefix} [SIG_DEBUG] Components:`, {
+        method: requestMethod,
+        url: requestUrl,
+        bodyPreview: requestBody.substring(0, 200),
+        bodyLength: requestBody.length,
+        bodyEnd: requestBody.substring(requestBody.length - 50), // Last 50 chars
+        timestamp: timestamp,
+    });
+    console.log(`${logPrefix} [SIG_DEBUG] Source string length: ${sourceString.length}`);
+    console.log(`${logPrefix} [SIG_DEBUG] Full source string: ${sourceString}`);
     
     const expected = crypto
         .createHmac('sha256', clientSecret)
         .update(sourceString)
         .digest('base64');
 
-    if (debugMode) {
-        console.log(`${logPrefix} [SIG_DEBUG] Expected signature length: ${expected.length}`);
-        console.log(`${logPrefix} [SIG_DEBUG] Received signature length: ${receivedSignature.length}`);
-        console.log(`${logPrefix} [SIG_DEBUG] Signatures match: ${expected === receivedSignature}`);
-    }
+    console.log(`${logPrefix} [SIG_DEBUG] Expected signature: ${expected.substring(0, 20)}...`);
+    console.log(`${logPrefix} [SIG_DEBUG] Received signature: ${receivedSignature.substring(0, 20)}...`);
+    console.log(`${logPrefix} [SIG_DEBUG] Signatures match: ${expected === receivedSignature}`);
+    console.log(`${logPrefix} [SIG_DEBUG] Secret first 5 chars: ${clientSecret.substring(0, 5)}...`);
 
     const expectedBuffer = Buffer.from(expected);
     const receivedBuffer = Buffer.from(receivedSignature);
 
     // timingSafeEqual throws RangeError if buffer lengths differ
     if (expectedBuffer.length !== receivedBuffer.length) {
-        if (debugMode) console.log(`${logPrefix} [SIG_DEBUG] Buffer length mismatch`);
+        console.log(`${logPrefix} [SIG_DEBUG] Buffer length mismatch: expected=${expectedBuffer.length}, received=${receivedBuffer.length}`);
         return false;
     }
 
@@ -221,19 +220,29 @@ export const handler: Handler = async (event) => {
     // HubSpot expects path + query only (e.g., /.netlify/functions/eshel-hubspot-webhook?foo=bar)
     let requestUri = event.rawUrl || '';
     
+    console.log(`${LOG_PREFIX} Original rawUrl: ${requestUri}`);
+    console.log(`${LOG_PREFIX} event.path: ${event.path}`);
+    console.log(`${LOG_PREFIX} event.rawQuery: ${event.rawQuery}`);
+    
+    // Try multiple URI formats for signature validation
+    // HubSpot might use full URL or just path
+    const uriFormats = [requestUri];
+    
     // Strip protocol and host if present
     if (requestUri.startsWith('https://')) {
         requestUri = requestUri.substring(8); // Remove https://
         const pathIndex = requestUri.indexOf('/');
         if (pathIndex !== -1) {
-            requestUri = requestUri.substring(pathIndex); // Keep path + query only
+            requestUri = requestUri.substring(pathIndex);
         }
+        uriFormats.push(requestUri);
     } else if (requestUri.startsWith('http://')) {
         requestUri = requestUri.substring(7); // Remove http://
         const pathIndex = requestUri.indexOf('/');
         if (pathIndex !== -1) {
             requestUri = requestUri.substring(pathIndex);
         }
+        uriFormats.push(requestUri);
     }
     
     // If rawUrl is empty, reconstruct from path and query
@@ -242,12 +251,30 @@ export const handler: Handler = async (event) => {
         if (event.rawQuery) {
             requestUri += '?' + event.rawQuery;
         }
+        uriFormats.push(requestUri);
     }
     
-    console.log(`${LOG_PREFIX} Request URI for signature: ${requestUri}`);
+    // Add path-only version without query string
+    const pathOnly = event.path || '/';
+    uriFormats.push(pathOnly);
     
-    if (!validateHubSpotSignature(clientSecret, event.httpMethod, requestUri, body, timestamp, signature, LOG_PREFIX, debugMode)) {
-        console.error(`${LOG_PREFIX} Invalid HubSpot signature.`);
+    console.log(`${LOG_PREFIX} Request URI formats to try:`, uriFormats);
+    
+    // Try each URI format until one validates
+    let isValid = false;
+    let validatedUri = '';
+    
+    for (const testUri of uriFormats) {
+        if (validateHubSpotSignature(clientSecret, event.httpMethod, testUri, body, timestamp, signature, LOG_PREFIX, debugMode)) {
+            isValid = true;
+            validatedUri = testUri;
+            console.log(`${LOG_PREFIX} Signature validated with URI format: ${testUri}`);
+            break;
+        }
+    }
+    
+    if (!isValid) {
+        console.error(`${LOG_PREFIX} Invalid HubSpot signature (tried ${uriFormats.length} URI formats).`);
         return { statusCode: 401, body: JSON.stringify({ error: 'invalid_signature' }) };
     }
 
