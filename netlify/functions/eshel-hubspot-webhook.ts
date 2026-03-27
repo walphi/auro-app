@@ -50,11 +50,55 @@ function validateHubSpotSignature(
 }
 
 // ---------------------------------------------------------------------------
+// Helper: Call HubSpot API as Eshel using private app token
+// ---------------------------------------------------------------------------
+
+interface HubSpotApiOptions {
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+    params?: Record<string, any>;
+    data?: any;
+    headers?: Record<string, string>;
+}
+
+async function callHubSpotAsEshel(endpoint: string, options: HubSpotApiOptions = {}) {
+    const token = process.env.ESHEL_HUBSPOT_TOKEN;
+    if (!token) {
+        throw new Error('ESHEL_HUBSPOT_TOKEN not configured');
+    }
+
+    const url = `${HS_API}${endpoint}`;
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    return axios({
+        url,
+        method: options.method || 'GET',
+        headers,
+        data: options.data,
+        params: options.params,
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
 export const handler: Handler = async (event) => {
     const LOG_PREFIX = `[tenant=2|hubspot_test][EshelWebhook]`;
+
+    // --- Test endpoint ---
+    const queryParams = new URLSearchParams(event.rawQuery || '');
+    if (queryParams.get('test') === 'true') {
+        console.log('[EshelWebhook] Test endpoint hit - eshel-hubspot-webhook test ok');
+        return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ok: true, message: 'eshel-hubspot-webhook test ok' }),
+        };
+    }
 
     // --- Kill switch ---
     if (process.env.ESHEL_HUBSPOT_ENABLED !== 'true') {
@@ -101,6 +145,14 @@ export const handler: Handler = async (event) => {
 
     console.log(`${LOG_PREFIX} Received ${events.length} event(s).`);
 
+    // --- Logging: Sanitized headers and body preview ---
+    const sanitizedHeaders = { ...event.headers };
+    delete sanitizedHeaders['x-hubspot-signature-v3'];
+    delete sanitizedHeaders['authorization'];
+    delete sanitizedHeaders['x-auro-sidecar-key'];
+    console.log(`${LOG_PREFIX} Headers:`, JSON.stringify(sanitizedHeaders));
+    console.log(`${LOG_PREFIX} Body preview:`, body.substring(0, 500));
+
     // --- Load Eshel tenant config once ---
     const { data: tenant, error: tenantErr } = await supabase
         .from('tenants')
@@ -121,14 +173,13 @@ export const handler: Handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: 'tenant_load_failed' }) };
     }
 
-    // --- Get HubSpot access token using helper (handles refresh) ---
-    let accessToken: string;
-    try {
-        accessToken = await getHubSpotAccessTokenForTenant(ESHEL_TENANT_ID);
-    } catch (err: any) {
-        console.error(`${LOG_PREFIX} HubSpot auth failed:`, err.message);
-        return { statusCode: 500, body: JSON.stringify({ error: 'hubspot_auth_failed', detail: err.message }) };
+    // --- Get HubSpot access token using private app token ---
+    const privateAppToken = process.env.ESHEL_HUBSPOT_TOKEN;
+    if (!privateAppToken) {
+        console.error(`${LOG_PREFIX} ESHEL_HUBSPOT_TOKEN not set.`);
+        return { statusCode: 500, body: JSON.stringify({ error: 'token_not_configured' }) };
     }
+    const accessToken = privateAppToken;
 
     // --- Process each contact.creation event ---
     for (const evt of events) {
@@ -144,13 +195,10 @@ export const handler: Handler = async (event) => {
         // Fetch full contact details from HubSpot
         let contact: any;
         try {
-            const resp = await axios.get(
-                `${HS_API}/crm/v3/objects/contacts/${objectId}`,
-                {
-                    params: { properties: 'phone,email,firstname,lastname' },
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                }
-            );
+            const resp = await callHubSpotAsEshel(`/crm/v3/objects/contacts/${objectId}`, {
+                method: 'GET',
+                params: { properties: 'phone,email,firstname,lastname' },
+            });
             contact = resp.data.properties;
         } catch (err: any) {
             console.error(`${LOG_PREFIX} Failed to fetch contact ${objectId}:`, err.response?.data || err.message);
