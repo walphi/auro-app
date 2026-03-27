@@ -852,6 +852,25 @@ CORE STRATEGY:
     * Turn 3+: Suggest a consultation ONLY if they show strong intent or you've provided significant value.
     * Example CTAs: "Does that location match your portfolio goals?", "Should I send over the payment plan for this one?", "Is this a project you've looked into before?"
 
+${tenant.id === 2 ? `
+ESHEL CALL OFFER GUIDELINES:
+After providing a concrete, RAG-backed project answer with clear investment context (yields, prices, payment plans, or handover dates), you MAY offer a brief specialist call.
+
+ALLOWED ONLY when ALL criteria met:
+1. The answer includes at least ONE concrete project detail (name, yield %, price range, payment plan, or handover date).
+2. This is the 2nd or later meaningful turn (NOT the template reply or first substantive answer).
+3. The user showed genuine intent: mentioned a project name PLUS a constraint (payment plan, budget, timeline, or handover date).
+
+If criteria met, append ONE of these on-brand closers:
+- "Would you like to speak with a specialist for 10–15 minutes so we can match you with the exact tower and payment plan that fits your budget and timeline?"
+- "Shall I arrange a 10-minute call with our Eshel specialist to discuss which specific unit and payment structure works best for you?"
+
+NEVER append a call offer:
+- On the initial "Is now a good time?" template reply.
+- On the very first project answer (wait for 2nd+ turn).
+- Without concrete RAG facts in the answer.
+` : ''}
+
 GREETINGS:
 For simple greetings ("hi", "hello"):
 - Reply with a short, warm greeting and one question about their investment goals.
@@ -1302,18 +1321,50 @@ CORE RULES (HARD CONSTRAINTS):
 
                 responseText = textResponse || "I didn't quite catch that. Could you repeat?";
 
-                // --- NEW: PROACTIVE CALL OFFER (INTENT DETECTION) ---
-                if (responseText && leadId && !skipGemini) {
+                // --- ESHEL CALL OFFER: Append polite specialist offer when criteria met ---
+                // Only in happy path (normal Gemini response), never in fallback/timeout path
+                if (responseText && leadId && !skipGemini && tenant.id === 2) {
                     const intentReached = hasBuyingIntent(userMessage, existingLead);
 
-                    // Only offer if intent is reached AND we haven't offered it yet in this session
+                    // Check if already offered in this session
                     const alreadyOfferedInHistory = chatHistory.some(h =>
-                        h.role === 'model' && h.parts?.[0]?.text?.includes("Would you like a call now?")
+                        h.role === 'model' && (
+                            h.parts?.[0]?.text?.includes("Would you like to speak with a specialist") ||
+                            h.parts?.[0]?.text?.includes("Shall I arrange a 10-minute call")
+                        )
                     );
-                    const alreadyOfferedInResponse = responseText.includes("Would you like a call now?");
+                    const alreadyOfferedInResponse = responseText.includes("Would you like to speak with a specialist") ||
+                                                      responseText.includes("Shall I arrange a 10-minute call");
 
-                    if (intentReached && !alreadyOfferedInHistory && !alreadyOfferedInResponse && !isNegative(userMessage)) {
-                        console.log("[CallPrompt] Intent reached. (Not appending offer per user feedback)");
+                    // Guard: Must be 2nd+ meaningful turn
+                    const isSecondPlusTurn = chatHistory.filter(h => h.role === 'user').length >= 2;
+
+                    // Guard: Response must have concrete details (numbers, percentages, dates)
+                    const hasConcreteDetails = responseText.includes("AED") || 
+                                              responseText.includes("%") || 
+                                              responseText.includes("handover") ||
+                                              responseText.includes("payment plan");
+
+                    // Guard: Last user message must contain project keyword + constraint
+                    const projectKeywords = ["emaar", "beachfront", "marina", "south", "downtown", "hills", "creek", "palm", "jumeirah", "d3", "hado", "talea", "passo", "loom", "avenew", "beyond", "edit", "pulse", "havens"];
+                    const constraintKeywords = ["payment plan", "handover", "before", "budget", "roi", "yield", "return", "price", "cost", "afford", "timeline", "when", "date"];
+                    
+                    const userMsgLower = userMessage.toLowerCase();
+                    const hasProjectKeyword = projectKeywords.some(kw => userMsgLower.includes(kw));
+                    const hasConstraintKeyword = constraintKeywords.some(kw => userMsgLower.includes(kw));
+
+                    // All conditions must be met to append call offer
+                    if (intentReached && 
+                        isSecondPlusTurn && 
+                        hasConcreteDetails && 
+                        hasProjectKeyword && 
+                        hasConstraintKeyword &&
+                        !alreadyOfferedInHistory && 
+                        !alreadyOfferedInResponse && 
+                        !isNegative(userMessage)) {
+                        
+                        responseText += "\n\nWould you like to speak with a specialist for 10–15 minutes so we can match you with the exact tower and payment plan that fits your budget and timeline?";
+                        console.log("[CallPrompt] Appended Eshel specialist call offer to response");
                     }
                 }
             }
