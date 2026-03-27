@@ -1,6 +1,9 @@
 import { Handler } from '@netlify/functions';
 import { supabase } from '../../lib/supabase';
 import { syncLeadNote } from '../../lib/crmRouter';
+import axios from 'axios';
+
+const HS_API = 'https://api.hubapi.com';
 
 /**
  * netlify/functions/eshel-hubspot-crm-sync.ts
@@ -63,6 +66,109 @@ interface SidecarPayload {
         duration?: number;
     };
     whatsappContext?: string;  // WhatsApp conversation summary before the call
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Sync to HubSpot using Private App Token (for Eshel/tenant 2)
+// ---------------------------------------------------------------------------
+
+interface PrivateTokenSyncPayload {
+    tenantId: number;
+    phone: string;
+    name: string;
+    email?: string;
+    noteText: string;
+    hubspotContactId?: string;
+    hsTimestamp?: string;
+}
+
+async function syncToHubSpotWithPrivateToken(
+    payload: PrivateTokenSyncPayload
+): Promise<{ contactId: string; created: boolean }> {
+    const { phone, name, email, noteText, hubspotContactId, hsTimestamp } = payload;
+    const token = process.env.ESHEL_HUBSPOT_TOKEN;
+    
+    if (!token) {
+        throw new Error('ESHEL_HUBSPOT_TOKEN not configured');
+    }
+    
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+    };
+    
+    let contactId = hubspotContactId;
+    let created = false;
+    
+    // Step 1: Find or create contact
+    if (!contactId) {
+        // Search by phone
+        const searchResp = await axios.post(
+            `${HS_API}/crm/v3/objects/contacts/search`,
+            {
+                filterGroups: [{
+                    filters: [{ propertyName: 'phone', operator: 'EQ', value: phone }]
+                }],
+                properties: ['id', 'phone', 'email'],
+                limit: 1,
+            },
+            { headers }
+        );
+        
+        const results = searchResp.data.results;
+        if (results && results.length > 0) {
+            contactId = results[0].id;
+            console.log(`[EshelCrmSync] Found existing contact ${contactId} by phone ${phone}`);
+        } else {
+            // Create new contact
+            const nameParts = name.trim().split(' ');
+            const createResp = await axios.post(
+                `${HS_API}/crm/v3/objects/contacts`,
+                {
+                    properties: {
+                        phone: phone,
+                        firstname: nameParts[0] || '',
+                        lastname: nameParts.slice(1).join(' ') || '',
+                        email: email || '',
+                    },
+                },
+                { headers }
+            );
+            contactId = createResp.data.id;
+            created = true;
+            console.log(`[EshelCrmSync] Created new contact ${contactId} for ${phone}`);
+        }
+    }
+    
+    if (!contactId) {
+        throw new Error('Failed to resolve or create HubSpot contact');
+    }
+    
+    // Step 2: Create note
+    const noteResp = await axios.post(
+        `${HS_API}/crm/v3/objects/notes`,
+        {
+            properties: {
+                hs_note_body: noteText,
+                hs_timestamp: hsTimestamp || new Date().toISOString(),
+            },
+        },
+        { headers }
+    );
+    
+    const noteId = noteResp.data.id;
+    console.log(`[EshelCrmSync] Created note ${noteId}`);
+    
+    // Step 3: Associate note with contact
+    await axios.put(
+        `${HS_API}/crm/v3/objects/notes/${noteId}/associations/contacts/${contactId}/note_to_contact`,
+        {},
+        { headers }
+    );
+    
+    console.log(`[EshelCrmSync] Associated note ${noteId} with contact ${contactId}`);
+    
+    return { contactId, created };
 }
 
 // ---------------------------------------------------------------------------
@@ -200,16 +306,34 @@ export const handler: Handler = async (event) => {
     }
 
     // --- Sync to HubSpot ---
+    // For tenant 2 (Eshel), use private app token directly instead of OAuth flow
     try {
-        const result = await syncLeadNote(tenant.crm_type, {
-            tenantId,
-            phone,
-            name,
-            email,
-            noteText: finalNoteText,
-            qualificationData,
-            hsTimestamp: payload.hsTimestamp,
-        });
+        let result;
+        
+        if (tenantId === 2) {
+            // Eshel: Use private app token for direct API calls
+            console.log(`${label}[EshelCrmSync] Using private app token for Eshel (tenant 2)`);
+            result = await syncToHubSpotWithPrivateToken({
+                tenantId,
+                phone,
+                name,
+                email,
+                noteText: finalNoteText,
+                hubspotContactId: payload.hubspotContactId,
+                hsTimestamp: payload.hsTimestamp,
+            });
+        } else {
+            // Other tenants: Use OAuth flow via crmRouter
+            result = await syncLeadNote(tenant.crm_type, {
+                tenantId,
+                phone,
+                name,
+                email,
+                noteText: finalNoteText,
+                qualificationData,
+                hsTimestamp: payload.hsTimestamp,
+            });
+        }
 
         console.log(
             `${label}[EshelCrmSync] ${eventType} synced. ` +
