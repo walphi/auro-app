@@ -513,6 +513,17 @@ DATES AND TIMEZONE RULES (CRITICAL):
 
 export const handler: Handler = async (event) => {
     const handlerStart = Date.now();
+    
+    // --- TRANSPORT RELIABILITY: Time budgets for Twilio 8s timeout ---
+    const MAX_PROCESSING_MS = 7500;  // Hard limit: 7.5s (500ms buffer)
+    const GEMINI_DEADLINE_MS = 6000; // Must start Gemini by 6s
+    const getElapsedMs = () => Date.now() - handlerStart;
+    
+    // Safe fallback message - preserves escalation path via "call me"
+    const TRANSPORT_FALLBACK_MESSAGE = 
+        "Thanks for your message! I'm gathering the details and will respond shortly. " +
+        "If urgent, just say 'call me' and I'll connect you immediately.";
+    
     try {
         if (event.httpMethod !== "POST") {
             return {
@@ -1102,7 +1113,15 @@ CORE RULES (HARD CONSTRAINTS):
             ];
         }
 
+        // --- TRANSPORT RELIABILITY: Time-guarded Gemini processing ---
         try {
+            // Check time budget before expensive operations
+            if (getElapsedMs() > GEMINI_DEADLINE_MS && !skipGemini) {
+                console.warn(`[WhatsApp] Time budget exceeded (${getElapsedMs()}ms > ${GEMINI_DEADLINE_MS}ms). Using fallback message.`);
+                responseText = TRANSPORT_FALLBACK_MESSAGE;
+                skipGemini = true;
+            }
+            
             if (!skipGemini) {
                 console.log("Sending prompt to Gemini (Text or Audio)...");
                 const result = await chat.sendMessage(promptContent);
@@ -1300,37 +1319,10 @@ CORE RULES (HARD CONSTRAINTS):
             }
         } catch (error: any) {
             console.error("[GEMINI] Fatal error in conversation flow:", error.message);
-            if (error.message === "GEMINI_TOTAL_FAILURE") {
-                responseText = "Our AI assistant is currently at capacity or undergoing maintenance. A human agent will jump in to help you shortly! Thank you for your patience.";
-                console.log("[GEMINI] Sent human-handoff graceful failure message.");
-            } else {
-                // If it's a transient error that wasn't caught by the fallback logic
-                responseText = "I'm having a bit of trouble processing that. Can you try again in a moment?";
-            }
-        }
-
-        // --- SUPABASE: Log AI Response ---
-        if (leadId && responseText) {
-            let messageType = 'Message';
-            let meta = null;
-
-            if (isVoiceResponse) {
-                messageType = 'Voice';
-                meta = `https://${mediaHost}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
-            }
-
-            await supabase.from('messages').insert({
-                lead_id: leadId,
-                type: messageType,
-                sender: 'AURO_AI',
-                content: responseText,
-                meta: meta
-            });
-
-            // --- CRM SYNC: AI Outbound Sidecar ---
-            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && responseText) {
-                await triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
-            }
+            // TRANSPORT RELIABILITY: Use fallback message for any Gemini/RAG failure
+            // This ensures Twilio always gets a valid response within the timeout window
+            responseText = TRANSPORT_FALLBACK_MESSAGE;
+            console.log("[WhatsApp] Using transport fallback message due to error/timeout");
         }
 
         // Helper to escape XML special characters
@@ -1378,13 +1370,57 @@ CORE RULES (HARD CONSTRAINTS):
             console.warn(`[WhatsApp] SLOW HANDLER: ${handlerDuration}ms exceeds 8s target`);
         }
 
-        return {
+        // --- TRANSPORT RELIABILITY: Return TwiML immediately ---
+        // Fire-and-forget: Logging and sidecar happen AFTER HTTP response
+        const response = {
             statusCode: 200,
             body: twiml.trim(),
             headers: {
-                "Content-Type": "text/xml"
+                "Content-Type": "text/xml",
+                "X-Response-Time": handlerDuration.toString()
             }
         };
+
+        // Fire-and-forget: Supabase logging (don't await before returning)
+        if (leadId && responseText) {
+            let messageType = 'Message';
+            let meta = null;
+
+            if (isVoiceResponse) {
+                messageType = 'Voice';
+                meta = `https://${mediaHost}/.netlify/functions/tts?text=${encodeURIComponent(responseText)}`;
+            }
+
+            // Fire-and-forget: Supabase logging (wrap in async IIFE to handle PromiseLike)
+            (async () => {
+                try {
+                    await supabase.from('messages').insert({
+                        lead_id: leadId,
+                        type: messageType,
+                        sender: 'AURO_AI',
+                        content: responseText,
+                        meta: meta
+                    });
+                    console.log(`[WhatsApp] Message logged to Supabase (async)`);
+                } catch (err: any) {
+                    console.error('[WhatsApp] Failed to log message (async):', err.message);
+                }
+            })();
+
+            // Fire-and-forget: CRM sidecar (don't block the response)
+            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && responseText) {
+                (async () => {
+                    try {
+                        await triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
+                        console.log(`[WhatsApp] Sidecar triggered (async)`);
+                    } catch (err: any) {
+                        console.error('[WhatsApp] Failed to trigger sidecar (async):', err.message);
+                    }
+                })();
+            }
+        }
+
+        return response;
 
     } catch (error: any) {
         console.error("Error processing WhatsApp request:", error);
