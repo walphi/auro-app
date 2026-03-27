@@ -176,6 +176,8 @@ async function syncToHubSpotWithPrivateToken(
 // ---------------------------------------------------------------------------
 
 export const handler: Handler = async (event) => {
+    console.log('[EshelCrmSync] Handler started - v2.1 with private token support');
+    
     // --- Auth ---
     const receivedKey = event.headers['x-auro-sidecar-key'];
     const expectedKey = process.env.AURO_SIDECAR_KEY;
