@@ -132,12 +132,20 @@ export const handler: Handler = async (event) => {
 
     if (eventType === 'whatsapp_inbound') {
         finalNoteText = `[WhatsApp Inbound] Lead: ${noteText}`;
+        console.log(`${label}[EshelCrmSync] Formatting WhatsApp inbound note for ${phone}`);
     } else if (eventType === 'whatsapp_outbound') {
         finalNoteText = `[WhatsApp Outbound] Auro: ${noteText}`;
+        console.log(`${label}[EshelCrmSync] Formatting WhatsApp outbound note for ${phone}`);
     } else if (eventType === 'vapi_call_ended') {
         const summary = payload.vapi?.summary || 'No summary available';
         const duration = payload.vapi?.duration ? `${Math.floor(payload.vapi.duration)}s` : 'N/A';
         const callId = payload.vapi?.callId || 'N/A';
+        
+        console.log(`${label}[EshelCrmSync] Formatting Vapi call ended note for ${phone}`, {
+            hasContext: !!payload.whatsappContext,
+            hasQualification: !!qualificationData,
+            summaryLength: summary.length,
+        });
         
         // Build enhanced note with WhatsApp context and qualification data
         let noteParts = [`📞 AI Call Ended`];
@@ -177,6 +185,11 @@ export const handler: Handler = async (event) => {
         const budget = qualificationData?.budget || payload.booking?.budget || 'Not specified';
         const propType = qualificationData?.propertyType || payload.booking?.propertyType || 'Not specified';
         const area = qualificationData?.area || payload.booking?.area || projectLabel;
+
+        console.log(`${label}[EshelCrmSync] Formatting booking note for ${phone}`, {
+            meetingTime: formattedTime,
+            project: projectLabel,
+        });
 
         finalNoteText =
             `Eshel Consultation Booked – 30 min call on ${formattedTime} (Dubai Time) ` +
