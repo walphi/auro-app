@@ -567,6 +567,37 @@ export const handler: Handler = async (event) => {
         }
         console.log(`[WhatsApp] Resolved tenant: ${tenant.short_name} (ID: ${tenant.id})`);
 
+        // --- ECHO PREVENTION: Skip messages from our own sending identity ---
+        // Get our configured WhatsApp sender for this tenant
+        const ourWhatsAppSender = resolveWhatsAppSender(tenant).replace("whatsapp:", "").trim();
+        const normalizedOurNumber = normalizePhone(ourWhatsAppSender);
+        
+        // If inbound message is from our own number, it's an echo - skip processing
+        if (fromNumber === normalizedOurNumber || fromNumber === ourWhatsAppSender) {
+            console.log(`[WhatsApp] ECHO DETECTED: Message from ${fromNumber} matches our sender ${normalizedOurNumber}. Skipping.`);
+            return {
+                statusCode: 200,
+                body: "<Response></Response>", // Empty TwiML - no action
+                headers: { "Content-Type": "text/xml" }
+            };
+        }
+        
+        // --- ECHO PREVENTION: Skip sidecar/webhook-triggered outbound messages ---
+        // Check headers that might indicate this is an outbound event being looped back
+        const isSidecarEvent = event.headers['x-auro-sidecar-event'] === 'whatsapp_outbound' ||
+                              event.headers['x-webhook-source'] === 'sidecar' ||
+                              body.MessageSource === 'outbound' ||
+                              body.Direction === 'outbound-api';
+        
+        if (isSidecarEvent) {
+            console.log(`[WhatsApp] SIDECAR outbound event detected. Skipping Gemini processing.`);
+            return {
+                statusCode: 200,
+                body: "<Response></Response>",
+                headers: { "Content-Type": "text/xml" }
+            };
+        }
+
         let isVoiceResponse = false;
         let skipGemini = false;
         let responseText = "";
@@ -1076,14 +1107,43 @@ CORE RULES (HARD CONSTRAINTS):
                 .limit(12);
             recentMessages = data || [];
 
+            // --- ECHO PREVENTION: Check if incoming message matches recent outbound ---
+            // If userMessage exactly matches a recent AURO_AI message (within 60s), it's an echo
+            if (userMessage && recentMessages.length > 0) {
+                const recentOutbound = recentMessages.find(m => 
+                    m.sender === 'AURO_AI' && 
+                    m.content === userMessage &&
+                    (new Date().getTime() - new Date(m.created_at).getTime()) < 60000
+                );
+                
+                if (recentOutbound) {
+                    console.log(`[WhatsApp] ECHO DETECTED: Message content matches recent outbound from ${recentOutbound.created_at}. Skipping.`);
+                    return {
+                        statusCode: 200,
+                        body: "<Response></Response>",
+                        headers: { "Content-Type": "text/xml" }
+                    };
+                }
+            }
+
             if (recentMessages && recentMessages.length > 0) {
                 // We skip the 'current message' (index 0) because it's passed separately
                 const historyRaw = recentMessages.slice(1).reverse();
 
-                let geminiHistory = historyRaw.map(m => ({
-                    role: m.sender === 'Lead' ? 'user' : 'model',
-                    parts: [{ text: m.content || "" }]
-                }));
+                let geminiHistory = historyRaw.map(m => {
+                    // Explicit role mapping: Lead = user, anything else = model
+                    const role = m.sender === 'Lead' ? 'user' : 'model';
+                    
+                    // Safety check: Log any unexpected sender values
+                    if (m.sender !== 'Lead' && m.sender !== 'AURO_AI' && m.sender !== 'System') {
+                        console.warn(`[WhatsApp] Unexpected sender in history: ${m.sender}, mapping to model role`);
+                    }
+                    
+                    return {
+                        role: role,
+                        parts: [{ text: m.content || "" }]
+                    };
+                });
 
                 // Gemini Requirement: History MUST start with a 'user' message
                 const firstUserIndex = geminiHistory.findIndex(h => h.role === 'user');
