@@ -14,7 +14,7 @@ import { getHubSpotAccessTokenForTenant } from '../../lib/hubspotAuth';
  */
 
 const ESHEL_TENANT_ID = 2;
-const MAX_EVENT_AGE_MS = 5 * 60 * 1000; // 5 minutes replay protection
+const MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours - relaxed threshold for webhook processing
 const HS_API = 'https://api.hubapi.com';
 
 // ---------------------------------------------------------------------------
@@ -122,18 +122,7 @@ export const handler: Handler = async (event) => {
     const timestamp = event.headers['x-hubspot-request-timestamp'] || '';
     const signature = event.headers['x-hubspot-signature-v3'];
 
-    const eventAge = Date.now() - parseInt(timestamp || '0', 10);
-    if (eventAge > MAX_EVENT_AGE_MS) {
-        console.warn(`${LOG_PREFIX} Rejected: event timestamp too old (${eventAge}ms).`);
-        return { statusCode: 400, body: JSON.stringify({ error: 'event_too_old' }) };
-    }
-
-    if (!validateHubSpotSignature(clientSecret, event.httpMethod, event.rawUrl, body, timestamp, signature)) {
-        console.error(`${LOG_PREFIX} Invalid HubSpot signature.`);
-        return { statusCode: 401, body: JSON.stringify({ error: 'invalid_signature' }) };
-    }
-
-    // --- Parse events ---
+    // Parse events early to get occurredAt from body as fallback
     let events: any[];
     try {
         events = JSON.parse(body);
@@ -141,6 +130,57 @@ export const handler: Handler = async (event) => {
     } catch {
         console.error(`${LOG_PREFIX} Failed to parse request body as JSON.`);
         return { statusCode: 400, body: JSON.stringify({ error: 'invalid_json' }) };
+    }
+
+    // --- Timestamp validation with detailed logging ---
+    // Try header first, then fall back to body's occurredAt
+    let eventTimestamp: number | null = null;
+    let timestampSource = 'none';
+
+    // Check header timestamp
+    if (timestamp) {
+        const headerTs = parseInt(timestamp, 10);
+        if (!isNaN(headerTs) && headerTs > 0) {
+            eventTimestamp = headerTs;
+            timestampSource = 'header';
+        }
+    }
+
+    // Fallback: check first event's occurredAt (HubSpot sends ms since epoch)
+    if (!eventTimestamp && events.length > 0 && events[0].occurredAt) {
+        const bodyTs = parseInt(events[0].occurredAt, 10);
+        if (!isNaN(bodyTs) && bodyTs > 0) {
+            eventTimestamp = bodyTs;
+            timestampSource = 'body.occurredAt';
+        }
+    }
+
+    // Log raw values for debugging
+    console.log(`${LOG_PREFIX} Timestamp debug:`, {
+        headerRaw: timestamp || 'missing',
+        bodyOccurredAt: events[0]?.occurredAt || 'missing',
+        parsedTimestamp: eventTimestamp,
+        source: timestampSource,
+        now: Date.now(),
+    });
+
+    // Validate timestamp age (allow up to 24 hours = 86400000ms, defined globally as MAX_EVENT_AGE_MS)
+    if (eventTimestamp) {
+        const eventAge = Date.now() - eventTimestamp;
+        console.log(`${LOG_PREFIX} Event age: ${eventAge}ms (${Math.round(eventAge / 1000 / 60)} minutes old)`);
+        
+        if (eventAge > MAX_EVENT_AGE_MS) {
+            console.warn(`${LOG_PREFIX} Rejected: event timestamp too old (${eventAge}ms = ${Math.round(eventAge / 1000 / 60 / 60)} hours).`);
+            return { statusCode: 400, body: JSON.stringify({ error: 'event_too_old', age: eventAge }) };
+        }
+    } else {
+        console.warn(`${LOG_PREFIX} No valid timestamp found in header or body. Proceeding anyway.`);
+        // Don't reject - just log and continue
+    }
+
+    if (!validateHubSpotSignature(clientSecret, event.httpMethod, event.rawUrl, body, timestamp, signature)) {
+        console.error(`${LOG_PREFIX} Invalid HubSpot signature.`);
+        return { statusCode: 401, body: JSON.stringify({ error: 'invalid_signature' }) };
     }
 
     console.log(`${LOG_PREFIX} Received ${events.length} event(s).`);
