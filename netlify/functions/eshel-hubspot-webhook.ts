@@ -11,6 +11,41 @@ import { getHubSpotAccessTokenForTenant } from '../../lib/hubspotAuth';
  *
  * Receives HubSpot Webhooks API v3 events for Eshel Properties (tenant 2).
  * Currently subscribed to: contact.creation
+ * 
+ * CLI / Local Debugging:
+ * ---------------------
+ * 1. Run function locally:
+ *    netlify dev --function eshel-hubspot-webhook
+ *    
+ * 2. Test with curl (create test_webhook.json first):
+ *    curl -X POST http://localhost:8888/.netlify/functions/eshel-hubspot-webhook \
+ *      -H "Content-Type: application/json" \
+ *      -H "x-hubspot-signature-v3: <valid-signature>" \
+ *      -H "x-hubspot-request-timestamp: 1774624473292" \
+ *      -d @test_webhook.json
+ *    
+ * 3. Watch logs:
+ *    netlify functions:logs eshel-hubspot-webhook
+ *    
+ * 4. Check note creation in HubSpot:
+ *    - Go to Eshel's HubSpot portal
+ *    - Find the contact by phone/email
+ *    - Check Timeline tab for the note
+ * 
+ * Example test_webhook.json:
+ * [{
+ *   "eventId": "test-12345",
+ *   "subscriptionType": "contact.creation",
+ *   "portalId": 147683870,
+ *   "occurredAt": 1774624473292,
+ *   "objectId": 987654321,
+ *   "properties": {
+ *     "phone": "+971501234567",
+ *     "email": "test@example.com",
+ *     "firstname": "Test",
+ *     "lastname": "User"
+ *   }
+ * }]
  */
 
 const ESHEL_TENANT_ID = 2;
@@ -105,6 +140,100 @@ async function callHubSpotAsEshel(endpoint: string, options: HubSpotApiOptions =
         data: options.data,
         params: options.params,
     });
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Create HubSpot note and associate with contact
+// ---------------------------------------------------------------------------
+
+interface NotePayload {
+    contactId: string;
+    noteBody: string;
+    hsTimestamp?: string;
+}
+
+interface NoteContentData {
+    name: string;
+    phone: string;
+    email?: string;
+    source: string;
+    leadStatus: string;
+    budget?: string;
+    preferredArea?: string;
+    propertyType?: string;
+}
+
+/**
+ * Creates a note in HubSpot and associates it with the specified contact.
+ * Uses the private app token for Eshel tenant.
+ */
+async function addNoteToHubSpotContact(
+    payload: NotePayload,
+    logPrefix: string
+): Promise<{ success: boolean; noteId?: string; error?: string }> {
+    const { contactId, noteBody, hsTimestamp } = payload;
+    
+    try {
+        // Step 1: Create the note object
+        console.log(`${logPrefix} [NotePush] Creating note for contact ${contactId}`);
+        const noteResp = await callHubSpotAsEshel('/crm/v3/objects/notes', {
+            method: 'POST',
+            data: {
+                properties: {
+                    hs_note_body: noteBody,
+                    hs_timestamp: hsTimestamp || new Date().toISOString(),
+                },
+            },
+        });
+        
+        const noteId = noteResp.data.id;
+        console.log(`${logPrefix} [NotePush] Created note ${noteId}`);
+        
+        // Step 2: Associate note with contact
+        console.log(`${logPrefix} [NotePush] Associating note ${noteId} to contact ${contactId}`);
+        await callHubSpotAsEshel(
+            `/crm/v3/objects/notes/${noteId}/associations/contacts/${contactId}/note_to_contact`,
+            { method: 'PUT', data: {} }
+        );
+        
+        console.log(`${logPrefix} [NotePush] Successfully pushed note to HubSpot`);
+        return { success: true, noteId };
+    } catch (error: any) {
+        const errorMsg = error.response?.data?.message || error.message;
+        const statusCode = error.response?.status;
+        console.error(`${logPrefix} [NotePush] Failed: status=${statusCode}, error=${errorMsg}`);
+        return { success: false, error: errorMsg };
+    }
+}
+
+/**
+ * Builds formatted note content for HubSpot timeline.
+ * Includes lead details and structured fields when available.
+ */
+function buildHubSpotNoteContent(data: NoteContentData): string {
+    const lines = [
+        `📞 Lead Created via ${data.source}`,
+        ``,
+        `**Name:** ${data.name}`,
+        `**Phone:** ${data.phone}`,
+    ];
+    
+    if (data.email) lines.push(`**Email:** ${data.email}`);
+    
+    // TODO: Pull these from lead record when available
+    // if (data.budget) lines.push(`**Budget:** ${data.budget}`);
+    // if (data.preferredArea) lines.push(`**Preferred Area:** ${data.preferredArea}`);
+    // if (data.propertyType) lines.push(`**Property Type:** ${data.propertyType}`);
+    
+    lines.push(`**Status:** ${data.leadStatus}`);
+    lines.push(`**Source:** WhatsApp / HubSpot Integration`);
+    lines.push(`**Tenant:** Eshel Properties (Auro AI)`);
+    lines.push(``);
+    lines.push(`---`);
+    lines.push(`Note: This lead was automatically created via the Eshel-Auro integration.`);
+    lines.push(`Next step: WhatsApp template message sent. Awaiting lead response.`);
+    
+    return lines.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -426,6 +555,33 @@ export const handler: Handler = async (event) => {
                     });
                     
                     console.log(`${LOG_PREFIX} Logged template message to lead ${leadId}`);
+                    
+                    // --- PUSH NOTE TO HUBSPOT CONTACT TIMELINE ---
+                    // Create engagement note in HubSpot for this new lead
+                    if (objectId) {
+                        const noteContent = buildHubSpotNoteContent({
+                            name: existingLead?.name || name || 'there',
+                            phone: phone,
+                            email: contact.email,
+                            source: 'HubSpot Webhook',
+                            leadStatus: 'New',
+                            // TODO: Pull from lead record when available:
+                            // budget: existingLead?.budget,
+                            // preferredArea: existingLead?.preferred_area,
+                            // propertyType: existingLead?.property_type,
+                        });
+                        
+                        const noteResult = await addNoteToHubSpotContact(
+                            { contactId: String(objectId), noteBody: noteContent },
+                            LOG_PREFIX
+                        );
+                        
+                        if (noteResult.success) {
+                            console.log(`${LOG_PREFIX} Note created in HubSpot: ${noteResult.noteId}`);
+                        } else {
+                            console.warn(`${LOG_PREFIX} Note creation skipped or failed: ${noteResult.error}`);
+                        }
+                    }
                 }
             } catch (logError: any) {
                 console.error(`${LOG_PREFIX} Failed to log template message:`, logError.message);
