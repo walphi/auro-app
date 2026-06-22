@@ -4,11 +4,11 @@ export const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 /**
  * MODELS DETECTED FROM PROJECT LISTING:
- * Primary: gemini-2.0-flash-lite-001 (Fast, versatile, stable release)
- * Fallback: gemini-2.0-flash-001 (Standard stable version)
+ * Primary: gemini-2.5-flash (Latest fast, versatile stable model)
+ * Fallback: gemini-3.1-flash-lite (Latest low-cost fallback model)
  */
-export const PRIMARY_MODEL_ID = "gemini-2.0-flash-lite-001";
-export const FALLBACK_MODEL_ID = "gemini-2.0-flash-001";
+export const PRIMARY_MODEL_ID = "gemini-2.5-flash";
+export const FALLBACK_MODEL_ID = "gemini-3.1-flash-lite";
 
 export interface GeminiOptions {
     systemInstruction?: string;
@@ -47,16 +47,23 @@ export async function callGemini(
     prompt: string | (string | Part)[],
     options: GeminiOptions = {}
 ): Promise<string> {
-    return await executeWithFallback(async (modelId) => {
-        const model = genAI.getGenerativeModel({
-            model: modelId,
-            systemInstruction: options.systemInstruction,
-            tools: options.tools as any
-        });
+    try {
+        return await executeWithFallback(async (modelId) => {
+            const model = genAI.getGenerativeModel({
+                model: modelId,
+                systemInstruction: options.systemInstruction,
+                tools: options.tools as any
+            });
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    });
+            const result = await model.generateContent(prompt);
+            return result.response.text();
+        });
+    } catch (error: any) {
+        if (error.message === "GEMINI_404_FAILURE") {
+            return "I’m being updated right now, please try again in a few minutes.";
+        }
+        throw error;
+    }
 }
 
 /**
@@ -73,48 +80,84 @@ export class RobustChat {
     }
 
     async sendMessage(parts: string | (string | Part)[]): Promise<{ text: string; functionCalls?: any[] }> {
-        const result = await executeWithFallback(async (modelId) => {
-            const model = genAI.getGenerativeModel({
-                model: modelId,
-                systemInstruction: this.options.systemInstruction,
-                tools: this.options.tools as any
+        try {
+            const result = await executeWithFallback(async (modelId) => {
+                const model = genAI.getGenerativeModel({
+                    model: modelId,
+                    systemInstruction: this.options.systemInstruction,
+                    tools: this.options.tools as any
+                });
+
+                // Re-start chat with latest history on every send to ensure fallback can reconstruct state
+                const chat = model.startChat({
+                    history: this.history
+                });
+
+                const result = await chat.sendMessage(parts);
+                const response = result.response;
+
+                return {
+                    text: response.text(),
+                    functionCalls: response.functionCalls()
+                };
             });
 
-            // Re-start chat with latest history on every send to ensure fallback can reconstruct state
-            const chat = model.startChat({
-                history: this.history
+            // If successful, we MUST update our local history because the internal 'chat' object is discarded
+            // We add the user turn
+            this.history.push({
+                role: 'user',
+                parts: Array.isArray(parts) ? (typeof parts[0] === 'string' ? [{ text: parts.join(' ') }] : parts as Part[]) : [{ text: parts as string }]
             });
 
-            const result = await chat.sendMessage(parts);
-            const response = result.response;
-
-            return {
-                text: response.text(),
-                functionCalls: response.functionCalls()
-            };
-        });
-
-        // If successful, we MUST update our local history because the internal 'chat' object is discarded
-        // We add the user turn
-        this.history.push({
-            role: 'user',
-            parts: Array.isArray(parts) ? (typeof parts[0] === 'string' ? [{ text: parts.join(' ') }] : parts as Part[]) : [{ text: parts as string }]
-        });
-
-        // We add the model turn
-        const modelParts: any[] = [{ text: result.text }];
-        if (result.functionCalls) {
-            result.functionCalls.forEach(call => {
-                modelParts.push({ functionCall: call });
+            // We add the model turn
+            const modelParts: any[] = [{ text: result.text }];
+            if (result.functionCalls) {
+                result.functionCalls.forEach(call => {
+                    modelParts.push({ functionCall: call });
+                });
+            }
+            this.history.push({
+                role: 'model',
+                parts: modelParts
             });
+
+            return result;
+        } catch (error: any) {
+            if (error.message === "GEMINI_404_FAILURE") {
+                const text = "I’m being updated right now, please try again in a few minutes.";
+                
+                // Maintain the alternating user/model history constraint
+                this.history.push({
+                    role: 'user',
+                    parts: Array.isArray(parts) ? (typeof parts[0] === 'string' ? [{ text: parts.join(' ') }] : parts as Part[]) : [{ text: parts as string }]
+                });
+                this.history.push({
+                    role: 'model',
+                    parts: [{ text }]
+                });
+
+                return { text };
+            }
+            throw error;
         }
-        this.history.push({
-            role: 'model',
-            parts: modelParts
-        });
-
-        return result;
     }
+}
+
+/**
+ * Core execution engine with retry and fallback
+ * Max 3 attempts total: 2 on primary (initial + retry), 1 on fallback
+ * Prevents long-tail latency in WhatsApp by capping retries
+ */
+/**
+ * Helper to determine if an error is a 404/not found error
+ */
+function isNotFoundError(error: any): boolean {
+    const status = error.status || error.response?.status;
+    if (status === 404 || status === '404') {
+        return true;
+    }
+    const msg = String(error.message || '').toLowerCase();
+    return msg.includes('404') || msg.includes('not found') || msg.includes('no longer available');
 }
 
 /**
@@ -128,6 +171,8 @@ async function executeWithFallback<T>(
     let lastError: any;
     let attemptCount = 0;
     const MAX_TOTAL_ATTEMPTS = 3;
+    let primary404 = false;
+    let fallback404 = false;
 
     // 1. Try Primary Model (Attempt 1)
     attemptCount++;
@@ -144,11 +189,16 @@ async function executeWithFallback<T>(
 
         console.error(`[GEMINI] Primary model failed (attempt ${attemptCount}): status=${status}, code=${errorCode}`);
 
+        const is404 = isNotFoundError(error);
+        if (is404) {
+            primary404 = true;
+        }
+
         // Track specific error types
         if (status === 429) {
             GEMINI_ANALYTICS.primary_429++;
             logAnalytics('primary_429', { model: PRIMARY_MODEL_ID, errorCode });
-        } else if (status === 404) {
+        } else if (is404) {
             GEMINI_ANALYTICS.primary_404++;
             logAnalytics('primary_404', { model: PRIMARY_MODEL_ID, errorCode });
         } else if (status >= 500 && status < 600) {
@@ -179,8 +229,9 @@ async function executeWithFallback<T>(
     // 3. Try Fallback Model (Attempt 3)
     if (attemptCount < MAX_TOTAL_ATTEMPTS) {
         attemptCount++;
+        const isLastErr404 = isNotFoundError(lastError);
         const fallbackReason = lastError.status === 429 ? '429 (rate limit)' :
-            lastError.status === 404 ? '404 (not found)' :
+            isLastErr404 ? '404 (not found)' :
                 lastError.status >= 500 ? `${lastError.status} (server error)` :
                     `${lastError.status || 'unknown'} (${lastError.message || 'error'})`;
 
@@ -198,6 +249,9 @@ async function executeWithFallback<T>(
             const fallbackStatus = fallbackError.status || (fallbackError.response?.status) || 'unknown';
             const fallbackCode = fallbackError.code || fallbackError.message || 'unknown_error';
             console.error(`[GEMINI] Fallback model failed (attempt ${attemptCount}): status=${fallbackStatus}, code=${fallbackCode}`);
+            if (isNotFoundError(fallbackError)) {
+                fallback404 = true;
+            }
         }
     }
 
@@ -213,5 +267,10 @@ async function executeWithFallback<T>(
     });
     console.error(`[GEMINI] TOTAL FAILURE after ${attemptCount} attempts. Last error: status=${finalStatus}, code=${finalCode}`);
     console.error(`[GEMINI] Analytics snapshot:`, GEMINI_ANALYTICS);
+    
+    if (primary404 && fallback404) {
+        throw new Error("GEMINI_404_FAILURE");
+    }
+    
     throw new Error("GEMINI_TOTAL_FAILURE");
 }

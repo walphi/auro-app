@@ -5,14 +5,14 @@ This document describes the robust Gemini model selection and fallback strategy 
 
 ## Model Selection
 
-### Primary Model: `gemini-2.0-flash-lite-001`
-- **Why**: Fast, versatile, stable release from January 2025
+### Primary Model: `gemini-2.5-flash`
+- **Why**: Latest fast, versatile, stable release
 - **Use Case**: Primary model for all WhatsApp and Vapi interactions
 - **Token Limits**: 1M input, 8K output
 - **Features**: Supports function calling, multimodal input
 
-### Fallback Model: `gemini-2.0-flash-001`
-- **Why**: Standard stable version, widely available
+### Fallback Model: `gemini-3.1-flash-lite`
+- **Why**: Ultra-fast, low-cost fallback model
 - **Use Case**: Automatic fallback when primary model fails or hits rate limits
 - **Token Limits**: 1M input, 8K output
 - **Features**: Same capabilities as primary model
@@ -25,12 +25,12 @@ curl https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_API_KEY
 ```
 
 **Available Models Confirmed**:
-- ✅ `gemini-2.0-flash-lite-001` (Primary)
-- ✅ `gemini-2.0-flash-001` (Fallback)
-- ✅ `gemini-2.5-flash` (Latest, but may have availability issues)
+- ✅ `gemini-2.5-flash` (Primary)
+- ✅ `gemini-3.1-flash-lite` (Fallback)
+- ✅ `gemini-3.5-flash` (Alternative fallback)
 - ✅ `gemini-pro-latest` (Stable, but slower)
-- ❌ `gemini-1.5-flash-001` (Not available with current API key)
-- ❌ `gemini-1.5-flash-*` variants (Not available)
+- ❌ `gemini-2.0-flash-lite-001` (Deprecated / no longer available)
+- ❌ `gemini-2.0-flash-001` (Deprecated / no longer available)
 
 ## Implementation
 
@@ -38,16 +38,17 @@ curl https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_API_KEY
 
 **Exports**:
 - `genAI`: GoogleGenerativeAI instance (for embeddings)
-- `PRIMARY_MODEL_ID`: "gemini-2.0-flash-lite-001"
-- `FALLBACK_MODEL_ID`: "gemini-2.0-flash-001"
-- `callGemini()`: Single-turn helper with fallback
-- `RobustChat`: Multi-turn chat session with fallback
+- `PRIMARY_MODEL_ID`: "gemini-2.5-flash"
+- `FALLBACK_MODEL_ID`: "gemini-3.1-flash-lite"
+- `callGemini()`: Single-turn helper with fallback and 404 hardening
+- `RobustChat`: Multi-turn chat session with fallback and 404 hardening
 
 **Retry Logic**:
 1. Try PRIMARY_MODEL_ID
 2. If 429 (rate limit), wait 2s and retry PRIMARY_MODEL_ID
 3. If still fails, switch to FALLBACK_MODEL_ID
-4. If both fail, throw `GEMINI_TOTAL_FAILURE`
+4. If both fail with a 404, return a polite update message to the user: `"I’m being updated right now, please try again in a few minutes."`
+5. If both fail with other errors, throw `GEMINI_TOTAL_FAILURE`
 
 ### Updated Files
 
@@ -92,10 +93,11 @@ try {
 
 All model decisions and errors are logged:
 ```
-[GEMINI] Using primary model: gemini-2.0-flash-lite-001
+[GEMINI] Using primary model: gemini-2.5-flash
 [GEMINI] Primary model 429, retrying with backoff...
-[GEMINI] Falling back to model: gemini-2.0-flash-001
+[GEMINI] Falling back to model: gemini-3.1-flash-lite
 [GEMINI] Fatal error in conversation flow: GEMINI_TOTAL_FAILURE
+[GEMINI] Hard 404 failure: GEMINI_404_FAILURE (returning update/maintenance message)
 ```
 
 ## Benefits
@@ -125,7 +127,7 @@ To verify the implementation:
 
 ---
 
-**Last Updated**: 2026-02-05  
+**Last Updated**: 2026-06-22  
 **Helper Function**: `callGemini`, `RobustChat` (in `lib/gemini.ts`)  
-**Primary Model**: `gemini-2.0-flash-lite-001`  
-**Fallback Model**: `gemini-2.0-flash-001`
+**Primary Model**: `gemini-2.5-flash`  
+**Fallback Model**: `gemini-3.1-flash-lite`
