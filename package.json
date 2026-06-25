@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cd sites && npm install && npm run build",
+    "build": "cd marketing && npm install && npm run build && cd .. && powershell -Command \"if (Test-Path 'marketing/dist') { New-Item -ItemType Directory -Force -Path 'dist' | Out-Null; Copy-Item -Recurse -Force 'marketing/dist/*' 'dist/' }\" && vite build && cd sites && npm install && npm run build",
     "preview": "vite preview",
     "start": "netlify dev",
     "ingest:history": "npx tsx scripts/ingest_history.ts",

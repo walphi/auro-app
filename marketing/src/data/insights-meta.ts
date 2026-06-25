@@ -1,0 +1,613 @@
+import type { InsightMeta } from "../types/content.ts";
+
+export const insightsMeta: InsightMeta[] = [
+  {
+    "slug": "lead-nurturing-definition",
+    "title": "Lead Nurturing Definition — What It Is & Why It Matters for Dubai Real Estate",
+    "excerpt": "Lead nurturing defined: the process of building relationships with prospects through every stage of the sales journey. See our complete guide for Dubai real estate.",
+    "category": "lead-nurturing-definition",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder & Lead Nurturing Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-01-10",
+    "updatedAt": "2026-06-22",
+    "readMinutes": 2,
+    "heroImage": "https://images.pexels.com/photos/7641852/pexels-photo-7641852.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate agent meeting with clients discussing property details",
+    "keyStat": {
+      "value": "80%",
+      "label": "of leads require 5+ follow-ups before booking"
+    },
+    "metaTitle": "Lead Nurturing Definition — What It Is for Dubai Real Estate | AURO",
+    "metaDescription": "Lead nurturing defined: the process of building relationships with prospects through every stage of the sales journey. See our complete guide for Dubai real estate."
+  },
+  {
+    "slug": "what-is-lead-nurturing",
+    "title": "What Is Lead Nurturing? A Complete Guide for Real Estate Agents",
+    "excerpt": "Lead nurturing is the process of building relationships with prospects through every stage of the sales funnel. Learn how Dubai real estate agents use AI-powered nurturing to turn every inquiry into a booked meeting.",
+    "category": "lead-nurturing-definition",
+    "author": "Phillip Walsh",
+    "authorRole": "Lead Nurturing Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-01-15",
+    "updatedAt": "2026-06-22",
+    "readMinutes": 12,
+    "heroImage": "https://images.pexels.com/photos/7937316/pexels-photo-7937316.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate professionals discussing plans in a modern office",
+    "keyStat": {
+      "value": "80%",
+      "label": "of leads require 5+ follow-ups before booking"
+    },
+    "metaTitle": "What Is Lead Nurturing? Complete Guide for Real Estate Agents | AURO",
+    "metaDescription": "Lead nurturing is the process of building relationships with prospects over time. This complete guide explains how Dubai real estate agents can use AI-powered nurturing to convert more leads into booked meetings."
+  },
+  {
+    "slug": "lead-nurturing-strategy",
+    "title": "Lead Nurturing Strategy — Building a System That Converts",
+    "excerpt": "A strategic framework for building a lead nurturing system that turns every inquiry into a qualified meeting opportunity for your real estate team.",
+    "category": "lead-nurturing-strategy",
+    "author": "Phillip Walsh",
+    "authorRole": "Revenue Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-01",
+    "updatedAt": "2026-03-10",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/7642119/pexels-photo-7642119.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Young professionals collaborating at a modern office table",
+    "keyStat": {
+      "value": "3x",
+      "label": "higher conversion with structured nurturing"
+    },
+    "metaTitle": "Lead Nurturing Strategy — Framework for Dubai Real Estate | AURO",
+    "metaDescription": "Build a lead nurturing strategy that converts. Learn how Dubai real estate agencies use structured follow-up and AI automation to turn inquiries into booked meetings."
+  },
+  {
+    "slug": "lead-nurturing-automation",
+    "title": "Lead Nurturing Automation — Scale Your Follow-Up Without Losing Quality",
+    "excerpt": "How automation transforms lead nurturing from a manual task into a scalable revenue engine for Dubai real estate teams.",
+    "category": "lead-nurturing-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Automation Architect",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-10",
+    "updatedAt": "2026-03-12",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/8730000/pexels-photo-8730000.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Business professionals shaking hands after a successful meeting",
+    "keyStat": {
+      "value": "10x",
+      "label": "more leads nurtured with automation"
+    },
+    "metaTitle": "Lead Nurturing Automation — Scale Follow-Up in Dubai Real Estate | AURO",
+    "metaDescription": "Automate lead nurturing without losing quality. Learn how AI-powered automation helps Dubai real estate teams nurture more leads and book more meetings."
+  },
+  {
+    "slug": "nurturing-leads-meaning",
+    "title": "Nurturing Leads Meaning — What It Really Means in Modern Sales",
+    "excerpt": "The true meaning of nurturing leads in modern real estate sales: building trust, providing value, and guiding prospects toward a buying decision. See our complete guide.",
+    "category": "lead-nurturing",
+    "author": "Phillip Walsh",
+    "authorRole": "Sales Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-15",
+    "updatedAt": "2026-06-22",
+    "readMinutes": 2,
+    "heroImage": "https://images.pexels.com/photos/7642130/pexels-photo-7642130.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate consultant meeting with clients indoors",
+    "keyStat": {
+      "value": "67%",
+      "label": "of buyers choose the first agent who responds"
+    },
+    "metaTitle": "Nurturing Leads Meaning — Modern Real Estate Sales Definition | AURO",
+    "metaDescription": "What does nurturing leads really mean in modern sales? See our complete guide on how Dubai real estate agents use AI-powered nurturing."
+  },
+  {
+    "slug": "sales-nurturing",
+    "title": "Sales Nurturing — Converting Real Estate Leads Into Booked Meetings",
+    "excerpt": "Sales nurturing is the process of guiding real estate leads through the consideration journey with structured, persistent, and personalized follow-up.",
+    "category": "sales-nurturing",
+    "author": "Phillip Walsh",
+    "authorRole": "Revenue Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-20",
+    "updatedAt": "2026-03-05",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/8729973/pexels-photo-8729973.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate agent discussing property details with clients",
+    "keyStat": {
+      "value": "5x",
+      "label": "more meetings with persistent nurturing"
+    },
+    "metaTitle": "Sales Nurturing — Convert Real Estate Leads Into Booked Meetings | AURO",
+    "metaDescription": "Sales nurturing is the systematic process of moving leads through the sales pipeline. Learn how AURO automates nurturing for Dubai real estate teams."
+  },
+  {
+    "slug": "ai-marketing-real-estate",
+    "title": "AI Marketing for Real Estate — The Complete Guide",
+    "excerpt": "How artificial intelligence is transforming real estate marketing in Dubai, from AI-powered lead nurturing to automated qualification and meeting booking.",
+    "category": "ai-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "AI Marketing Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-01-20",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/30530414/pexels-photo-30530414.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "AI interface on dark screen displaying digital communication technology",
+    "keyStat": {
+      "value": "40%",
+      "label": "faster lead conversion with AI marketing"
+    },
+    "metaTitle": "AI Marketing for Real Estate — Complete Guide 2026 | AURO",
+    "metaDescription": "AI marketing is transforming Dubai real estate. Learn how AI-powered lead nurturing, qualification, and booking automation help agencies convert more leads."
+  },
+  {
+    "slug": "ai-marketing-tools-real-estate",
+    "title": "AI Marketing Tools for Real Estate — What Works in 2026",
+    "excerpt": "A comprehensive overview of AI marketing tools available for real estate agents and developers in Dubai and the UAE.",
+    "category": "ai-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Marketing Technology Analyst",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-05",
+    "updatedAt": "2026-03-10",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/6949525/pexels-photo-6949525.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Business team collaborating over documents in modern office",
+    "keyStat": {
+      "value": "73%",
+      "label": "of real estate agencies investing in AI tools"
+    },
+    "metaTitle": "AI Marketing Tools for Real Estate — Best Picks 2026 | AURO",
+    "metaDescription": "Explore the best AI marketing tools for real estate agents in Dubai. From lead nurturing to booking automation, find the right AI tools for your agency."
+  },
+  {
+    "slug": "ai-agent-orchestrator-real-estate",
+    "title": "AI Agent Orchestrator for Real Estate — Multi-Agent Systems Explained",
+    "excerpt": "How multi-agent AI systems orchestrate lead nurturing, qualification, and booking across pools for maximum efficiency.",
+    "category": "multi-agent-systems",
+    "author": "Phillip Walsh",
+    "authorRole": "AI Systems Architect",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-25",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/8815821/pexels-photo-8815821.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Business professionals reviewing documents on a balcony",
+    "keyStat": {
+      "value": "300%",
+      "label": "more conversations handled with multi-agent orchestration"
+    },
+    "metaTitle": "AI Agent Orchestrator — Multi-Agent Systems for Real Estate | AURO",
+    "metaDescription": "Learn how AI agent orchestrators manage multi-agent lead nurturing systems for Dubai real estate. Intelligent routing, pool management, and CRM handoff."
+  },
+  {
+    "slug": "booking-automation-dubai",
+    "title": "Booking Automation Dubai — Streamlining Real Estate Meetings",
+    "excerpt": "How booking automation is transforming Dubai real estate by reducing friction between lead qualification and scheduled meetings.",
+    "category": "booking-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Growth Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-28",
+    "updatedAt": "2026-03-10",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/8729979/pexels-photo-8729979.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Family gathering around desk discussing documents during home meeting",
+    "keyStat": {
+      "value": "60%",
+      "label": "faster time-to-meeting with automation"
+    },
+    "metaTitle": "Booking Automation Dubai — Streamline Real Estate Meetings | AURO",
+    "metaDescription": "Booking automation reduces the time between lead qualification and booked meeting. Learn how AURO helps Dubai real estate teams close meetings faster."
+  },
+  {
+    "slug": "multi-agent-lead-nurturing",
+    "title": "Multi-Agent Lead Nurturing — AI Orchestration at Scale",
+    "excerpt": "How AURO's multi-agent system orchestrates lead nurturing across pools, channels, and follow-up sequences for maximum conversion.",
+    "category": "multi-agent-systems",
+    "author": "Phillip Walsh",
+    "authorRole": "AI Systems Architect",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-01",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/10375945/pexels-photo-10375945.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Diverse business team discussing architectural plans around a table",
+    "keyStat": {
+      "value": "85%",
+      "label": "lead response rate with multi-agent nurturing"
+    },
+    "metaTitle": "Multi-Agent Lead Nurturing — AI Orchestration at Scale | AURO",
+    "metaDescription": "Multi-agent lead nurturing uses AI orchestrators to manage thousands of conversations. Learn how AURO's pool-based system converts more Dubai real estate leads."
+  },
+  {
+    "slug": "real-estate-marketing-dubai",
+    "title": "Real Estate Marketing Dubai — Strategies for 2026",
+    "excerpt": "Dubai's real estate market demands sophisticated marketing. Learn how AI lead nurturing and automation give agencies a competitive edge.",
+    "category": "real-estate-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Marketing Director",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-01-25",
+    "updatedAt": "2026-03-10",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/29470840/pexels-photo-29470840.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Aerial view of Dubai skyline with Burj Khalifa towering above the city",
+    "keyStat": {
+      "value": "AED 500B+",
+      "label": "Dubai real estate transactions projected 2026"
+    },
+    "metaTitle": "Real Estate Marketing Dubai — 2026 Strategies | AURO",
+    "metaDescription": "Dubai real estate marketing strategies for 2026. Learn how AI-powered lead nurturing, WhatsApp engagement, and booking automation transform property sales."
+  },
+  {
+    "slug": "real-estate-marketing-strategy",
+    "title": "Real Estate Marketing Strategy — From Listings to Booked Meetings",
+    "excerpt": "Build a complete real estate marketing strategy that converts online interest into in-person meetings and closed deals.",
+    "category": "real-estate-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Growth Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-08",
+    "updatedAt": "2026-03-01",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/29470798/pexels-photo-29470798.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai Marina skyline with high-rise buildings and luxury yachts",
+    "keyStat": {
+      "value": "3-5%",
+      "label": "typical conversion rate without nurturing"
+    },
+    "metaTitle": "Real Estate Marketing Strategy — From Listings to Booked Meetings | AURO",
+    "metaDescription": "Build a complete real estate marketing strategy that converts. Learn how AI lead nurturing bridges the gap between online listings and booked meetings."
+  },
+  {
+    "slug": "luxury-real-estate-marketing-dubai",
+    "title": "Luxury Real Estate Marketing Dubai — High-Net-Worth Buyer Strategies",
+    "excerpt": "Marketing luxury real estate in Dubai requires a different approach. Learn how AI nurtures high-net-worth leads toward conversion.",
+    "category": "dubai-luxury-real-estate",
+    "author": "Phillip Walsh",
+    "authorRole": "Luxury Market Analyst",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-12",
+    "updatedAt": "2026-03-05",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/13752348/pexels-photo-13752348.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Modern luxury villa exterior with contemporary architecture illuminated at dusk",
+    "keyStat": {
+      "value": "AED 15M+",
+      "label": "average luxury property transaction in Dubai"
+    },
+    "metaTitle": "Luxury Real Estate Marketing Dubai — HNWI Strategies | AURO",
+    "metaDescription": "Marketing luxury real estate in Dubai requires high-touch, personalized engagement. Learn how AI-powered nurturing helps agencies convert high-net-worth leads."
+  },
+  {
+    "slug": "off-plan-properties-dubai-marketing",
+    "title": "Off-Plan Properties Dubai Marketing — A Complete Guide",
+    "excerpt": "How to market off-plan properties in Dubai effectively using AI-powered lead nurturing and automated qualification.",
+    "category": "off-plan-dubai",
+    "author": "Phillip Walsh",
+    "authorRole": "Off-Plan Specialist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-18",
+    "updatedAt": "2026-03-10",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/28720826/pexels-photo-28720826.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Aerial view of Atlantis Hotel on Palm Jumeirah in Dubai",
+    "keyStat": {
+      "value": "65%",
+      "label": "of Dubai property buyers consider off-plan"
+    },
+    "metaTitle": "Off-Plan Properties Dubai Marketing — Complete Guide | AURO",
+    "metaDescription": "Market off-plan properties in Dubai effectively with AI-powered lead nurturing. Learn how AURO helps developers convert off-plan inquiries into booked meetings."
+  },
+  {
+    "slug": "developer-funnels-dubai",
+    "title": "Developer Funnels Dubai — Converting Inquiries into Off-Plan Sales",
+    "excerpt": "Sales funnel strategies for Dubai property developers using AI lead nurturing to convert more off-plan inquiries into qualified meetings.",
+    "category": "developer-funnels",
+    "author": "Phillip Walsh",
+    "authorRole": "Developer Relations Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-22",
+    "updatedAt": "2026-03-01",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/20419510/pexels-photo-20419510.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Burj Al Arab sail-shaped hotel against Dubai coastline",
+    "keyStat": {
+      "value": "70%",
+      "label": "of developer leads require nurturing before booking"
+    },
+    "metaTitle": "Developer Funnels Dubai — Convert Inquiries into Off-Plan Sales | AURO",
+    "metaDescription": "Sales funnel strategies for Dubai property developers. Learn how AI lead nurturing converts more off-plan inquiries into qualified meetings and sales."
+  },
+  {
+    "slug": "uae-real-estate-marketing",
+    "title": "UAE Real Estate Marketing — The Complete Landscape",
+    "excerpt": "A comprehensive overview of the UAE real estate marketing landscape, from Dubai to Abu Dhabi, and how AI is transforming lead nurturing nationwide.",
+    "category": "real-estate-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Market Analyst",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-05",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/26838249/pexels-photo-26838249.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Burj Khalifa standing tall against Dubai skyline at golden hour",
+    "keyStat": {
+      "value": "AED 800B+",
+      "label": "UAE real estate market value 2026"
+    },
+    "metaTitle": "UAE Real Estate Marketing — Complete Landscape 2026 | AURO",
+    "metaDescription": "The UAE real estate marketing landscape explained. Learn how AI-powered lead nurturing is transforming how agencies across the UAE convert inquiries."
+  },
+  {
+    "slug": "booking-automation-dubai-real-estate",
+    "title": "Booking Automation Dubai Real Estate — The Future of Lead Qualification",
+    "excerpt": "How booking automation and AI qualification are transforming the way Dubai real estate teams convert leads into meetings.",
+    "category": "booking-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Growth Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-01",
+    "updatedAt": "2026-03-12",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/8292780/pexels-photo-8292780.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Three professionals engaged in business discussion indoors",
+    "keyStat": {
+      "value": "80%",
+      "label": "faster booking with automation"
+    },
+    "metaTitle": "Booking Automation Dubai Real Estate — AI Qualification | AURO",
+    "metaDescription": "Booking automation transforms lead qualification for Dubai real estate. Learn how AURO's AI qualifies leads and books meetings automatically via Cal.com."
+  },
+  {
+    "slug": "lead-qualification-automation",
+    "title": "Lead Qualification Automation — Qualify at Scale Without Adding Headcount",
+    "excerpt": "How AI-powered lead qualification automation helps Dubai real estate teams scale their sales pipeline without adding headcount.",
+    "category": "booking-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Sales Operations Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-08",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/10375937/pexels-photo-10375937.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Business team reviewing architectural floor plans in modern office",
+    "keyStat": {
+      "value": "60%",
+      "label": "reduction in unqualified leads reaching sales teams"
+    },
+    "metaTitle": "Lead Qualification Automation — Scale Without Headcount | AURO",
+    "metaDescription": "Automate lead qualification for Dubai real estate. Learn how AURO's AI qualifies leads around budget, timeline, and intent before CRM handoff."
+  },
+  {
+    "slug": "crm-handover-automation",
+    "title": "CRM Handover Automation — AI-to-Human Lead Transfer with Full Context",
+    "excerpt": "How AURO automates CRM handover with complete lead transcripts, qualification scores, and conversation context.",
+    "category": "booking-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Integration Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-10",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 4,
+    "heroImage": "https://images.pexels.com/photos/7641825/pexels-photo-7641825.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate agent discussing property details with clients",
+    "keyStat": {
+      "value": "100%",
+      "label": "context preserved at handoff"
+    },
+    "metaTitle": "CRM Handover Automation — AI-to-Human Lead Transfer | AURO",
+    "metaDescription": "Automate CRM handover with full lead context. Learn how AURO transfers qualified leads with transcripts, scores, and preferences to your existing CRM."
+  },
+  {
+    "slug": "meeting-booking-automation",
+    "title": "Meeting Booking Automation — Remove Friction, Book More Meetings",
+    "excerpt": "How meeting booking automation eliminates scheduling friction and helps Dubai real estate teams convert qualified leads faster.",
+    "category": "booking-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Growth Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-12",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 4,
+    "heroImage": "https://images.pexels.com/photos/8470832/pexels-photo-8470832.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Diverse group of adults engaged in a business handshake outdoors",
+    "keyStat": {
+      "value": "30 sec",
+      "label": "average booking time with automation"
+    },
+    "metaTitle": "Meeting Booking Automation — Book More Meetings Faster | AURO",
+    "metaDescription": "Meeting booking automation removes scheduling friction. Learn how AURO helps Dubai real estate teams convert qualified leads into booked meetings in seconds."
+  },
+  {
+    "slug": "nurturing-campaign-guide",
+    "title": "Nurturing Campaign Guide — Building Effective Sequences for Real Estate",
+    "excerpt": "A practical guide to building nurturing campaigns that convert real estate leads into qualified meetings and sales.",
+    "category": "playbooks",
+    "author": "Phillip Walsh",
+    "authorRole": "Campaign Strategist",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-15",
+    "updatedAt": "2026-03-01",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/7937357/pexels-photo-7937357.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Construction professionals reviewing project plans on site",
+    "keyStat": {
+      "value": "5-12",
+      "label": "touchpoints per nurturing campaign"
+    },
+    "metaTitle": "Nurturing Campaign Guide — Real Estate Sequences | AURO",
+    "metaDescription": "Build effective nurturing campaigns for Dubai real estate. Learn how to structure multi-touch sequences that convert leads into qualified meetings."
+  },
+  {
+    "slug": "lead-nurturing-process",
+    "title": "Lead Nurturing Process — A Step-by-Step Framework for Real Estate Teams",
+    "excerpt": "A detailed framework for the lead nurturing process in real estate, from first contact to CRM handoff.",
+    "category": "playbooks",
+    "author": "Phillip Walsh",
+    "authorRole": "Sales Process Lead",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-02-25",
+    "updatedAt": "2026-03-05",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/7937709/pexels-photo-7937709.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Architects in hard hats examining construction plans at building site",
+    "keyStat": {
+      "value": "4x",
+      "label": "more leads converted with structured process"
+    },
+    "metaTitle": "Lead Nurturing Process — Step-by-Step Framework | AURO",
+    "metaDescription": "A complete framework for the lead nurturing process in Dubai real estate. Learn how AURO automates each stage from first contact to CRM handover."
+  },
+  {
+    "slug": "faq-lead-nurturing-overview",
+    "title": "FAQ — Lead Nurturing in Dubai Real Estate Explained",
+    "excerpt": "Frequently asked questions about lead nurturing in Dubai real estate, answered with insights from AURO's AI-powered platform.",
+    "category": "faq-explainers",
+    "author": "Phillip Walsh",
+    "authorRole": "Customer Success",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-05",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/1537493/pexels-photo-1537493.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Burj Khalifa skyscraper against Dubai skyline",
+    "keyStat": {
+      "value": "95%",
+      "label": "of questions answered within 2 seconds by AURO"
+    },
+    "metaTitle": "FAQ — Lead Nurturing in Dubai Real Estate | AURO",
+    "metaDescription": "Frequently asked questions about lead nurturing in Dubai real estate. Learn how AI-powered nurturing converts more inquiries into booked meetings."
+  },
+  {
+    "slug": "auro-2-0-release",
+    "title": "AURO 2.0 — Multi-Agent Qualification Is Now Live",
+    "excerpt": "AURO 2.0 introduces multi-agent orchestration, persistent follow-up, and intelligent CRM handoff for Dubai real estate teams.",
+    "category": "product-updates",
+    "author": "Phillip Walsh",
+    "authorRole": "Product",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-15",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 4,
+    "heroImage": "https://images.pexels.com/photos/4427929/pexels-photo-4427929.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Professionals collaborating in a modern office setting",
+    "keyStat": {
+      "value": "2.0",
+      "label": "major version"
+    },
+    "metaTitle": "AURO 2.0 — Multi-Agent Qualification Release Notes | AURO",
+    "metaDescription": "AURO 2.0 is live with multi-agent orchestration, persistent nurturing, and CRM handoff. Learn about the new features for Dubai real estate lead qualification."
+  },
+  {
+    "slug": "agent-evolution-2026",
+    "title": "Agent Evolution — How AURO's AI Agents Have Advanced in 2026",
+    "excerpt": "The evolution of AURO's AI agents from simple responders to sophisticated nurturing and qualification systems.",
+    "category": "product-updates",
+    "author": "Phillip Walsh",
+    "authorRole": "AI Research",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-10",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 4,
+    "heroImage": "https://images.pexels.com/photos/8847042/pexels-photo-8847042.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Professional team collaborating over documents in bright office",
+    "keyStat": {
+      "value": "200+",
+      "label": "improvements shipped in 2026"
+    },
+    "metaTitle": "Agent Evolution — AURO AI Advances in 2026 | AURO",
+    "metaDescription": "The evolution of AURO's AI agents in 2026. From basic response automation to sophisticated multi-agent nurturing and qualification."
+  },
+  {
+    "slug": "auro-platform-roadmap",
+    "title": "AURO Platform Roadmap — What's Coming Next",
+    "excerpt": "A look at the AURO platform roadmap and upcoming features for Dubai real estate lead nurturing and qualification.",
+    "category": "product-updates",
+    "author": "Phillip Walsh",
+    "authorRole": "Product",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-01",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 3,
+    "heroImage": "https://images.pexels.com/photos/7433853/pexels-photo-7433853.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Business professionals working together in contemporary office",
+    "keyStat": {
+      "value": "Q2 2026",
+      "label": "next major release"
+    },
+    "metaTitle": "AURO Platform Roadmap — Upcoming Features | AURO",
+    "metaDescription": "The AURO platform roadmap. See what features are coming next for Dubai real estate lead nurturing, qualification, and booking automation."
+  },
+  {
+    "slug": "experiment-response-time-conversion",
+    "title": "Experiment: How Response Time Impacts Lead Conversion in Dubai Real Estate",
+    "excerpt": "An analysis of how response time affects lead conversion rates in Dubai real estate, based on AURO deployment data.",
+    "category": "experiments",
+    "author": "Phillip Walsh",
+    "authorRole": "Data Analyst",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-08",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/31640028/pexels-photo-31640028.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Modern glass building exterior with contemporary architecture",
+    "keyStat": {
+      "value": "100x",
+      "label": "higher engagement under 5 minutes"
+    },
+    "metaTitle": "Experiment: Response Time & Lead Conversion in Dubai Real Estate | AURO",
+    "metaDescription": "Analysis of how response time impacts lead conversion in Dubai real estate. Data shows 100x higher engagement when responses arrive within 5 minutes."
+  },
+  {
+    "slug": "case-study-agency-growth",
+    "title": "Case Study: How One Dubai Agency Increased Booked Meetings by 40%",
+    "excerpt": "How a Dubai real estate agency used AURO to scale lead nurturing and increase booked meetings by 40% in the first month.",
+    "category": "case-studies",
+    "author": "Phillip Walsh",
+    "authorRole": "Customer Success",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-03-12",
+    "updatedAt": "2026-03-15",
+    "readMinutes": 5,
+    "heroImage": "https://images.pexels.com/photos/35707773/pexels-photo-35707773.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Modern architectural building with sleek glass design in Dubai",
+    "keyStat": {
+      "value": "+40%",
+      "label": "increase in booked meetings"
+    },
+    "metaTitle": "Case Study: +40% Booked Meetings with AURO | AURO",
+    "metaDescription": "A Dubai real estate agency increased booked meetings by 40% in the first month using AURO. Read the full case study on AI lead nurturing results."
+  }
+];
