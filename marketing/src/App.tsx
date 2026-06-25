@@ -603,7 +603,7 @@ export default function App() {
       <button
         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
         aria-label="Toggle Designer Playground"
-        className={`fixed bottom-5 right-5 z-[200] w-9 h-9 rounded-full bg-black/80 backdrop-blur-md border flex items-center justify-center pointer-events-auto transition-all duration-300 hover:scale-105 cursor-pointer ${
+        className={`hidden fixed bottom-5 right-5 z-[200] w-9 h-9 rounded-full bg-black/80 backdrop-blur-md border flex items-center justify-center pointer-events-auto transition-all duration-300 hover:scale-105 cursor-pointer ${
           isSettingsOpen
             ? 'border-[#D4FF00]/60 text-[#D4FF00] rotate-45'
             : 'border-[#333] text-neutral-500 hover:text-[#D4FF00]'
