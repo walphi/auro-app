@@ -121,7 +121,7 @@ export function SiteLayout() {
           { label: "04 // INSIGHTS", onClick: () => navigate("/insights") },
           { label: "05 // FAQ", onClick: () => navigate("/faq") },
           { label: "06 // SOLUTIONS", onClick: () => navigate("/solutions") },
-          { label: "07 // CLIENT LOGIN", onClick: handleDemoClick },
+          { label: "07 // CLIENT LOGIN", onClick: () => navigate("/dashboard") },
           { label: "REQUEST EARLY ACCESS", onClick: () => { window.location.href = "/#cta"; }, isCta: true },
         ]}
       />
