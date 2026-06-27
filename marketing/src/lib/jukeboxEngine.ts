@@ -171,6 +171,7 @@ export function init() {
   const onReady = () => {
     playerLoadingState = 'ready';
     notify();
+    try { player?.setShuffle(true); } catch (_) {}
   };
 
   const onStateChange = (event: any) => {
@@ -223,6 +224,7 @@ export function init() {
           playsinline: 1,
           autoplay: 0,
           rel: 0,
+          loop: 1,
         },
         events: { onReady, onStateChange },
       });
