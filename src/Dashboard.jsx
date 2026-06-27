@@ -225,15 +225,17 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
 // Bottom Navigation for Mobile
 const BottomNav = ({ activeView, setActiveView }) => {
     const navItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
+        { icon: LayoutDashboard, label: 'Dash', view: 'dashboard' },
         { icon: Users, label: 'Leads', view: 'leads' },
-        { icon: MessageSquare, label: 'Messages', view: 'messages' },
-        { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
-        { icon: Settings, label: 'More', view: 'tenant-admin' }
+        { icon: MessageSquare, label: 'Chat', view: 'messages' },
+        { icon: CalendarIcon, label: 'Cal', view: 'calendar' },
+        { icon: Book, label: 'KB', view: 'knowledge' },
+        { icon: Folder, label: 'Folders', view: 'agent-folders' },
+        { icon: Settings, label: 'Admin', view: 'tenant-admin' }
     ];
 
     return (
-        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a] border-t border-[#333] px-2 pb-safe">
+        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a] border-t border-[#333] px-1 pb-safe">
             <div className="flex items-center justify-around w-full py-1">
                 {navItems.map((item) => {
                     const Icon = item.icon;
@@ -243,16 +245,16 @@ const BottomNav = ({ activeView, setActiveView }) => {
                             key={item.view}
                             onClick={() => setActiveView(item.view)}
                             className={cn(
-                                "flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all relative",
+                                "flex flex-col items-center justify-center gap-0.5 py-1.5 px-1.5 transition-all relative min-w-0",
                                 isActive ? "text-[#D4FF00]" : "text-neutral-500 hover:text-neutral-300"
                             )}
                         >
-                            <Icon size={20} />
+                            <Icon size={16} />
                             <span className={cn(
-                                "text-[9px] font-mono tracking-wider",
+                                "text-[8px] font-mono tracking-wider leading-tight",
                                 isActive ? "text-[#D4FF00]" : "text-neutral-500"
                             )}>{item.label}</span>
-                            {isActive && <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#D4FF00]" />}
+                            {isActive && <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#D4FF00]" />}
                         </button>
                     );
                 })}
@@ -883,19 +885,24 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 };
 
 // Messages View Component (Inbox Style) - Kept separate as requested
-const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
+const MessagesView = ({ leads, selectedId, onSelect, onSendMessage, onBack }) => {
     // Filter leads to only those with history
     const activeConversations = leads.filter(l => l.history && l.history.length > 0);
     const selectedLead = leads.find(l => l.id === selectedId) || activeConversations[0];
 
     // Simple Chat Interface for Messages View
-    const SimpleChat = ({ lead, onSendMessage }) => {
+    const SimpleChat = ({ lead, onSendMessage, onBack }) => {
         const [msg, setMsg] = useState('');
         if (!lead) return <div className="flex-1 flex items-center justify-center text-slate-500">Select a conversation</div>;
 
         return (
             <div className="flex-1 flex flex-col h-full bg-[#0a0a0a]">
-                <div className="h-16 border-b border-[#333] flex items-center px-6">
+                <div className="h-16 border-b border-[#333] flex items-center gap-3 px-4 lg:px-6">
+                    {onBack && (
+                        <button onClick={onBack} className="lg:hidden p-1 text-neutral-400 hover:text-white">
+                            <ChevronLeft size={20} />
+                        </button>
+                    )}
                     <h3 className="font-bold text-white">{lead.name}</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -926,9 +933,13 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
     };
 
     return (
-        <div className="flex flex-1 w-full overflow-hidden bg-[#0a0a0a]">
+        <div className="flex flex-1 w-full overflow-hidden bg-[#0a0a0a] flex-col lg:flex-row pb-20 lg:pb-8">
             {/* Inbox List */}
-            <div className="w-80 flex-shrink-0 border-r border-[#333] flex flex-col h-full relative z-10">
+            <div className={cn(
+                'flex-shrink-0 flex-col h-full relative z-10 border-r border-[#333]',
+                selectedId ? 'hidden lg:flex' : 'flex',
+                'w-full lg:w-80'
+            )}>
                 <div className="h-20 flex items-center justify-between px-5 border-b border-[#333]">
                     <h2 className="text-xl font-bold text-white tracking-tight">Inbox</h2>
                     <button className="glass-button p-2 text-neutral-400 hover:text-white">
@@ -975,7 +986,12 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
             </div>
 
             {/* Chat Area */}
-            <SimpleChat lead={selectedLead} onSendMessage={onSendMessage} />
+            <div className={cn(
+                'flex-1 flex flex-col',
+                !selectedId ? 'hidden lg:flex' : 'flex'
+            )}>
+                <SimpleChat lead={selectedLead} onSendMessage={onSendMessage} onBack={onBack} />
+            </div>
         </div>
     );
 };
@@ -1242,6 +1258,7 @@ function CRMApp() {
                         selectedId={selectedLeadId}
                         onSelect={(lead) => setSelectedLeadId(lead.id)}
                         onSendMessage={handleSendMessage}
+                        onBack={() => setSelectedLeadId(null)}
                     />
                 );
             case 'knowledge':
@@ -1249,15 +1266,34 @@ function CRMApp() {
             case 'leads':
             default:
                 return (
-                    <div className="flex flex-1 w-full overflow-hidden">
-                        <LeadList
-                            leads={leads}
-                            selectedId={selectedLeadId}
-                            onSelect={(lead) => setSelectedLeadId(lead.id)}
-                            filter={filter}
-                            setFilter={setFilter}
-                        />
-                        <LeadDetail lead={selectedLead} onSendMessage={handleSendMessage} />
+                    <div className="flex flex-1 w-full overflow-hidden flex-col lg:flex-row pb-20 lg:pb-8">
+                        <div className={cn(
+                            'w-full lg:w-80 flex-shrink-0 flex-col',
+                            selectedLeadId ? 'hidden lg:flex' : 'flex'
+                        )}>
+                            <LeadList
+                                leads={leads}
+                                selectedId={selectedLeadId}
+                                onSelect={(lead) => setSelectedLeadId(lead.id)}
+                                filter={filter}
+                                setFilter={setFilter}
+                            />
+                        </div>
+                        <div className={cn(
+                            'flex-1 flex flex-col min-w-0',
+                            !selectedLeadId ? 'hidden lg:flex' : 'flex'
+                        )}>
+                            {selectedLead && (
+                                <button
+                                    onClick={() => setSelectedLeadId(null)}
+                                    className="lg:hidden flex items-center gap-2 px-4 py-3 text-neutral-400 hover:text-white border-b border-[#333] bg-[#0a0a0a]/90 z-10"
+                                >
+                                    <ChevronLeft size={18} />
+                                    <span className="text-xs font-semibold">Back to Leads</span>
+                                </button>
+                            )}
+                            <LeadDetail lead={selectedLead} onSendMessage={handleSendMessage} />
+                        </div>
                     </div>
                 );
         }
@@ -1285,6 +1321,7 @@ function CRMApp() {
                 onTenantChange={setCurrentTenant}
             />
             {renderView()}
+            <BottomNav activeView={activeView} setActiveView={setActiveView} />
         </div>
     );
 }
