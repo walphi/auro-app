@@ -596,7 +596,7 @@ export default function App() {
           { label: "04 // INSIGHTS", onClick: () => navigate("/insights") },
           { label: "05 // FAQ", onClick: () => navigate("/faq") },
           { label: "06 // SOLUTIONS", onClick: () => navigate("/solutions") },
-          { label: "07 // CLIENT LOGIN", onClick: () => navigate("/dashboard") },
+          { label: "07 // CLIENT LOGIN", onClick: () => { window.location.href = "/dashboard"; } },
           { label: "REQUEST EARLY ACCESS", onClick: () => handleNavClick(5), isCta: true },
         ]}
       />
