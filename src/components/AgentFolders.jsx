@@ -375,15 +375,15 @@ const AgentFolders = ({ currentTenant }) => {
     };
 
     return (
-        <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 bg-[#0a0a0a] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-1 tracking-tight flex items-center gap-3">
-                        <Folder className="text-indigo-500" size={32} />
+                    <h1 className="font-serif italic text-3xl font-light text-[#f4f4f4] mb-1 tracking-tight flex items-center gap-3">
+                        <Folder className="text-[#D4FF00]" size={32} />
                         Agent Folders
                     </h1>
-                    <p className="text-slate-400 text-sm">Manage RAG knowledge bases for your AI agents.</p>
+                    <p className="text-neutral-400 text-sm">Manage RAG knowledge bases for your AI agents.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
@@ -391,34 +391,34 @@ const AgentFolders = ({ currentTenant }) => {
                     <div className="relative">
                         <button
                             onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
-                            className="glass-button px-4 py-2.5 rounded-xl text-white flex items-center gap-3 min-w-[240px] justify-between group"
+                            className="glass-button px-4 py-2.5  text-white flex items-center gap-3 min-w-[240px] justify-between group"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <div className="w-2 h-2  bg-[#D4FF00] animate-pulse" />
                                 <span className="font-semibold">{activeFolder?.name || 'Select Folder'}</span>
                             </div>
-                            <ChevronDown size={16} className="text-slate-400 group-hover:text-white transition-colors" />
+                            <ChevronDown size={16} className="text-neutral-400 group-hover:text-white transition-colors" />
                         </button>
 
                         {isFolderDropdownOpen && (
-                            <div className="absolute top-full right-0 mt-2 w-full glass-panel rounded-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                            <div className="absolute top-full right-0 mt-2 w-full glass-panel  overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                                 {folders.map(f => (
                                     <button
                                         key={f.id}
                                         onClick={() => { setActiveFolder(f); setIsFolderDropdownOpen(false); }}
-                                        className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-slate-300 hover:text-white transition-colors flex justify-between items-center"
+                                        className="w-full text-left px-4 py-3 hover:bg-[#0b0b0b]/90 text-sm text-neutral-300 hover:text-white transition-colors flex justify-between items-center"
                                     >
                                         <div>
                                             <p className="font-medium">{f.name}</p>
-                                            <p className="text-[10px] text-slate-500">{f.description}</p>
+                                            <p className="text-[10px] text-neutral-500">{f.description}</p>
                                         </div>
-                                        {activeFolder?.id === f.id && <CheckCircle2 size={14} className="text-indigo-400" />}
+                                        {activeFolder?.id === f.id && <CheckCircle2 size={14} className="text-[#D4FF00]" />}
                                     </button>
                                 ))}
-                                <div className="border-t border-white/5 p-2">
+                                <div className="border-t border-[#333] p-2">
                                     <button
                                         onClick={handleCreateFolder}
-                                        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 py-2 rounded-lg hover:bg-indigo-500/10 transition-colors"
+                                        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[#D4FF00] hover:text-[#D4FF00] py-2  hover:bg-[#D4FF00]/10 transition-colors"
                                     >
                                         <Plus size={14} /> New Folder
                                     </button>
@@ -433,14 +433,14 @@ const AgentFolders = ({ currentTenant }) => {
                             <select
                                 value={selectedProjectId}
                                 onChange={(e) => setSelectedProjectId(e.target.value)}
-                                className="glass-button px-4 py-2.5 rounded-xl text-white outline-none min-w-[200px] border-amber-500/30"
+                                className="glass-button px-4 py-2.5  text-white outline-none min-w-[200px] border-[#D4FF00]/30"
                             >
-                                <option value="none" className="bg-[#030305]">All Projects / General</option>
+                                <option value="none" className="bg-[#0a0a0a]">All Projects / General</option>
                                 {allProjects.map(p => (
-                                    <option key={p.id} value={p.id} className="bg-[#030305]">{p.name}</option>
+                                    <option key={p.id} value={p.id} className="bg-[#0a0a0a]">{p.name}</option>
                                 ))}
                             </select>
-                            <p className="absolute -bottom-5 right-0 text-[9px] text-amber-500 font-bold uppercase tracking-tighter">Project Context (State B)</p>
+                            <p className="absolute -bottom-5 right-0 text-[9px] text-[#D4FF00] font-bold uppercase tracking-tighter">Project Context (State B)</p>
                         </div>
                     )}
                 </div>
@@ -451,30 +451,30 @@ const AgentFolders = ({ currentTenant }) => {
                 <div className="lg:col-span-2 flex flex-col gap-6 overflow-y-auto pr-2">
 
                     {/* Status Bar */}
-                    <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
+                    <div className="glass-panel p-6  relative overflow-hidden">
                         <div className="flex justify-between items-center mb-4 relative z-10">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Database size={18} className="text-indigo-400" />
+                                    <Database size={18} className="text-[#D4FF00]" />
                                     Knowledge Index
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-1">Vector Store Status: <span className="text-emerald-400 font-bold">Ready</span></p>
+                                <p className="text-xs text-neutral-500 mt-1">Vector Store Status: <span className="text-[#D4FF00] font-bold">Ready</span></p>
                             </div>
                             <div className="text-right">
                                 <div className="text-2xl font-bold text-white">{knowledgeBase.length}</div>
-                                <div className="text-xs text-slate-500">Active Sources</div>
+                                <div className="text-xs text-neutral-500">Active Sources</div>
                             </div>
                         </div>
 
                         {/* Progress Bar (Visual Only unless uploading) */}
-                        <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                        <div className="w-full bg-[#0b0b0b]/90 h-2  overflow-hidden">
                             <div
-                                className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-500"
+                                className="bg-gradient-to-r from-[#D4FF00] to-[#D4FF00]/50 h-full transition-all duration-500"
                                 style={{ width: uploadStatus === 'idle' ? '100%' : `${indexingProgress}%` }}
                             />
                         </div>
                         {uploadStatus !== 'idle' && (
-                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-300 mt-2">
+                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#D4FF00] mt-2">
                                 <span>{uploadStatus === 'uploading' ? 'Uploading Files...' : uploadStatus === 'indexing' ? 'Generating Embeddings...' : 'Sync Complete'}</span>
                                 <span>{indexingProgress}%</span>
                             </div>
@@ -484,32 +484,32 @@ const AgentFolders = ({ currentTenant }) => {
                     {/* Upload Area */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* File Upload */}
-                        <div className="glass-panel p-6 rounded-2xl border-dashed border-2 border-white/10 hover:border-indigo-500/30 transition-colors group text-center cursor-pointer relative">
+                        <div className="glass-panel p-6  border-dashed border-2 border-[#333] hover:border-[#D4FF00]/30 transition-colors group text-center cursor-pointer relative">
                             <input
                                 type="file"
                                 className="absolute inset-0 opacity-0 cursor-pointer z-10"
                                 onChange={handleFileUpload}
                                 accept=".pdf,.txt"
                             />
-                            <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                <Upload size={24} className="text-indigo-400" />
+                            <div className="w-12 h-12 bg-[#0b0b0b]/90  flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                <Upload size={24} className="text-[#D4FF00]" />
                             </div>
                             <h4 className="font-bold text-white mb-1">Upload Documents</h4>
-                            <p className="text-xs text-slate-500 mb-4">PDF, TXT (Max 50MB)</p>
-                            <button className="bg-white/5 text-indigo-300 px-4 py-2 rounded-lg text-xs font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            <p className="text-xs text-neutral-500 mb-4">PDF, TXT (Max 50MB)</p>
+                            <button className="bg-[#0b0b0b]/90 text-[#D4FF00] px-4 py-2  text-xs font-bold group-hover:bg-[#D4FF00]/80 group-hover:text-white transition-colors">
                                 Select Files
                             </button>
                         </div>
 
                         {/* URL Input */}
-                        <div className="glass-panel p-6 rounded-2xl flex flex-col">
+                        <div className="glass-panel p-6  flex flex-col">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center">
-                                    <Globe size={20} className="text-blue-400" />
+                                <div className="w-10 h-10 bg-[#0b0b0b]/90  flex items-center justify-center">
+                                    <Globe size={20} className="text-[#D4FF00]" />
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-white text-sm">Add Website</h4>
-                                    <p className="text-[10px] text-slate-500">Crawl & Index URL</p>
+                                    <p className="text-[10px] text-neutral-500">Crawl & Index URL</p>
                                 </div>
                             </div>
                             <div className="flex-1 flex flex-col gap-2">
@@ -518,11 +518,11 @@ const AgentFolders = ({ currentTenant }) => {
                                     value={urlInput}
                                     onChange={(e) => setUrlInput(e.target.value)}
                                     placeholder="https://..."
-                                    className="w-full bg-[#030305] border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                                    className="w-full bg-[#0a0a0a] border border-[#333]  px-3 py-2 text-xs text-white focus:border-[#D4FF00]/50 focus:outline-none"
                                 />
                                 <button
                                     onClick={handleAddUrl}
-                                    className="w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 hover:border-transparent py-2 rounded-lg text-xs font-bold transition-all"
+                                    className="w-full bg-[#D4FF00]/10 hover:bg-[#D4FF00] text-[#D4FF00] hover:text-white border border-[#D4FF00]/30 hover:border-transparent py-2  text-xs font-bold transition-all"
                                 >
                                     Add to Knowledge Base
                                 </button>
@@ -531,14 +531,14 @@ const AgentFolders = ({ currentTenant }) => {
                     </div>
 
                     {/* Hot Topic Context */}
-                    <div className="glass-panel p-6 rounded-2xl">
+                    <div className="glass-panel p-6 ">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
-                                <Zap size={20} className="text-amber-400" />
+                            <div className="w-10 h-10 bg-[#D4FF00]/10  flex items-center justify-center border border-[#D4FF00]/20">
+                                <Zap size={20} className="text-[#D4FF00]" />
                             </div>
                             <div>
                                 <h4 className="font-bold text-white text-sm">Hot Topic Injection</h4>
-                                <p className="text-[10px] text-slate-500">High-priority context for immediate agent use</p>
+                                <p className="text-[10px] text-neutral-500">High-priority context for immediate agent use</p>
                             </div>
                         </div>
                         <div className="relative">
@@ -546,11 +546,11 @@ const AgentFolders = ({ currentTenant }) => {
                                 value={hotTopicInput}
                                 onChange={(e) => setHotTopicInput(e.target.value)}
                                 placeholder="E.g. 'The current special offer is a 50/50 payment plan for the next 30 days only.'"
-                                className="w-full bg-[#030305] border border-white/10 rounded-xl p-4 text-sm text-white focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 focus:outline-none min-h-[100px] resize-none"
+                                className="w-full bg-[#0a0a0a] border border-[#333]  p-4 text-sm text-white focus:border-[#D4FF00]/50 focus:ring-1 focus:ring-[#D4FF00]/20 focus:outline-none min-h-[100px] resize-none"
                             />
                             <button
                                 onClick={handleSetContext}
-                                className="absolute bottom-3 right-3 bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/20 transition-all"
+                                className="absolute bottom-3 right-3 bg-[#D4FF00] hover:bg-[#D4FF00]/80 text-white px-4 py-1.5  text-xs font-bold shadow-lg shadow-[#D4FF00]/20 transition-all"
                             >
                                 Set Context
                             </button>
@@ -559,25 +559,25 @@ const AgentFolders = ({ currentTenant }) => {
                 </div>
 
                 {/* Right Column: Knowledge List */}
-                <div className="glass-panel rounded-2xl p-0 flex flex-col overflow-hidden h-full">
-                    <div className="p-5 border-b border-white/5 bg-white/5 flex justify-between items-center">
+                <div className="glass-panel  p-0 flex flex-col overflow-hidden h-full">
+                    <div className="p-5 border-b border-[#333] bg-[#0b0b0b]/90 flex justify-between items-center">
                         <h3 className="font-bold text-white text-sm">Active Sources</h3>
                         <button
                             onClick={() => activeFolder && fetchKnowledgeBase(activeFolder.id)}
-                            className="text-slate-400 hover:text-white transition-colors"
+                            className="text-neutral-400 hover:text-white transition-colors"
                         >
                             <RefreshCw size={14} />
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {knowledgeBase.map((doc) => (
-                            <div key={doc.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-indigo-500/30 transition-all group">
+                            <div key={doc.id} className="p-3  bg-[#0b0b0b]/90 border border-[#333] hover:border-[#D4FF00]/30 transition-all group">
                                 <div className="flex items-start gap-3">
                                     <div className={cn(
-                                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5",
+                                        "w-8 h-8  flex items-center justify-center flex-shrink-0 mt-0.5",
                                         doc.type === 'file' ? "bg-red-500/10 text-red-400" :
-                                            doc.type === 'url' ? "bg-blue-500/10 text-blue-400" :
-                                                "bg-amber-500/10 text-amber-400"
+                                            doc.type === 'url' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                "bg-[#D4FF00]/10 text-[#D4FF00]"
                                     )}>
                                         {doc.type === 'file' ? <FileText size={16} /> :
                                             doc.type === 'url' ? <Globe size={16} /> :
@@ -585,21 +585,21 @@ const AgentFolders = ({ currentTenant }) => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-white truncate mb-0.5">{doc.name}</p>
-                                        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                        <div className="flex items-center gap-2 text-[10px] text-neutral-500">
                                             <span>{doc.size || 'Text Source'}</span>
                                             <span>•</span>
                                             <span>{doc.date}</span>
                                             <span className={cn(
                                                 "ml-auto font-bold px-1.5 py-0.5 rounded",
-                                                doc.status === 'Indexed' ? "bg-emerald-500/10 text-emerald-400" :
-                                                    doc.status === 'Active' ? "bg-indigo-500/10 text-indigo-400" :
-                                                        "bg-slate-700 text-slate-400"
+                                                doc.status === 'Indexed' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                    doc.status === 'Active' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                        "bg-[#0b0b0b]/90 text-neutral-400"
                                             )}>{doc.status}</span>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => handleDeleteSource(doc.id)}
-                                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all"
+                                        className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-red-400 transition-all"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -608,7 +608,7 @@ const AgentFolders = ({ currentTenant }) => {
                         ))}
 
                         {knowledgeBase.length === 0 && (
-                            <div className="text-center py-10 text-slate-500">
+                            <div className="text-center py-10 text-neutral-500">
                                 <Folder size={40} className="mx-auto mb-3 opacity-20" />
                                 <p className="text-sm">No documents indexed yet.</p>
                             </div>

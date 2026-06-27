@@ -173,7 +173,7 @@ const KnowledgeBaseAdmin = ({ tenantId }) => {
                 <button
                     onClick={handleSaveAgency}
                     disabled={saving}
-                    className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold flex items-center gap-2 transition-all disabled:opacity-50"
+                    className="px-6 py-3  bg-[#D4FF00] hover:bg-[#D4FF00]/80 text-black font-bold flex items-center gap-2 transition-all disabled:opacity-50"
                 >
                     {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                     {saving ? 'Synthesizing Knowledge...' : 'Update Agency Brain'}
@@ -182,55 +182,55 @@ const KnowledgeBaseAdmin = ({ tenantId }) => {
         </div>
     );
 
-    if (loading) return <div className="flex items-center justify-center h-64"><Loader2 size={40} className="animate-spin text-amber-500" /></div>;
+    if (loading) return <div className="flex items-center justify-center h-64"><Loader2 size={40} className="animate-spin text-[#D4FF00]" /></div>;
 
     return (
         <div className="flex-1 p-6 overflow-auto">
             <div className="max-w-5xl mx-auto">
                 <header className="mb-8">
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                        <Book className="text-amber-500" size={28} />
+                    <h1 className="font-serif italic text-2xl font-light text-[#f4f4f4] flex items-center gap-3">
+                        <Book className="text-[#D4FF00]" size={28} />
                         AI Knowledge Center
                     </h1>
-                    <p className="text-slate-400 mt-1">Configure what the AI knows about your agency and campaigns</p>
+                    <p className="text-neutral-400 mt-1">Configure what the AI knows about your agency and campaigns</p>
                 </header>
 
-                <div className="flex gap-2 mb-8 bg-white/5 p-1 rounded-xl w-fit">
+                <div className="flex gap-2 mb-8 bg-[#0b0b0b]/90 p-1  w-fit">
                     <button
                         onClick={() => setActiveTab('agency')}
-                        className={`px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'agency' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-6 py-2  font-medium transition-all ${activeTab === 'agency' ? 'bg-[#D4FF00] text-black shadow-lg' : 'text-neutral-400 hover:text-white'}`}
                     >
                         Agency Identity
                     </button>
                     <button
                         onClick={() => setActiveTab('campaign')}
-                        className={`px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'campaign' ? 'bg-amber-500 text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-6 py-2  font-medium transition-all ${activeTab === 'campaign' ? 'bg-[#D4FF00] text-black shadow-lg' : 'text-neutral-400 hover:text-white'}`}
                     >
                         Campaign Manager
                     </button>
                 </div>
 
                 {success && (
-                    <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+                    <div className="mb-6 p-4  bg-[#D4FF00]/10 border border-[#D4FF00]/30 text-[#D4FF00] flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
                         <CheckCircle2 size={20} />
                         Sync Complete: The AI is now updated with your latest branding.
                     </div>
                 )}
 
-                {activeTab === 'agency' ? renderAgencyForm() : <div className="text-slate-500 text-center py-12">Campaign Manager coming next...</div>}
+                {activeTab === 'agency' ? renderAgencyForm() : <div className="text-neutral-500 text-center py-12">Campaign Manager coming next...</div>}
             </div>
         </div>
     );
 };
 
 const SectionBox = ({ title, icon, value, onChange, placeholder }) => (
-    <div className="p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-amber-500 font-semibold">
+    <div className="p-5  bg-[#0b0b0b]/90 border border-[#333] hover:border-[#333] transition-all flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[#D4FF00] font-semibold">
             {icon}
             {title}
         </div>
         <textarea
-            className="w-full h-32 bg-black/30 border border-white/5 rounded-xl p-3 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all resize-none"
+            className="w-full h-32 bg-black/30 border border-[#333]  p-3 text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-[#D4FF00]/50 transition-all resize-none"
             placeholder={placeholder}
             value={value}
             onChange={(e) => onChange(e.target.value)}
