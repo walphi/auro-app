@@ -25,7 +25,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
   onAudioData,
   forcePause,
 }) => {
-  const agentCount = useMemo(() => Math.floor(Math.random() * 13) + 4, []);
+  const agentCount = useMemo(() => Math.floor(Math.random() * 990) + 10, []);
   const [navHidden, setNavHidden] = useState(false);
   const lastScrollYRef = useRef(0);
 

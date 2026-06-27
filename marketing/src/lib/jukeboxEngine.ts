@@ -189,10 +189,22 @@ export function init() {
           trackTransition();
         }
       } catch (_) {}
-    } else if (event.data === 2 || event.data === 0) {
+    } else if (event.data === 2) {
       isMusicPlaying = false;
       notify();
       resumeVoices(false);
+    } else if (event.data === 0) {
+      isMusicPlaying = false;
+      notify();
+      resumeVoices(false);
+      setTimeout(() => {
+        try {
+          if (player && player.getPlayerState() === 0) {
+            player.setShuffle(true);
+            player.playVideo();
+          }
+        } catch (_) {}
+      }, 200);
     } else if (event.data === -1) {
       try {
         const data = player?.getVideoData();
@@ -224,7 +236,6 @@ export function init() {
           playsinline: 1,
           autoplay: 0,
           rel: 0,
-          loop: 1,
         },
         events: { onReady, onStateChange },
       });
