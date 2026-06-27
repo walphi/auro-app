@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "vite",
-    "build": "cd marketing && npm install && npm run build && cd .. && if [ -d marketing/dist ]; then mkdir -p dist && cp -r marketing/dist/* dist/; fi && vite build && cd sites && npm install && npm run build",
+    "build": "node scripts/build.mjs",
     "preview": "vite preview",
     "start": "netlify dev",
     "ingest:history": "npx tsx scripts/ingest_history.ts",
