@@ -70,7 +70,7 @@ export default function Solutions() {
       <div className="px-6 md:px-10 lg:px-16 py-8 max-w-6xl mx-auto relative z-10">
         {/* Hero */}
         <div className="mb-14 opacity-0 translate-y-5 animate-[reveal_0.9s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-          <span className="text-[9px] font-mono tracking-[0.4em] text-[#D4FF00] uppercase">08 // SOLUTIONS</span>
+          <span className="text-[9px] font-mono tracking-[0.4em] text-[#D4FF00] uppercase">06 // SOLUTIONS</span>
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-[#f4f4f4] mt-3 leading-tight">
             Visualize Your Efficiency:<br />
             <span className="italic text-[#D4FF00]">The AURO Qualification Journey</span>

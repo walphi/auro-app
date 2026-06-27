@@ -115,13 +115,14 @@ export function SiteLayout() {
         onClose={() => setIsMenuOpen(false)}
         items={[
           { label: "00 // HOME", onClick: () => navigate("/") },
-          { label: "01 // INSIGHTS", onClick: () => navigate("/insights") },
-          { label: "02 // FAQ", onClick: () => navigate("/faq") },
-          { label: "03 // PRODUCT UPDATES", onClick: () => navigate("/product-updates") },
-          { label: "04 // ABOUT", onClick: () => navigate("/about") },
-          { label: "05 // SOLUTIONS", onClick: () => navigate("/solutions") },
-          { label: "06 // CONTACT", onClick: handleDemoClick },
-          { label: "REQUEST DEMO", onClick: () => { window.location.href = "/#cta"; }, isCta: true },
+          { label: "01 // HOW IT WORKS", onClick: () => navigate("/") },
+          { label: "02 // REVENUE", onClick: () => navigate("/") },
+          { label: "03 // ABOUT", onClick: () => navigate("/about") },
+          { label: "04 // INSIGHTS", onClick: () => navigate("/insights") },
+          { label: "05 // FAQ", onClick: () => navigate("/faq") },
+          { label: "06 // SOLUTIONS", onClick: () => navigate("/solutions") },
+          { label: "07 // CLIENT LOGIN", onClick: handleDemoClick },
+          { label: "REQUEST EARLY ACCESS", onClick: () => { window.location.href = "/#cta"; }, isCta: true },
         ]}
       />
 

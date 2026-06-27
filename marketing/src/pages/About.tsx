@@ -22,7 +22,7 @@ export default function About() {
       <div className="px-6 md:px-10 lg:px-16 py-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-10 opacity-0 translate-y-5 animate-[reveal_0.9s_cubic-bezier(0.16,1,0.3,1)_forwards]">
-          <span className="text-[9px] font-mono tracking-[0.4em] text-[#D4FF00] uppercase">07 // ABOUT AURO</span>
+          <span className="text-[9px] font-mono tracking-[0.4em] text-[#D4FF00] uppercase">03 // ABOUT</span>
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-light text-[#f4f4f4] mt-3 leading-tight">
             The AURO Story:<br />
             Transforming Lead Qualification<br />
