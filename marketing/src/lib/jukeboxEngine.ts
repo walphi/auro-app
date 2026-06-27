@@ -171,7 +171,14 @@ export function init() {
   const onReady = () => {
     playerLoadingState = 'ready';
     notify();
-    try { player?.setShuffle(true); } catch (_) {}
+    try {
+      player?.setShuffle(true);
+      const pl = player?.getPlaylist();
+      if (pl && pl.length > 0) {
+        const randomIndex = Math.floor(Math.random() * pl.length);
+        player.cuePlaylist({ listType: 'playlist', list: PLAYLIST_ID, index: randomIndex });
+      }
+    } catch (_) {}
   };
 
   const onStateChange = (event: any) => {
