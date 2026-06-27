@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { getCalApi } from "@calcom/embed-react";
 import { 
   Settings, 
@@ -272,6 +273,7 @@ interface ChatMessage {
 
 export default function App() {
   const [scrollProgress, setScrollProgress] = useState(0);
+  const navigate = useNavigate();
 
   // Playground Options
   const [skyColors, setSkyColors] = useState({
@@ -590,11 +592,11 @@ export default function App() {
           { label: "00 // HOME", onClick: () => handleNavClick(0) },
           { label: "01 // HOW IT WORKS", onClick: () => handleNavClick(2) },
           { label: "02 // REVENUE", onClick: () => handleNavClick(3) },
-          { label: "03 // ABOUT", onClick: () => { window.location.href = "/about"; } },
-          { label: "04 // INSIGHTS", onClick: () => { window.location.href = "/insights"; } },
-          { label: "05 // FAQ", onClick: () => { window.location.href = "/faq"; } },
-          { label: "06 // SOLUTIONS", onClick: () => { window.location.href = "/solutions"; } },
-          { label: "07 // CLIENT LOGIN", onClick: () => { window.location.href = "/dashboard"; } },
+          { label: "03 // ABOUT", onClick: () => navigate("/about") },
+          { label: "04 // INSIGHTS", onClick: () => navigate("/insights") },
+          { label: "05 // FAQ", onClick: () => navigate("/faq") },
+          { label: "06 // SOLUTIONS", onClick: () => navigate("/solutions") },
+          { label: "07 // CLIENT LOGIN", onClick: () => navigate("/dashboard") },
           { label: "REQUEST EARLY ACCESS", onClick: () => handleNavClick(5), isCta: true },
         ]}
       />
@@ -1312,27 +1314,27 @@ export default function App() {
             <button onClick={() => handleNavClick(1)} className="text-left text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors cursor-pointer bg-transparent border-0 font-light font-mono">
               // About
             </button>
-            <a href="/faq" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            <Link to="/faq" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // FAQ
-            </a>
-            <a href="/dashboard" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            </Link>
+            <Link to="/dashboard" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // Login
-            </a>
+            </Link>
           </div>
 
           <div className="flex flex-col gap-4">
             <div className="text-[9px] uppercase tracking-[3px] font-mono text-neutral-500 font-semibold select-none">
               Resources
             </div>
-            <a href="/insights" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            <Link to="/insights" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // Insights
-            </a>
-            <a href="/product-updates" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            </Link>
+            <Link to="/product-updates" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // Updates
-            </a>
-            <a href="/lead-nurturing-definition" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            </Link>
+            <Link to="/lead-nurturing-definition" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // Lead Nurturing
-            </a>
+            </Link>
           </div>
 
           <div className="flex flex-col gap-4">

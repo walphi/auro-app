@@ -33,7 +33,6 @@ import {
     MoreHorizontal,
     Paperclip,
     Folder,
-    Aperture,
     Book
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
@@ -76,6 +75,19 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Constants
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+// Auro SVG Logo
+const AuroLogoSvg = ({ size = 24, strokeColor = "#f1f1f1", className = "" }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="m14.31 8 5.74 9.94" />
+        <path d="M9.69 8h11.48" />
+        <path d="m7.38 12 5.74-9.94" />
+        <path d="M9.69 16 3.95 6.06" />
+        <path d="M14.31 16H2.83" />
+        <path d="m16.62 12-5.74 9.94" />
+    </svg>
+);
+
 // Sidebar Component
 const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenantChange }) => {
     const { user } = useUser();
@@ -92,17 +104,13 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
     ];
 
     return (
-        <div className="w-64 flex-shrink-0 bg-[#030305] border-r border-white/5 flex flex-col h-dvh relative z-20">
+        <div className="hidden lg:flex lg:flex-col w-64 flex-shrink-0 bg-[#0a0a0a] border-r border-[#333] h-dvh relative z-20">
             {/* Logo & Tenant Switcher */}
             <div className="pt-8 pb-4 px-6">
                 <div className="flex items-center gap-3 mb-6 relative group">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-white/10 group-hover:scale-105 transition-all duration-500 overflow-hidden relative">
-                        <Aperture size={24} className="text-black relative z-10" />
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                    <AuroLogoSvg size={28} strokeColor="#f1f1f1" className="shrink-0" />
                     <div className="flex flex-col">
-                        <span className="text-xl font-bold text-white tracking-widest leading-none">AURO</span>
-                        <span className="text-[10px] text-indigo-400 font-bold tracking-[0.2em] mt-1 opacity-80 uppercase">Cognitive CRM</span>
+                        <span className="font-serif italic text-2xl tracking-tighter text-[#f1f1f1] select-none font-bold leading-none">AURO</span>
                     </div>
                 </div>
 
@@ -111,19 +119,19 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
                     <div className="relative mt-2">
                         <button
                             onClick={() => setIsTenantMenuOpen(!isTenantMenuOpen)}
-                            className="w-full flex items-center justify-between px-4 py-3 bg-white/5 border border-white/5 hover:border-indigo-500/30 rounded-xl transition-all group overflow-hidden"
+                            className="w-full flex items-center justify-between px-4 py-3 bg-[#0b0b0b]/90 border border-[#333] hover:border-[#D4FF00]/30 transition-all group overflow-hidden"
                         >
                             <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] flex-shrink-0" />
-                                <span className="text-xs font-bold text-slate-200 truncate pr-2">{currentTenant?.name || 'Loading...'}</span>
+                                <div className="w-2 h-2 rounded-full bg-[#D4FF00] shadow-[0_0_8px_rgba(212,255,0,0.5)] flex-shrink-0" />
+                                <span className="text-xs font-bold text-neutral-200 truncate pr-2">{currentTenant?.name || 'Loading...'}</span>
                             </div>
-                            <ChevronDown size={14} className={cn("text-slate-500 group-hover:text-indigo-400 transition-all", isTenantMenuOpen && "rotate-180")} />
+                            <ChevronDown size={14} className={cn("text-neutral-500 group-hover:text-[#D4FF00] transition-all", isTenantMenuOpen && "rotate-180")} />
                         </button>
 
                         {isTenantMenuOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-[#0a0c10] border border-white/10 rounded-2xl shadow-2xl z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 overflow-hidden">
-                                <div className="px-3 pb-2 mb-2 border-b border-white/5">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Switch Workspace</span>
+                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-[#0a0a0a] border border-[#333] shadow-2xl z-50 overflow-hidden">
+                                <div className="px-3 pb-2 mb-2 border-b border-[#333]">
+                                    <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Switch Workspace</span>
                                 </div>
                                 {allTenants.map(t => (
                                     <button
@@ -134,12 +142,12 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
                                         }}
                                         className={cn(
                                             "w-full text-left px-4 py-2.5 text-xs font-semibold transition-all flex items-center justify-between group/item",
-                                            currentTenant?.id === t.id ? "text-indigo-400 bg-indigo-500/5" : "text-slate-400 hover:text-white hover:bg-white/5"
+                                            currentTenant?.id === t.id ? "text-[#D4FF00] bg-[#D4FF00]/5" : "text-neutral-400 hover:text-white hover:bg-white/5"
                                         )}
                                     >
                                         <span className="truncate">{t.name}</span>
                                         {currentTenant?.id === t.id && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-[#D4FF00] shadow-[0_0_10px_rgba(212,255,0,0.5)]" />
                                         )}
                                     </button>
                                 ))}
@@ -160,32 +168,28 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
                             key={item.view}
                             onClick={() => setActiveView(item.view)}
                             className={cn(
-                                "w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden border",
+                                "w-full flex items-center gap-4 px-4 py-3.5 transition-all duration-300 group relative overflow-hidden border",
                                 isActive
-                                    ? "bg-white/10 border-white/20 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md"
-                                    : "bg-transparent border-transparent text-slate-400 hover:bg-white/5 hover:border-white/5 hover:text-slate-200 hover:shadow-lg hover:shadow-black/20"
+                                    ? "bg-[#0b0b0b]/90 border-[#333] text-white"
+                                    : "bg-transparent border-transparent text-neutral-400 hover:bg-[#0b0b0b]/90 hover:border-[#333] hover:text-neutral-200"
                             )}
                         >
                             <div className={cn(
-                                "p-2 rounded-xl transition-all duration-300",
-                                isActive ? "bg-amber-500/20 text-indigo-300 shadow-inner shadow-amber-500/20" : "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-slate-300"
+                                "p-2 transition-all duration-300",
+                                isActive ? "bg-[#D4FF00]/10 text-[#D4FF00]" : "bg-white/5 text-neutral-500 group-hover:bg-white/5 group-hover:text-neutral-300"
                             )}>
                                 <Icon size={18} className="relative z-10" />
                             </div>
                             <span className={cn("font-semibold text-sm tracking-wide relative z-10", isActive ? "text-white" : "")}>{item.label}</span>
-
-                            {/* Glass Reflection Effect */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </button>
                     );
                 })}
             </nav>
 
-
             {/* User Profile */}
             <div className="p-4 mt-auto">
-                <div className="glass-panel p-3 rounded-xl flex items-center gap-3 relative group">
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold ring-2 ring-white/10 transition-all">
+                <div className="bg-[#0b0b0b]/90 border border-[#333] p-3 flex items-center gap-3 relative group">
+                    <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-white font-bold ring-2 ring-white/5 transition-all">
                         {user?.imageUrl ? (
                             <img src={user.imageUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
                         ) : (
@@ -193,17 +197,17 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-200 truncate">{user?.fullName || 'User'}</p>
+                        <p className="text-xs font-semibold text-neutral-200 truncate">{user?.fullName || 'User'}</p>
                         <button
                             onClick={() => document.querySelector('.cl-userButtonTrigger')?.click()}
-                            className="text-[10px] text-slate-500 hover:text-amber-400 truncate cursor-pointer transition-colors text-left"
+                            className="text-[10px] text-neutral-500 hover:text-[#D4FF00] truncate cursor-pointer transition-colors text-left"
                         >
                             View Profile
                         </button>
                     </div>
                     <button
                         onClick={() => document.querySelector('.cl-userButtonTrigger')?.click()}
-                        className="text-slate-500 hover:text-amber-400 transition-colors cursor-pointer z-10"
+                        className="text-neutral-500 hover:text-[#D4FF00] transition-colors cursor-pointer z-10"
                     >
                         <Settings size={14} />
                     </button>
@@ -218,6 +222,45 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
     );
 };
 
+// Bottom Navigation for Mobile
+const BottomNav = ({ activeView, setActiveView }) => {
+    const navItems = [
+        { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
+        { icon: Users, label: 'Leads', view: 'leads' },
+        { icon: MessageSquare, label: 'Messages', view: 'messages' },
+        { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
+        { icon: Settings, label: 'More', view: 'tenant-admin' }
+    ];
+
+    return (
+        <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a] border-t border-[#333] px-2 pb-safe">
+            <div className="flex items-center justify-around w-full py-1">
+                {navItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeView === item.view;
+                    return (
+                        <button
+                            key={item.view}
+                            onClick={() => setActiveView(item.view)}
+                            className={cn(
+                                "flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 transition-all relative",
+                                isActive ? "text-[#D4FF00]" : "text-neutral-500 hover:text-neutral-300"
+                            )}
+                        >
+                            <Icon size={20} />
+                            <span className={cn(
+                                "text-[9px] font-mono tracking-wider",
+                                isActive ? "text-[#D4FF00]" : "text-neutral-500"
+                            )}>{item.label}</span>
+                            {isActive && <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#D4FF00]" />}
+                        </button>
+                    );
+                })}
+            </div>
+        </nav>
+    );
+};
+
 // Dashboard Component
 const Dashboard = ({ leads }) => {
     const { user } = useUser();
@@ -226,29 +269,28 @@ const Dashboard = ({ leads }) => {
     const qualifiedLeads = leads.filter(l => l.status === 'Qualified').length;
 
     const stats = [
-        { title: 'Total Leads', value: totalLeads, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-        { title: 'New Inquiries', value: newLeads, icon: MessageSquare, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
-        { title: 'Qualified', value: qualifiedLeads, icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
-        { title: 'Conversion Rate', value: '12%', icon: LayoutDashboard, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' }
+        { title: 'Total Leads', value: totalLeads, icon: Users, color: 'text-[#D4FF00]', bg: 'bg-[#D4FF00]/10', border: 'border-[#D4FF00]/30' },
+        { title: 'New Inquiries', value: newLeads, icon: MessageSquare, color: 'text-[#D4FF00]', bg: 'bg-[#D4FF00]/10', border: 'border-[#D4FF00]/30' },
+        { title: 'Qualified', value: qualifiedLeads, icon: CheckCircle2, color: 'text-[#D4FF00]', bg: 'bg-[#D4FF00]/10', border: 'border-[#D4FF00]/30' },
+        { title: 'Conversion Rate', value: '12%', icon: LayoutDashboard, color: 'text-[#D4FF00]', bg: 'bg-[#D4FF00]/10', border: 'border-[#D4FF00]/30' }
     ];
 
     return (
-        <div className="flex-1 overflow-y-auto bg-[#030305] p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto bg-[#0a0a0a] p-4 md:p-6 lg:p-8 pb-20 lg:pb-8">
             <div className="max-w-7xl mx-auto flex flex-col gap-6">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Dashboard</h1>
-                        <p className="text-slate-400 text-sm">Welcome back, {user?.firstName || 'User'}</p>
+                        <h1 className="font-serif italic text-3xl font-light text-[#f4f4f4] mb-1">Dashboard</h1>
+                        <p className="text-neutral-400 text-sm">Welcome back, {user?.firstName || 'User'}</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="glass-button px-4 py-2 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-2">
+                        <button className="glass-button px-4 py-2 text-neutral-200 text-xs font-medium flex items-center gap-2">
                             <CalendarIcon size={14} />
                             Last 7 Days
                         </button>
-                        <button className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-0.5 flex items-center gap-2">
-                            <Plus size={14} />
-                            New Report
+                        <button className="bg-[#D4FF00] hover:bg-[#D4FF00]/80 text-black px-4 py-2 text-xs font-mono uppercase tracking-widest font-bold transition-all flex items-center gap-2">
+                            <Plus size={14} />New Report
                         </button>
                     </div>
                 </div>
@@ -258,12 +300,12 @@ const Dashboard = ({ leads }) => {
                     {stats.map((stat) => {
                         const Icon = stat.icon;
                         return (
-                            <div key={stat.title} className="glass-card rounded-2xl p-5 relative overflow-hidden group">
+                            <div key={stat.title} className="bg-[#0a0a0a]/80 border border-[#333] p-5 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                                     <Icon size={60} className={stat.color} />
                                 </div>
                                 <div className="flex items-center justify-between mb-4 relative z-10">
-                                    <div className={cn("p-2.5 rounded-xl", stat.bg)}>
+                                    <div className={cn("p-2.5", stat.bg)}>
                                         <Icon size={20} className={stat.color} />
                                     </div>
                                     <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", stat.bg, stat.border, stat.color)}>
@@ -271,8 +313,8 @@ const Dashboard = ({ leads }) => {
                                     </span>
                                 </div>
                                 <div className="relative z-10">
-                                    <p className="text-slate-400 text-xs font-medium mb-0.5">{stat.title}</p>
-                                    <p className="text-3xl font-bold text-white tracking-tight">{stat.value}</p>
+                                    <p className="text-neutral-400 text-xs font-medium mb-0.5">{stat.title}</p>
+                                    <p className="font-serif italic text-3xl font-light text-[#f4f4f4]">{stat.value}</p>
                                 </div>
                             </div>
                         );
@@ -282,16 +324,16 @@ const Dashboard = ({ leads }) => {
                 {/* Recent Activity & Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Main Chart Area */}
-                    <div className="lg:col-span-2 glass-panel rounded-2xl p-6 min-h-[350px] flex flex-col">
+                    <div className="lg:col-span-2 bg-[#0b0b0b]/90 border border-[#333] p-6 min-h-[350px] flex flex-col">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-lg font-bold text-white">Lead Acquisition</h2>
-                            <button className="text-amber-400 text-xs font-medium hover:text-amber-300">View Details</button>
+                            <button className="text-[#D4FF00] text-xs font-medium hover:text-[#D4FF00]/80">View Details</button>
                         </div>
                         <div className="flex-1 flex items-end justify-between gap-2 px-4 pb-2 relative">
                             {/* Grid Lines */}
                             <div className="absolute inset-0 flex flex-col justify-between px-4 pb-8 pointer-events-none">
                                 {[...Array(5)].map((_, i) => (
-                                    <div key={i} className="w-full h-px bg-white/5 border-t border-dashed border-white/5" />
+                                    <div key={i} className="w-full h-px border-t border-dashed border-[#333]" />
                                 ))}
                             </div>
 
@@ -308,37 +350,37 @@ const Dashboard = ({ leads }) => {
                                 <div key={index} className="flex flex-col items-center gap-2 relative group w-full z-10">
                                     <div className="relative w-full max-w-[40px] h-48 flex items-end justify-center">
                                         <div
-                                            className="w-full bg-gradient-to-t from-amber-500/80 to-yellow-500 rounded-t-lg transition-all duration-500 hover:from-amber-500 hover:to-indigo-300 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] cursor-pointer group-hover:scale-y-105 origin-bottom"
+                                            className="w-full bg-gradient-to-t from-[#D4FF00]/80 to-[#D4FF00]/20 transition-all duration-500 cursor-pointer group-hover:scale-y-105 origin-bottom"
                                             style={{ height: `${(item.value / 10) * 100}%` }}
                                         >
-                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg transition-opacity whitespace-nowrap border border-white/10 pointer-events-none">
+                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#0b0b0b]/90 text-white text-[10px] font-bold px-2 py-1 transition-opacity whitespace-nowrap border border-[#333] pointer-events-none">
                                                 {item.value} Leads
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs font-medium text-slate-500">{item.day}</span>
+                                    <span className="text-xs font-medium text-neutral-500">{item.day}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
                     {/* Recent Activity List */}
-                    <div className="glass-panel rounded-2xl p-0 overflow-hidden flex flex-col h-full">
-                        <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/5">
+                    <div className="bg-[#0b0b0b]/90 border border-[#333] p-0 overflow-hidden flex flex-col h-full">
+                        <div className="p-5 border-b border-[#333] flex justify-between items-center bg-[#0a0a0a]/80">
                             <h2 className="text-base font-bold text-white">Recent Activity</h2>
-                            <Bell size={16} className="text-slate-400" />
+                            <Bell size={16} className="text-neutral-400" />
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-2">
                             {leads.slice(0, 5).map(lead => (
-                                <div key={lead.id} className="p-3 rounded-xl hover:bg-white/5 transition-colors flex items-center gap-3 cursor-pointer group border border-transparent hover:border-white/5">
-                                    <div className="w-10 h-10 rounded-full bg-[#030305] flex items-center justify-center text-slate-300 font-bold border border-white/10 group-hover:border-amber-500/50 group-hover:text-amber-400 transition-all shadow-sm text-sm">
+                                <div key={lead.id} className="p-3 hover:bg-[#0a0a0a]/80 transition-colors flex items-center gap-3 cursor-pointer group border border-transparent hover:border-[#333]">
+                                    <div className="w-10 h-10 rounded-full bg-[#0a0a0a] flex items-center justify-center text-neutral-300 font-bold border border-[#333] group-hover:border-[#D4FF00]/50 group-hover:text-[#D4FF00] transition-all text-sm">
                                         {lead.name.charAt(0)}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-slate-200 text-sm font-semibold truncate group-hover:text-white transition-colors">{lead.name}</p>
-                                        <p className="text-[10px] text-slate-500 truncate">{lead.status} • {formatTime(lead.last_interaction)}</p>
+                                        <p className="text-neutral-200 text-sm font-semibold truncate group-hover:text-white transition-colors">{lead.name}</p>
+                                        <p className="text-[10px] text-neutral-500 truncate">{lead.status} • {formatTime(lead.last_interaction)}</p>
                                     </div>
-                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-amber-400 transition-colors opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1" />
+                                    <ChevronRight size={14} className="text-neutral-600 group-hover:text-[#D4FF00] transition-colors opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1" />
                                 </div>
                             ))}
                         </div>
@@ -371,27 +413,24 @@ const CalendarView = ({ currentTenant }) => {
 
     if (currentTenant?.id && calendarMap[currentTenant.id]) {
         return (
-            <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+            <div className="flex-1 bg-[#0a0a0a] p-4 md:p-6 lg:p-8 flex flex-col h-full overflow-hidden pb-20 lg:pb-8">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-xl shadow-indigo-500/5">
-                            <CalendarIcon size={24} className="text-indigo-400" />
+                        <div className="w-12 h-12 bg-[#D4FF00]/10 flex items-center justify-center border border-[#D4FF00]/30">
+                            <CalendarIcon size={24} className="text-[#D4FF00]" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">System Calendar</h1>
-                            <p className="text-slate-400 text-sm flex items-center gap-2 uppercase tracking-[0.1em] font-bold opacity-80">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <h1 className="font-serif italic text-3xl font-light text-[#f4f4f4] mb-1">System Calendar</h1>
+                            <p className="text-neutral-400 text-sm flex items-center gap-2 uppercase tracking-[0.1em] font-bold opacity-80">
+                                <span className="w-2 h-2 rounded-full bg-[#D4FF00] animate-pulse" />
                                 {currentTenant.name} Sync Active
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 glass-panel rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.02] to-transparent pointer-events-none" />
-                    
-                    {/* Google Calendar Iframe */}
-                    <div className="w-full h-full relative z-10 bg-[#f8f9fa]/[0.02] backdrop-blur-3xl p-1">
+                <div className="flex-1 bg-[#0b0b0b]/90 border border-[#333] shadow-2xl overflow-hidden relative group">
+                    <div className="w-full h-full relative z-10 bg-[#0a0a0a] p-1">
                         <iframe 
                             src={`https://calendar.google.com/calendar/embed?src=${calendarMap[currentTenant.id]}&ctz=Asia%2FDubai&mode=WEEK&showTabs=1&showPrint=0&showCalendars=0&showTz=0`} 
                             style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg) brightness(0.8) contrast(1.2)' }} 
@@ -399,49 +438,45 @@ const CalendarView = ({ currentTenant }) => {
                             height="100%" 
                             frameBorder="0" 
                             scrolling="no"
-                            className="rounded-[2.2rem]"
                         />
                     </div>
-                    
-                    {/* Corner Decoration */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[80px] -mr-16 -mt-16 pointer-events-none" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 bg-[#030305] p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+        <div className="flex-1 bg-[#0a0a0a] p-4 md:p-6 lg:p-8 flex flex-col h-full overflow-hidden pb-20 lg:pb-8">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Calendar</h1>
-                    <p className="text-slate-400 text-sm">{currentMonth} {currentYear}</p>
+                    <h1 className="font-serif italic text-3xl font-light text-[#f4f4f4] mb-1">Calendar</h1>
+                    <p className="text-neutral-400 text-sm">{currentMonth} {currentYear}</p>
                 </div>
                 <div className="flex gap-2">
-                    <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
+                    <button className="glass-button p-2 text-neutral-400 hover:text-white">
                         <ChevronLeft size={16} />
                     </button>
-                    <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
+                    <button className="glass-button p-2 text-neutral-400 hover:text-white">
                         <ChevronRightIcon size={16} />
                     </button>
-                    <button className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-amber-500/20 ml-2 flex items-center gap-2">
+                    <button className="bg-[#D4FF00] hover:bg-[#D4FF00]/80 text-black px-4 py-2 text-xs font-mono uppercase tracking-widest font-bold ml-2 flex items-center gap-2">
                         <Plus size={14} />
                         Add Event
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-6 overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
                 {/* Calendar Grid */}
-                <div className="flex-1 glass-panel rounded-3xl p-6 flex flex-col">
+                <div className="flex-1 bg-[#0b0b0b]/90 border border-[#333] p-4 md:p-6 flex flex-col">
                     <div className="grid grid-cols-7 mb-4">
                         {days.map(day => (
-                            <div key={day} className="text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-2">
+                            <div key={day} className="text-center text-neutral-500 text-xs font-bold uppercase tracking-wider py-2">
                                 {day}
                             </div>
                         ))}
                     </div>
-                    <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-2">
+                    <div className="flex-1 grid grid-cols-7 grid-rows-5 gap-1 md:gap-2">
                         {Array.from({ length: 35 }).map((_, i) => {
                             const dayNum = i - 2; // Offset for demo
                             const isToday = dayNum === currentDate.getDate();
@@ -449,23 +484,23 @@ const CalendarView = ({ currentTenant }) => {
 
                             return (
                                 <div key={i} className={cn(
-                                    "rounded-xl border border-white/5 p-2 relative transition-all hover:bg-white/5 flex flex-col gap-1",
-                                    dayNum > 0 && dayNum <= 31 ? "bg-transparent" : "bg-white/[0.02] opacity-50"
+                                    "border border-[#333] p-1 md:p-2 relative transition-all hover:bg-[#0a0a0a]/80 flex flex-col gap-1",
+                                    dayNum > 0 && dayNum <= 31 ? "bg-transparent" : "bg-[#0a0a0a]/50 opacity-50"
                                 )}>
                                     {dayNum > 0 && dayNum <= 31 && (
                                         <>
                                             <span className={cn(
-                                                "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full",
-                                                isToday ? "bg-amber-600 text-white" : "text-slate-400"
+                                                "text-xs font-medium w-6 h-6 flex items-center justify-center",
+                                                isToday ? "bg-[#D4FF00] text-black font-bold" : "text-neutral-400"
                                             )}>
                                                 {dayNum}
                                             </span>
                                             {dayEvents.map(event => (
                                                 <div key={event.id} className={cn(
-                                                    "text-[9px] px-1.5 py-1 rounded truncate font-medium",
-                                                    event.type === 'viewing' ? "bg-emerald-500/20 text-emerald-300" :
-                                                        event.type === 'call' ? "bg-blue-500/20 text-blue-300" :
-                                                            "bg-amber-500/20 text-amber-300"
+                                                    "text-[9px] px-1.5 py-1 truncate font-medium",
+                                                    event.type === 'viewing' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                        event.type === 'call' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                            "bg-[#D4FF00]/10 text-[#D4FF00]"
                                                 )}>
                                                     {event.time} - {event.title}
                                                 </div>
@@ -479,23 +514,23 @@ const CalendarView = ({ currentTenant }) => {
                 </div>
 
                 {/* Upcoming Events Sidebar */}
-                <div className="w-80 glass-panel rounded-3xl p-6 flex flex-col">
-                    <h3 className="text-lg font-bold text-white mb-4">Upcoming</h3>
+                <div className="w-full lg:w-80 bg-[#0b0b0b]/90 border border-[#333] p-6 flex flex-col">
+                    <h3 className="font-serif italic text-lg font-light text-[#f4f4f4] mb-4">Upcoming</h3>
                     <div className="space-y-3 overflow-y-auto">
                         {events.map(event => (
-                            <div key={event.id} className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-amber-500/30 transition-colors group">
+                            <div key={event.id} className="p-3 bg-[#0a0a0a]/80 border border-[#333] hover:border-[#D4FF00]/30 transition-colors group">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className={cn(
-                                        "w-8 h-8 rounded-lg flex items-center justify-center",
-                                        event.type === 'viewing' ? "bg-emerald-500/20 text-emerald-400" :
-                                            event.type === 'call' ? "bg-blue-500/20 text-blue-400" :
-                                                "bg-amber-500/20 text-amber-400"
+                                        "w-8 h-8 flex items-center justify-center",
+                                        event.type === 'viewing' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                            event.type === 'call' ? "bg-[#D4FF00]/10 text-[#D4FF00]" :
+                                                "bg-[#D4FF00]/10 text-[#D4FF00]"
                                     )}>
                                         {event.type === 'viewing' ? <Home size={14} /> : event.type === 'call' ? <Phone size={14} /> : <Users size={14} />}
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-white">{event.title}</p>
-                                        <p className="text-[10px] text-slate-400">{event.time}</p>
+                                        <p className="text-[10px] text-neutral-400">{event.time}</p>
                                     </div>
                                 </div>
                             </div>
@@ -512,18 +547,18 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
     const filteredLeads = filter === 'All' ? leads : leads.filter(l => l.status === filter);
 
     return (
-        <div className="w-80 flex-shrink-0 bg-[#030305] border-r border-white/5 flex flex-col h-full relative z-10">
+        <div className="w-full lg:w-80 flex-shrink-0 bg-[#0a0a0a] border-r border-[#333] flex flex-col h-full relative z-10">
             {/* Header */}
-            <div className="h-20 flex items-center justify-between px-5 border-b border-white/5">
+            <div className="h-20 flex items-center justify-between px-5 border-b border-[#333]">
                 <div>
-                    <h2 className="text-xl font-bold text-white tracking-tight">Leads</h2>
-                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">{filteredLeads.length} Active Leads</p>
+                    <h2 className="font-serif italic text-xl font-light text-[#f4f4f4]">Leads</h2>
+                    <p className="text-[10px] text-neutral-500 font-medium mt-0.5">{filteredLeads.length} Active Leads</p>
                 </div>
                 <div className="flex gap-2">
-                    <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
+                    <button className="glass-button p-2 text-neutral-400 hover:text-white">
                         <Filter size={16} />
                     </button>
-                    <button className="bg-amber-600 hover:bg-amber-500 p-2 rounded-lg text-white shadow-lg shadow-amber-500/20 transition-all hover:scale-105">
+                    <button className="bg-[#D4FF00] hover:bg-[#D4FF00]/80 p-2 text-black transition-all">
                         <Plus size={16} />
                     </button>
                 </div>
@@ -532,11 +567,11 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
             {/* Search & Filter Tabs */}
             <div className="p-5 pb-2 space-y-4">
                 <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-amber-400 transition-colors" size={16} />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 group-focus-within:text-[#D4FF00] transition-colors" size={16} />
                     <input
                         type="text"
                         placeholder="Search leads..."
-                        className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
+                        className="w-full bg-[#0a0a0a]/80 text-white pl-10 pr-3 py-2.5 border border-[#333] focus:border-[#D4FF00]/50 focus:ring-2 focus:ring-[#D4FF00]/20 focus:outline-none text-xs transition-all placeholder-neutral-600"
                     />
                 </div>
 
@@ -546,10 +581,10 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                             key={status}
                             onClick={() => setFilter(status)}
                             className={cn(
-                                "px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
+                                "px-3 py-1.5 text-[10px] font-bold whitespace-nowrap transition-all border font-mono uppercase tracking-wider",
                                 filter === status
-                                    ? "bg-amber-600 border-indigo-600 text-white shadow-md shadow-amber-500/20"
-                                    : "bg-transparent border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200"
+                                    ? "bg-[#D4FF00] border-[#D4FF00] text-black"
+                                    : "bg-transparent border-[#333] text-neutral-400 hover:border-[#D4FF00] hover:text-[#D4FF00]"
                             )}
                         >
                             {status}
@@ -565,50 +600,50 @@ const LeadList = ({ leads, selectedId, onSelect, filter, setFilter }) => {
                         key={lead.id}
                         onClick={() => onSelect(lead)}
                         className={cn(
-                            "p-4 rounded-xl cursor-pointer transition-all relative overflow-hidden group border",
+                            "p-4 cursor-pointer transition-all relative overflow-hidden group border",
                             selectedId === lead.id
-                                ? "bg-gradient-to-r from-amber-900/20 to-indigo-900/10 border-amber-500/30 shadow-lg shadow-indigo-900/10"
-                                : "glass-card hover:border-amber-500/20"
+                                ? "bg-[#0b0b0b]/90 border-[#D4FF00]/30"
+                                : "bg-[#0a0a0a]/80 border-[#333] hover:border-[#D4FF00]/30"
                         )}
                     >
-                        {selectedId === lead.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />}
+                        {selectedId === lead.id && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#D4FF00]" />}
 
                         <div className="flex justify-between items-start mb-1.5">
-                            <h4 className={cn("font-bold text-sm", selectedId === lead.id ? "text-white" : "text-slate-200 group-hover:text-white")}>
+                            <h4 className={cn("font-bold text-sm", selectedId === lead.id ? "text-white" : "text-neutral-200 group-hover:text-white")}>
                                 {lead.name}
                             </h4>
-                            <span className="text-[9px] text-slate-500 font-medium bg-[#030305] px-1.5 py-0.5 rounded-full border border-white/5">
+                            <span className="text-[9px] text-neutral-500 font-medium bg-[#0a0a0a] px-1.5 py-0.5 border border-[#333]">
                                 {formatTime(lead.history?.[lead.history?.length - 1]?.timestamp || lead.created_at)}
                             </span>
                         </div>
                         <div className="flex items-center gap-2 mb-2">
                             {lead.budget && (
-                                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-0.5">
+                                <span className="text-[10px] text-[#D4FF00] font-medium flex items-center gap-0.5">
                                     <DollarSign size={10} />
                                     {!isNaN(parseFloat(lead.budget)) && isFinite(lead.budget) ? formatCurrency(lead.budget) : lead.budget}
                                 </span>
                             )}
                             {lead.propertyType && (
-                                <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                                <span className="text-[10px] text-neutral-400 flex items-center gap-0.5">
                                     <Home size={10} />
                                     {lead.propertyType}
                                 </span>
                             )}
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate mb-2 leading-relaxed">
+                        <p className="text-[11px] text-neutral-400 truncate mb-2 leading-relaxed">
                             {lead.history?.[lead.history?.length - 1]?.content || "No messages yet"}
                         </p>
                         <div className="flex items-center gap-2">
                             <span className={cn(
-                                "px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border",
-                                lead.status === 'New' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                    lead.status === 'Qualified' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                        "bg-slate-700/50 text-slate-400 border-slate-600/30"
+                                "px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide border font-mono",
+                                lead.status === 'New' ? "bg-[#D4FF00]/10 text-[#D4FF00] border-[#D4FF00]/30" :
+                                    lead.status === 'Qualified' ? "bg-[#D4FF00]/10 text-[#D4FF00] border-[#D4FF00]/30" :
+                                        "bg-[#0a0a0a]/80 text-neutral-400 border-[#333]"
                             )}>
                                 {lead.status}
                             </span>
                             {lead.priority === 'High' && (
-                                <span className="px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border bg-red-500/10 text-red-400 border-red-500/20">
+                                <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide border font-mono bg-[#D4FF00]/10 text-[#D4FF00] border-[#D4FF00]/30">
                                     High Priority
                                 </span>
                             )}
@@ -628,13 +663,12 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 
     if (!lead) {
         return (
-            <div className="flex-1 bg-[#030305] flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/10 via-[#030305] to-[#030305]" />
-                <div className="w-20 h-20 glass-panel rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-black/20 relative z-10">
-                    <Users size={40} className="text-slate-600" />
+            <div className="flex-1 bg-[#0a0a0a] flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
+                <div className="w-20 h-20 bg-[#0b0b0b]/90 border border-[#333] flex items-center justify-center mb-6 relative z-10">
+                    <Users size={40} className="text-neutral-600" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2 relative z-10">Select a Lead</h3>
-                <p className="text-slate-500 max-w-xs text-sm relative z-10">Choose a lead from the list to view their details and timeline.</p>
+                <h3 className="font-serif italic text-xl font-light text-[#f4f4f4] mb-2 relative z-10">Select a Lead</h3>
+                <p className="text-neutral-500 max-w-xs text-sm relative z-10">Choose a lead from the list to view their details and timeline.</p>
             </div>
         );
     }
@@ -663,14 +697,14 @@ const LeadDetail = ({ lead, onSendMessage }) => {
 
     const getColorForType = (type) => {
         switch (type.toLowerCase()) {
-            case 'note': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
-            case 'email': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
-            case 'call': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
-            case 'voice_transcript': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
-            case 'task': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
-            case 'meeting': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
-            case 'lifecycle': return 'text-pink-400 bg-pink-400/10 border-pink-400/20';
-            default: return 'text-slate-400 bg-slate-400/10 border-slate-400/20';
+            case 'note': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'email': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'call': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'voice_transcript': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'task': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'meeting': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            case 'lifecycle': return 'text-[#D4FF00] bg-[#D4FF00]/10 border-[#D4FF00]/30';
+            default: return 'text-neutral-400 bg-neutral-400/10 border-neutral-400/20';
         }
     };
 
@@ -679,46 +713,46 @@ const LeadDetail = ({ lead, onSendMessage }) => {
         : lead.history.filter(h => h.type.toLowerCase() === activeTab.toLowerCase().slice(0, -1)); // Simple plural to singular conversion
 
     return (
-        <div className="flex-1 flex flex-col bg-[#030305] h-full overflow-hidden relative">
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] h-full overflow-hidden relative">
             {/* Header */}
-            <div className="h-20 flex items-center justify-between px-6 glass-header z-20 border-b border-white/5">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-amber-500/20 ring-2 ring-white/5">
+            <div className="h-20 flex items-center justify-between px-4 lg:px-6 glass-header z-20">
+                <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 flex items-center justify-center text-white font-bold text-lg bg-[#D4FF00]/10 border border-[#D4FF00]/30 shrink-0">
                         {lead.name.charAt(0)}
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-white leading-tight mb-0.5">{lead.name}</h2>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                            <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
+                    <div className="min-w-0">
+                        <h2 className="font-serif italic text-xl font-light text-[#f4f4f4] leading-tight mb-0.5 truncate">{lead.name}</h2>
+                        <div className="flex items-center gap-2 text-[11px] text-neutral-400 flex-wrap">
+                            <div className="flex items-center gap-1 bg-[#0a0a0a]/80 px-1.5 py-0.5 border border-[#333]">
                                 <MapPin size={10} />
                                 <span>{lead.location || 'Dubai, UAE'}</span>
                             </div>
                             <span className={cn(
-                                "font-bold px-1.5 py-0.5 rounded border",
-                                lead.status === 'New' ? "text-blue-400 border-blue-500/20 bg-blue-500/10" :
-                                    lead.status === 'Qualified' ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/10" : "text-slate-400 border-slate-600/20 bg-slate-600/10"
+                                "font-bold px-1.5 py-0.5 border font-mono text-[10px]",
+                                lead.status === 'New' ? "text-[#D4FF00] border-[#D4FF00]/30 bg-[#D4FF00]/10" :
+                                    lead.status === 'Qualified' ? "text-[#D4FF00] border-[#D4FF00]/30 bg-[#D4FF00]/10" : "text-neutral-400 border-[#333] bg-[#0a0a0a]/80"
                             )}>{lead.status}</span>
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
+                <div className="flex gap-2 shrink-0">
+                    <button className="glass-button p-2.5 text-neutral-400 hover:text-white">
                         <Phone size={18} />
                     </button>
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
+                    <button className="glass-button p-2.5 text-neutral-400 hover:text-white">
                         <Mail size={18} />
                     </button>
-                    <button className="glass-button p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-amber-600 hover:border-amber-500 transition-all">
+                    <button className="glass-button p-2.5 text-neutral-400 hover:text-white">
                         <MoreVertical size={18} />
                     </button>
                 </div>
             </div>
 
             {/* Lead Info Grid (Compact) */}
-            <div className="px-6 py-4 z-10 border-b border-white/5 bg-[#030305]">
-                <div className="grid grid-cols-4 gap-4">
+            <div className="px-4 lg:px-6 py-4 z-10 border-b border-[#333] bg-[#0a0a0a]">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
                             <DollarSign size={10} /> Budget
                         </p>
                         <p className="text-sm font-bold text-white">
@@ -728,19 +762,19 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                         </p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
                             <Home size={10} /> Property
                         </p>
                         <p className="text-sm font-bold text-white">{lead.propertyType || 'Any'}</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
                             <Briefcase size={10} /> Purpose
                         </p>
                         <p className="text-sm font-bold text-white">{lead.purpose || 'Investment'}</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1 font-mono">
                             <Tag size={10} /> Source
                         </p>
                         <p className="text-sm font-bold text-white">{lead.source || 'Website'}</p>
@@ -749,8 +783,8 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             </div>
 
             {/* Tabs */}
-            <div className="px-6 pt-4 border-b border-white/5 bg-[#030305]">
-                <div className="flex gap-6 overflow-x-auto scrollbar-hide">
+            <div className="px-4 lg:px-6 pt-4 border-b border-[#333] bg-[#0a0a0a]">
+                <div className="flex gap-4 lg:gap-6 overflow-x-auto scrollbar-hide">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         return (
@@ -758,10 +792,10 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
-                                    "flex items-center gap-2 pb-3 text-xs font-bold transition-all border-b-2",
+                                    "flex items-center gap-2 pb-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap",
                                     activeTab === tab.id
-                                        ? "text-amber-400 border-amber-500"
-                                        : "text-slate-500 border-transparent hover:text-slate-300"
+                                        ? "text-[#D4FF00] border-[#D4FF00]"
+                                        : "text-neutral-500 border-transparent hover:text-neutral-300"
                                 )}
                             >
                                 <Icon size={14} />
@@ -773,11 +807,11 @@ const LeadDetail = ({ lead, onSendMessage }) => {
             </div>
 
             {/* Content Area: Input + Timeline */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-[#030305]">
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0a]">
                 {/* Input Area Removed as per user request */}
 
                 {/* Timeline */}
-                <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
                     {filteredHistory && filteredHistory.length > 0 ? (
                         filteredHistory.slice().reverse().map((event, idx) => { // Reverse to show newest first
                             const Icon = getIconForType(event.type);
@@ -786,29 +820,29 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                             return (
                                 <div key={idx} className="flex gap-4 group">
                                     <div className="flex flex-col items-center">
-                                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center border", colorClass)}>
+                                        <div className={cn("w-8 h-8 flex items-center justify-center border", colorClass)}>
                                             <Icon size={14} />
                                         </div>
-                                        {idx !== filteredHistory.length - 1 && <div className="w-px h-full bg-white/5 my-1" />}
+                                        {idx !== filteredHistory.length - 1 && <div className="w-px h-full bg-[#333] my-1" />}
                                     </div>
-                                    <div className="flex-1 pb-4">
+                                    <div className="flex-1 pb-4 min-w-0">
                                         <div className="flex justify-between items-start mb-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-bold text-slate-200">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-bold text-neutral-200">
                                                     {event.type === 'Voice_Transcript' ? (event.sender === 'Lead' ? 'Voice Call from Lead' : 'Morgan (Voice Call)') : event.type === 'Message' || event.type === 'Voice' || event.type === 'Image' ? `Message from ${event.sender}` : `${event.type} logged`}
                                                 </span>
-                                                <span className="text-[10px] text-slate-500">• {formatTime(event.timestamp)}</span>
+                                                <span className="text-[10px] text-neutral-500 font-mono">• {formatTime(event.timestamp)}</span>
                                             </div>
-                                            <button className="text-slate-600 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button className="text-neutral-600 hover:text-[#D4FF00] opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                                 <MoreHorizontal size={14} />
                                             </button>
                                         </div>
-                                        <div className="glass-panel p-3 rounded-xl border border-white/5 text-sm text-slate-300 leading-relaxed">
+                                        <div className="bg-[#0b0b0b]/90 border border-[#333] p-3 text-sm text-neutral-300 leading-relaxed">
                                             {event.content}
 
                                             {/* Render Audio for Voice Messages */}
                                             {event.type === 'Voice' && event.meta && (
-                                                <div className="mt-3 bg-[#030305] p-2 rounded-lg border border-white/10">
+                                                <div className="mt-3 bg-[#0a0a0a] p-2 border border-[#333]">
                                                     <audio controls src={event.meta} className="w-full h-8" />
                                                 </div>
                                             )}
@@ -819,7 +853,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                                     <img
                                                         src={event.meta}
                                                         alt="Shared Media"
-                                                        className="rounded-lg max-w-xs border border-white/10 hover:opacity-90 transition-opacity cursor-pointer"
+                                                        className="max-w-xs border border-[#333] hover:opacity-90 transition-opacity cursor-pointer"
                                                         onClick={() => window.open(event.meta, '_blank')}
                                                     />
                                                 </div>
@@ -827,7 +861,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                                         </div>
                                         {event.meta && event.type !== 'Voice' && event.type !== 'Image' && (
                                             <div className="mt-2 flex gap-2">
-                                                <span className="text-[10px] font-medium text-slate-500 bg-white/5 px-2 py-1 rounded border border-white/5">
+                                                <span className="text-[10px] font-medium text-neutral-500 bg-[#0a0a0a]/80 px-2 py-1 border border-[#333]">
                                                     {event.meta}
                                                 </span>
                                             </div>
@@ -837,7 +871,7 @@ const LeadDetail = ({ lead, onSendMessage }) => {
                             );
                         })
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                        <div className="flex flex-col items-center justify-center h-full text-neutral-500">
                             <ListTodo size={32} className="mb-2 opacity-50" />
                             <p className="text-sm">No activities found</p>
                         </div>
@@ -860,31 +894,31 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
         if (!lead) return <div className="flex-1 flex items-center justify-center text-slate-500">Select a conversation</div>;
 
         return (
-            <div className="flex-1 flex flex-col h-full bg-[#030305]">
-                <div className="h-16 border-b border-white/5 flex items-center px-6">
+            <div className="flex-1 flex flex-col h-full bg-[#0a0a0a]">
+                <div className="h-16 border-b border-[#333] flex items-center px-6">
                     <h3 className="font-bold text-white">{lead.name}</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {lead.history.filter(h => h.type === 'Message').map((m, i) => (
                         <div key={i} className={cn("flex w-full", m.sender === 'User' ? "justify-end" : "justify-start")}>
                             <div className={cn(
-                                "max-w-[70%] px-4 py-2 rounded-2xl text-sm",
-                                m.sender === 'User' ? "bg-amber-600 text-white" : "glass-panel text-slate-200"
+                                "max-w-[70%] px-4 py-2 text-sm",
+                                m.sender === 'User' ? "bg-[#D4FF00] text-black" : "glass-panel text-neutral-200"
                             )}>
                                 {m.content}
                             </div>
                         </div>
                     ))}
                 </div>
-                <div className="p-4 border-t border-white/5">
+                <div className="p-4 border-t border-[#333]">
                     <form onSubmit={(e) => { e.preventDefault(); if (msg.trim()) { onSendMessage(msg, 'Message'); setMsg(''); } }} className="flex gap-2">
                         <input
                             value={msg}
                             onChange={e => setMsg(e.target.value)}
-                            className="flex-1 bg-[#1a202c] rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="flex-1 bg-[#1a202c] px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[#D4FF00]"
                             placeholder="Type a message..."
                         />
-                        <button type="submit" className="bg-amber-600 p-2 rounded-xl text-white"><Send size={18} /></button>
+                        <button type="submit" className="bg-[#D4FF00] p-2 text-black"><Send size={18} /></button>
                     </form>
                 </div>
             </div>
@@ -892,22 +926,22 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
     };
 
     return (
-        <div className="flex flex-1 w-full overflow-hidden bg-[#030305]">
+        <div className="flex flex-1 w-full overflow-hidden bg-[#0a0a0a]">
             {/* Inbox List */}
-            <div className="w-80 flex-shrink-0 border-r border-white/5 flex flex-col h-full relative z-10">
-                <div className="h-20 flex items-center justify-between px-5 border-b border-white/5">
+            <div className="w-80 flex-shrink-0 border-r border-[#333] flex flex-col h-full relative z-10">
+                <div className="h-20 flex items-center justify-between px-5 border-b border-[#333]">
                     <h2 className="text-xl font-bold text-white tracking-tight">Inbox</h2>
-                    <button className="glass-button p-2 rounded-lg text-slate-400 hover:text-white">
+                    <button className="glass-button p-2 text-neutral-400 hover:text-white">
                         <Plus size={16} />
                     </button>
                 </div>
                 <div className="p-4">
                     <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-amber-400 transition-colors" size={16} />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500 group-focus-within:text-[#D4FF00] transition-colors" size={16} />
                         <input
                             type="text"
                             placeholder="Search messages..."
-                            className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 rounded-xl border border-white/5 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-xs transition-all placeholder-slate-600 shadow-inner"
+                            className="w-full bg-[#1a202c] text-white pl-10 pr-3 py-2.5 border border-[#333] focus:border-[#D4FF00]/50 focus:ring-2 focus:ring-[#D4FF00]/20 focus:outline-none text-xs transition-all placeholder-neutral-600 shadow-inner"
                         />
                     </div>
                 </div>
@@ -917,21 +951,21 @@ const MessagesView = ({ leads, selectedId, onSelect, onSendMessage }) => {
                             key={lead.id}
                             onClick={() => onSelect(lead)}
                             className={cn(
-                                "p-3 rounded-xl cursor-pointer transition-all relative overflow-hidden group border flex gap-3",
+                                "p-3 cursor-pointer transition-all relative overflow-hidden group border flex gap-3",
                                 selectedLead?.id === lead.id
-                                    ? "bg-white/10 border-white/10"
-                                    : "hover:bg-white/5 border-transparent hover:border-white/5"
+                                    ? "bg-[#D4FF00]/10 border-[#D4FF00]/30"
+                                    : "hover:bg-white/5 border-transparent hover:border-[#333]"
                             )}
                         >
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                            <div className="w-10 h-10 bg-[#0a0a0a] border border-[#333] flex items-center justify-center text-neutral-300 font-bold text-xs flex-shrink-0">
                                 {lead.name.charAt(0)}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-baseline mb-0.5">
-                                    <h4 className="font-bold text-sm text-slate-200 truncate">{lead.name}</h4>
-                                    <span className="text-[9px] text-slate-500">{formatTime(lead.history[lead.history.length - 1].timestamp)}</span>
+                                    <h4 className="font-bold text-sm text-neutral-200 truncate">{lead.name}</h4>
+                                    <span className="text-[9px] text-neutral-500">{formatTime(lead.history[lead.history.length - 1].timestamp)}</span>
                                 </div>
-                                <p className="text-[11px] text-slate-400 truncate">
+                                <p className="text-[11px] text-neutral-400 truncate">
                                     {lead.history[lead.history.length - 1].content}
                                 </p>
                             </div>
@@ -1230,15 +1264,15 @@ function CRMApp() {
     };
 
     return (
-        <div className="flex h-dvh w-full bg-[#030305] text-slate-200 font-sans overflow-hidden selection:bg-amber-500/30 relative">
+        <div className="flex h-dvh w-full bg-[#0a0a0a] text-neutral-200 font-sans overflow-hidden selection:bg-[#D4FF00]/30 relative">
             {error && (
-                <div className="absolute top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 backdrop-blur-md border border-white/10 max-w-md animate-in slide-in-from-top-5 fade-in duration-300">
+                <div className="absolute top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-3 shadow-2xl flex items-center gap-3 backdrop-blur-md border border-[#333] max-w-md animate-in slide-in-from-top-5 fade-in duration-300">
                     <XCircle size={20} className="flex-shrink-0" />
                     <div className="flex-1">
                         <h4 className="font-bold text-sm">Connection Error</h4>
                         <p className="text-xs opacity-90">{error}</p>
                     </div>
-                    <button onClick={() => setError(null)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+                    <button onClick={() => setError(null)} className="p-1 hover:bg-white/20 transition-colors">
                         <XCircle size={16} />
                     </button>
                 </div>
@@ -1273,14 +1307,14 @@ class ErrorBoundary extends React.Component {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4">
-                    <div className="max-w-md glass-panel p-8 rounded-3xl border border-red-900/50 shadow-2xl text-center">
+                <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center p-4">
+                    <div className="max-w-md glass-panel p-8 border border-red-900/50 shadow-2xl text-center">
                         <XCircle className="text-red-500 mx-auto mb-4" size={48} />
                         <h2 className="text-xl font-bold text-white mb-2">Application Error</h2>
-                        <p className="text-slate-400 text-sm mb-6">{this.state.error?.message || "Something went wrong"}</p>
+                        <p className="text-neutral-400 text-sm mb-6">{this.state.error?.message || "Something went wrong"}</p>
                         <button
                             onClick={() => window.location.reload()}
-                            className="w-full py-3 bg-[#2d3748] hover:bg-slate-700 text-white rounded-xl transition-colors font-medium"
+                            className="w-full py-3 bg-[#2d3748] hover:bg-slate-700 text-white transition-colors font-medium"
                         >
                             Reload Application
                         </button>
@@ -1299,12 +1333,12 @@ export default function DashboardApp() {
 
     if (isInvalidKey) {
         return (
-            <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4">
-                <div className="max-w-md glass-panel p-8 rounded-3xl border border-red-900/50 shadow-2xl text-center">
+            <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center p-4">
+                <div className="max-w-md glass-panel p-8 border border-red-900/50 shadow-2xl text-center">
                     <XCircle className="text-red-500 mx-auto mb-4" size={48} />
                     <h2 className="text-xl font-bold text-white mb-2">Configuration Error</h2>
                     <p className="text-slate-400 mb-4 text-sm">Missing Clerk Publishable Key</p>
-                    <code className="block bg-[#030305] p-3 rounded-xl text-xs text-emerald-400 font-mono border border-white/10">
+                    <code className="block bg-[#0a0a0a] p-3 text-xs text-[#D4FF00] font-mono border border-[#333]">
                         VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
                     </code>
                 </div>
@@ -1317,14 +1351,18 @@ export default function DashboardApp() {
             <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
                 <>
                     <SignedOut>
-                        <div className="min-h-dvh bg-[#030305] flex items-center justify-center p-4 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900/20 via-[#030305] to-[#030305]" />
-                            <div className="w-full max-w-md glass-panel rounded-3xl border border-white/10 p-10 shadow-2xl relative z-10">
-                                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-white/10">
-                                    <Aperture size={32} className="text-black" />
+                        <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center p-4 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#D4FF00]/10 via-[#0a0a0a] to-[#0a0a0a]" />
+                            <div className="w-full max-w-md glass-panel p-10 border border-[#333] shadow-2xl relative z-10">
+                                <div className="w-16 h-16 bg-[#D4FF00] flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#D4FF00]/10">
+                                    <svg viewBox="0 0 100 100" className="w-10 h-10" fill="black">
+                                        <path d="M50 5L95 25V75L50 95L5 75V25L50 5Z" />
+                                        <circle cx="50" cy="50" r="15" fill="#0a0a0a" />
+                                        <circle cx="50" cy="50" r="8" fill="#D4FF00" />
+                                    </svg>
                                 </div>
-                                <h2 className="text-3xl font-bold text-white text-center mb-2">Welcome to AURO</h2>
-                                <p className="text-slate-400 text-center mb-8">Sign in to access your AI Real Estate CRM</p>
+                                <h2 className="font-serif italic text-3xl font-light text-white text-center mb-2">Welcome to AURO</h2>
+                                <p className="text-neutral-400 text-center mb-8">Sign in to access your AI Real Estate CRM</p>
                                 <SignIn
                                     forceRedirectUrl="/dashboard"
                                     appearance={{
@@ -1333,10 +1371,10 @@ export default function DashboardApp() {
                                             card: "bg-transparent shadow-none p-0",
                                             headerTitle: "hidden",
                                             headerSubtitle: "hidden",
-                                            formButtonPrimary: "bg-amber-600 hover:bg-amber-500 text-white normal-case text-sm h-12 rounded-xl shadow-lg shadow-amber-500/20",
-                                            formFieldInput: "bg-[#030305] border-white/10 text-white focus:border-amber-500 rounded-xl transition-colors h-12",
-                                            formFieldLabel: "text-slate-400",
-                                            footerActionLink: "text-amber-400 hover:text-amber-300"
+                                            formButtonPrimary: "bg-[#D4FF00] hover:bg-[#c4e600] text-black normal-case text-sm h-12 shadow-lg shadow-[#D4FF00]/20",
+                                            formFieldInput: "bg-[#0a0a0a] border-[#333] text-white focus:border-[#D4FF00] transition-colors h-12",
+                                            formFieldLabel: "text-neutral-400",
+                                            footerActionLink: "text-[#D4FF00] hover:text-[#c4e600]"
                                         }
                                     }} />
                             </div>
