@@ -16,7 +16,7 @@ export function Seo({
   metaTitle,
   metaDescription,
   canonicalUrl: canonical,
-  ogImage = "https://auroapp.com/auro-og.png",
+  ogImage = "https://auroapp.com/auro-og.jpg",
   ogType = "website",
   robots = "index, follow, max-image-preview:large, max-snippet:-1",
   jsonLd,
