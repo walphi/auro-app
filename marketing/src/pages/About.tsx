@@ -60,6 +60,14 @@ export default function About() {
                 />
                 <span className="absolute hidden">Founder Photo</span>
               </div>
+              <a
+                href="https://www.linkedin.com/in/phillipdwalsh"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-[10px] font-mono text-neutral-400 hover:text-[#D4FF00] transition-colors mt-3"
+              >
+                View LinkedIn Profile →
+              </a>
             </div>
 
             {/* Founder Text */}
