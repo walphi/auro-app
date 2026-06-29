@@ -5,7 +5,7 @@ import { canonicalUrl } from "../lib/site.ts";
 const updates = [
   {
     version: "AURO 2.0",
-    date: "2026-03-15",
+    date: "2026-01-07",
     title: "Multi-Agent Qualification & Persistent Nurturing",
     description: "AURO 2.0 introduces multi-agent orchestration, persistent follow-up across channels, and intelligent CRM handoff with full conversation context.",
     features: [
@@ -19,7 +19,7 @@ const updates = [
   },
   {
     version: "AURO 1.5",
-    date: "2026-01-20",
+    date: "2026-01-05",
     title: "Context Engine & Follow-Up Automation",
     description: "Enhanced context awareness and automated follow-up sequences that adapt to lead behavior and engagement patterns.",
     features: [
@@ -79,7 +79,7 @@ export default function ProductUpdates() {
                     {update.tag}
                   </span>
                   <span className="text-[9px] font-mono text-neutral-500">{update.version}</span>
-                  <span className="text-[9px] font-mono text-neutral-600">{new Date(update.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+                  <span className="text-[9px] font-mono text-neutral-600">{new Date(update.date).toLocaleDateString("en-US", { month: "long", day: "2-digit", year: "numeric" })}</span>
                 </div>
 
                 <h2 className="font-serif text-xl text-[#f4f4f4] mb-2">{update.title}</h2>
