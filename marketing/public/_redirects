@@ -1,3 +1,8 @@
+# Sub-SPA routing (dashboard, sites) — overrides SPA fallback
+/dashboard  /dashboard/index.html  200
+/dashboard/*  /dashboard/index.html  200
+/sites/*  /sites/index.html  200
+
 # Force trailing slash for all routes (SEO) — excludes files with extensions and root
 /*  /:splat/  301  Path=!^/.*\.[a-z0-9]+$  Path=!^/$
 # SPA fallback
