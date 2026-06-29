@@ -1344,6 +1344,7 @@ export default function App() {
             <div className="text-neutral-400 font-mono text-xs cursor-default flex flex-col gap-1.5">
               <span>// Dubai, United Arab Emirates</span>
               <a href="mailto:pw@auroapp.com" className="hover:text-[#D4FF00] transition-colors text-[#D4FF00] underline">pw@auroapp.com</a>
+              <a href="https://www.linkedin.com/company/auro-app/" target="_blank" rel="noopener noreferrer" className="hover:text-[#D4FF00] transition-colors text-neutral-400">// LinkedIn</a>
             </div>
           </div>
 
