@@ -121,7 +121,7 @@ export function SiteLayout() {
           { label: "04 // INSIGHTS", onClick: () => navigate("/insights") },
           { label: "05 // FAQ", onClick: () => navigate("/faq") },
           { label: "06 // SOLUTIONS", onClick: () => navigate("/solutions") },
-          { label: "07 // CLIENT LOGIN", onClick: () => { window.location.href = "/dashboard"; } },
+          { label: "07 // CONTACT", onClick: async () => { const cal = await (await import("@calcom/embed-react")).getCalApi({ namespace: "30min" }); cal("modal", { calLink: "auro-app/30min" }); } },
           { label: "REQUEST EARLY ACCESS", onClick: () => { window.location.href = "/#cta"; }, isCta: true },
         ]}
       />
