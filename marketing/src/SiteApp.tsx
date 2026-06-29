@@ -13,6 +13,7 @@ const About = lazy(() => import("./pages/About.tsx"));
 const Solutions = lazy(() => import("./pages/Solutions.tsx"));
 const StaticSeoPage = lazy(() => import("./pages/StaticSeoPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const WhatsAppAgent = lazy(() => import("./pages/WhatsAppAgent.tsx"));
 
 const staticSeoSlugs = [
   "lead-nurturing-definition",
@@ -80,6 +81,14 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+  },
+  {
+    path: "/agents",
+    element: <SuspenseWrapper><WhatsAppAgent /></SuspenseWrapper>,
+  },
+  {
+    path: "/agents/",
+    element: <SuspenseWrapper><WhatsAppAgent /></SuspenseWrapper>,
   },
   {
     path: "/client-login",
