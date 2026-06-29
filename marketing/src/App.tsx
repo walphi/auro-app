@@ -1110,25 +1110,25 @@ export default function App() {
                 
                 <div className="flex flex-col gap-5">
                   <div className="border-b border-dashed border-neutral-800 pb-3">
-                    <h4 className="text-sm text-white font-bold mb-1">Financial Filtering</h4>
+                    <h4 className="text-sm text-white font-serif italic mb-1">Financial Filtering</h4>
                     <p className="text-[10px] text-neutral-300 leading-relaxed font-sans font-light">
                       AURO asks the right questions early, so your sales team only spends time on prospects who can actually buy.
                     </p>
                   </div>
                   <div className="border-b border-dashed border-neutral-800 pb-3">
-                    <h4 className="text-sm text-white font-bold mb-1">Persistent Follow-Up</h4>
+                    <h4 className="text-sm text-white font-serif italic mb-1">Persistent Follow-Up</h4>
                     <p className="text-[10px] text-neutral-300 leading-relaxed font-sans font-light">
                       The agent nurtures leads over time with intelligent reminders and contextual prompts, so opportunities do not disappear after the first reply.
                     </p>
                   </div>
                   <div className="border-b border-dashed border-neutral-800 pb-3">
-                    <h4 className="text-sm text-white font-bold mb-1">Human-Like Conversations</h4>
+                    <h4 className="text-sm text-white font-serif italic mb-1">Human-Like Conversations</h4>
                     <p className="text-[10px] text-neutral-300 leading-relaxed font-sans font-light">
                       AURO keeps the tone natural, relevant, and responsive, so prospects feel engaged rather than pushed through a script.
                     </p>
                   </div>
                   <div className="border-b border-dashed border-neutral-800 pb-3">
-                    <h4 className="text-sm text-white font-bold mb-1">CRM Handover</h4>
+                    <h4 className="text-sm text-white font-serif italic mb-1">CRM Handover</h4>
                     <p className="text-[10px] text-neutral-300 leading-relaxed font-sans font-light">
                       All lead data, transcripts, and qualification details sync into your CRM, giving your team full context before they take over.
                     </p>
