@@ -1317,7 +1317,7 @@ export default function App() {
             <Link to="/faq" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // FAQ
             </Link>
-            <Link to="/dashboard" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
+            <Link to="/dashboard/" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-light font-mono">
               // Login
             </Link>
           </div>

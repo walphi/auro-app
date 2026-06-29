@@ -160,7 +160,7 @@ export function SiteLayout() {
             <Link to="/product-updates" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Product Updates</Link>
             <Link to="/about" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// About</Link>
             <Link to="/solutions" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Solutions</Link>
-            <Link to="/dashboard" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Login</Link>
+            <Link to="/dashboard/" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Login</Link>
           </div>
 
           <div className="flex flex-col gap-4">
