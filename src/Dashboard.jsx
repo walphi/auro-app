@@ -1391,15 +1391,19 @@ export default function DashboardApp() {
                         <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center p-4 relative overflow-hidden">
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#D4FF00]/10 via-[#0a0a0a] to-[#0a0a0a]" />
                             <div className="w-full max-w-md glass-panel p-10 border border-[#333] shadow-2xl relative z-10">
-                                <div className="w-16 h-16 bg-[#D4FF00] flex items-center justify-center mx-auto mb-8 shadow-lg shadow-[#D4FF00]/10">
-                                    <svg viewBox="0 0 100 100" className="w-10 h-10" fill="black">
-                                        <path d="M50 5L95 25V75L50 95L5 75V25L50 5Z" />
-                                        <circle cx="50" cy="50" r="15" fill="#0a0a0a" />
-                                        <circle cx="50" cy="50" r="8" fill="#D4FF00" />
+                                <div className="flex items-center justify-center mx-auto mb-6">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#D4FF00" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <path d="m14.31 8 5.74 9.94" />
+                                        <path d="M9.69 8h11.48" />
+                                        <path d="m7.38 12 5.74-9.94" />
+                                        <path d="M9.69 16 3.95 6.06" />
+                                        <path d="M14.31 16H2.83" />
+                                        <path d="m16.62 12-5.74 9.94" />
                                     </svg>
                                 </div>
                                 <h2 className="font-serif italic text-3xl font-light text-white text-center mb-2">Welcome to AURO</h2>
-                                <p className="text-neutral-400 text-center mb-8">Sign in to access your AI Real Estate CRM</p>
+                                <p className="text-neutral-400 text-center mb-8">Sign in to access your dashboard.</p>
                                 <SignIn
                                     forceRedirectUrl="/dashboard"
                                     appearance={{
