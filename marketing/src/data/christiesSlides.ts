@@ -72,12 +72,12 @@ export const christiesSlides: Slide[] = [
   },
   {
     id: "proposal",
-    label: "06 // The 14-Day Performance Pilot",
+    label: "06 // Phase One: Strategic Middleware Deployment",
     title: "The Actionable Proposal",
     bullets: [
       "Zero Friction: No sweeping architectural overhauls. No coding required from Christie\u2019s internal development or agency teams.",
-      "Targeted Validation: Deploy Auro over a single active campaign pipeline (e.g., Mervin\u2019s active funnel or the Emaar Heights landing page) for 14 days.",
-      "The Goal: Benchmark and prove the direct conversion lift and data transparency in real time. If it doesn\u2019t perform, the middleware layer is uninstalled cleanly.",
+      "Targeted Phase One: Deploy Auro over a single high\u2011impact campaign pipeline (for example, Mervin\u2019s active funnel or the Emaar Heights landing page) as the initial middleware deployment.",
+      "The Objective: Demonstrate clear uplift in conversion performance and data transparency in a controlled, measurable scope\u2014then expand Auro\u2019s coverage as part of a long\u2011term architecture partnership rather than a disposable short\u2011term trial.",
     ],
   },
 ];
