@@ -514,10 +514,12 @@ DATES AND TIMEZONE RULES (CRITICAL):
 export const handler: Handler = async (event) => {
     const handlerStart = Date.now();
     
-    // --- TRANSPORT RELIABILITY: Time budgets for Twilio 8s timeout ---
-    const MAX_PROCESSING_MS = 7500;  // Hard limit: 7.5s (500ms buffer)
-    const GEMINI_DEADLINE_MS = 6000; // Must start Gemini by 6s
+    // --- TRANSPORT RELIABILITY: Time budgets for Twilio/Netlify timeouts ---
+    // Netlify free tier is 10s, Twilio is 15s. We bump the budget to allow cold starts to finish.
+    const MAX_PROCESSING_MS = 9000;  // Hard limit: 9s (1s buffer before Netlify 10s timeout)
+    const GEMINI_DEADLINE_MS = 7500; // Must start Gemini by 7.5s
     const getElapsedMs = () => Date.now() - handlerStart;
+
     
     // Safe fallback message - preserves escalation path via "call me"
     const TRANSPORT_FALLBACK_MESSAGE = 
@@ -1213,7 +1215,7 @@ CORE RULES (HARD CONSTRAINTS):
                 // Handle function calls loop (max 2 turns for WhatsApp latency)
                 let turns = 0;
                 const MAX_TURNS = 2;
-                const HARD_LIMIT_MS = 6500; // Aim to finish Gemini work by 6.5s to allow for TwiML overhead
+                const HARD_LIMIT_MS = 8000; // Aim to finish Gemini work by 8s to allow for TwiML overhead
 
                 while (functionCalls && functionCalls.length > 0 && turns < MAX_TURNS) {
                     const timeElapsed = Date.now() - handlerStart;
