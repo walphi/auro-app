@@ -1,0 +1,30 @@
+{
+    "type": "app",
+    "uid": "auro-crm-connector-v2",
+    "config": {
+        "name": "Auro AI CRM Connector V2",
+        "description": "Connects Auro's AI lead engine to HubSpot portals for WhatsApp qualification and voice escalation.",
+        "auth": {
+            "type": "oauth",
+            "requiredScopes": [
+                "oauth",
+                "crm.objects.contacts.read",
+                "crm.objects.contacts.write",
+                "crm.objects.companies.read",
+                "crm.objects.companies.write",
+                "crm.objects.owners.read"
+            ],
+            "redirectUrls": [
+                "https://auroapp.com/.netlify/functions/hubspot-oauth-callback"
+            ]
+        },
+        "permittedUrls": {
+            "fetch": [
+                "https://auroapp.com"
+            ],
+            "iframe": [],
+            "img": []
+        },
+        "distribution": "PRIVATE"
+    }
+}

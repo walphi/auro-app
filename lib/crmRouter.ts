@@ -61,7 +61,7 @@ export async function syncLeadNote(
             ...(lastname && { lastname }),
             email: payload.email,
             // Note: Qualification data (budget, propertyType, area, status) is included in the 
-            // note text itself (formatted in eshel-hubspot-crm-sync.ts), not as contact properties
+            // note text itself (formatted in hubspot-crm-sync.ts), not as contact properties
             // to avoid 400 errors from missing custom properties in HubSpot
         };
 

@@ -1,0 +1,29 @@
+Christie's Dubai — Client Consultation Flow
+
+Step 1: Initial WhatsApp Inquiry
+- Lead reaches out via WhatsApp (demo number +1 209 899 4972)
+- Auro greets as "Christie's International Real Estate Dubai — Auro Concierge"
+- Qualification: budget range, preferred locations, property type, timeline
+- Identify if they are investor, end-user, or both
+
+Step 2: Qualification & Intent Confirmation
+- Capture: budget, 3 preferred areas, purpose (investment/personal), timeline
+- If high intent (specific project, budget range, timeline) → offer Vapi call
+- If browsing → share curated property options via RAG
+
+Step 3: Voice Call (Vapi)
+- Auro initiates outbound call via Vapi
+- Confirm identity and interest from WhatsApp
+- Discuss specific projects matching their requirements
+- Confirm budget, timeline, and preferred payment structure
+- Schedule Cal.com consultation with Christie's specialist
+
+Step 4: Cal.com Booking
+- 30-minute private consultation
+- Confirmation sent via WhatsApp with date/time and meeting link
+- Lead can reschedule directly via Cal.com link
+
+Step 5: Follow-up
+- Post-call summary logged to HubSpot
+- Lead status updated in Supabase
+- RAG learning from call transcript for future interactions

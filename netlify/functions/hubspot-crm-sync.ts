@@ -6,22 +6,19 @@ import axios from 'axios';
 const HS_API = 'https://api.hubapi.com';
 
 /**
- * netlify/functions/eshel-hubspot-crm-sync.ts
+ * netlify/functions/hubspot-crm-sync.ts
  *
  * Fire-and-forget sidecar that writes notes (and optionally contact property
- * updates) to HubSpot for Eshel leads. Called asynchronously by:
- *   - eshel-hubspot-webhook (on new lead)
- *
- * Future trigger points (when expanded):
- *   - Booking confirmation events (booking note)
+ * updates) to HubSpot. Called asynchronously by:
+ *   - hubspot-webhook (on new lead)
+ *   - whatsapp (inbound/outbound messages)
+ *   - vapi / vapi-webhook (call ended, booking created)
  *
  * Authentication: x-auro-sidecar-key header must match AURO_SIDECAR_KEY env var.
  *
  * Error handling: All errors are caught and logged. This function always
  * returns 200 to prevent retry loops. Failures here NEVER impact the
  * primary WhatsApp or Vapi flows.
- *
- * Protected files NOT touched: whatsapp.ts, vapi.ts, bitrixClient.ts, auroWhatsApp.ts
  */
 
 // ---------------------------------------------------------------------------
@@ -69,7 +66,7 @@ interface SidecarPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Sync to HubSpot using Private App Token (for Eshel/tenant 2)
+// Helper: Sync to HubSpot using Private App Token (Auro CRM Connector)
 // ---------------------------------------------------------------------------
 
 interface PrivateTokenSyncPayload {
@@ -80,16 +77,18 @@ interface PrivateTokenSyncPayload {
     noteText: string;
     hubspotContactId?: string;
     hsTimestamp?: string;
+    eventType?: SidecarEventType;
+    vapi?: SidecarPayload['vapi'];
 }
 
 async function syncToHubSpotWithPrivateToken(
     payload: PrivateTokenSyncPayload
 ): Promise<{ contactId: string; created: boolean }> {
     const { phone, name, email, noteText, hubspotContactId, hsTimestamp } = payload;
-    const token = process.env.ESHEL_HUBSPOT_TOKEN;
+    const token = process.env.AURO_HUBSPOT_TOKEN || process.env.ESHEL_HUBSPOT_TOKEN;
     
     if (!token) {
-        throw new Error('ESHEL_HUBSPOT_TOKEN not configured');
+        throw new Error('AURO_HUBSPOT_TOKEN not configured');
     }
     
     const headers = {
@@ -118,7 +117,7 @@ async function syncToHubSpotWithPrivateToken(
         const results = searchResp.data.results;
         if (results && results.length > 0) {
             contactId = results[0].id;
-            console.log(`[EshelCrmSync] Found existing contact ${contactId} by phone ${phone}`);
+            console.log(`[HubspotCrmSync] Found existing contact ${contactId} by phone ${phone}`);
         } else {
             // Create new contact
             const nameParts = name.trim().split(' ');
@@ -136,7 +135,7 @@ async function syncToHubSpotWithPrivateToken(
             );
             contactId = createResp.data.id;
             created = true;
-            console.log(`[EshelCrmSync] Created new contact ${contactId} for ${phone}`);
+            console.log(`[HubspotCrmSync] Created new contact ${contactId} for ${phone}`);
         }
     }
     
@@ -144,31 +143,57 @@ async function syncToHubSpotWithPrivateToken(
         throw new Error('Failed to resolve or create HubSpot contact');
     }
     
-    // Step 2: Create note
-    const noteResp = await axios.post(
-        `${HS_API}/crm/v3/objects/notes`,
-        {
-            properties: {
-                hs_note_body: noteText,
-                hs_timestamp: hsTimestamp || new Date().toISOString(),
-            },
-        },
+    // Step 2: Create a call engagement (appears on contact timeline)
+    const title = payload.eventType === 'vapi_call_ended' ? 'AI Voice Call' :
+                  payload.eventType === 'booking_created' ? 'Consultation Booked' :
+                  payload.eventType === 'whatsapp_inbound' ? 'WhatsApp Inbound' :
+                  payload.eventType === 'whatsapp_outbound' ? 'WhatsApp Outbound' :
+                  'Auro AI Activity';
+    
+    const callProps: Record<string, string> = {
+        hs_timestamp: hsTimestamp || new Date().toISOString(),
+        hs_call_body: noteText,
+        hs_call_duration: '0',
+        hs_call_status: 'COMPLETED',
+        hs_call_title: title,
+    };
+    
+    if (payload.vapi?.duration) {
+        callProps.hs_call_duration = String(Math.round(payload.vapi.duration));
+    }
+    
+    const callResp = await axios.post(
+        `${HS_API}/crm/v3/objects/calls`,
+        { properties: callProps },
         { headers }
     );
     
-    const noteId = noteResp.data.id;
-    console.log(`[EshelCrmSync] Created note ${noteId}`);
+    const callId = callResp.data.id;
+    console.log(`[HubspotCrmSync] Created call engagement ${callId}: ${title}`);
     
-    // Step 3: Associate note with contact
+    // Step 3: Associate call with contact
     await axios.put(
-        `${HS_API}/crm/v3/objects/notes/${noteId}/associations/contacts/${contactId}/note_to_contact`,
+        `${HS_API}/crm/v3/objects/calls/${callId}/associations/contacts/${contactId}/call_to_contact`,
         {},
         { headers }
     );
     
-    console.log(`[EshelCrmSync] Associated note ${noteId} with contact ${contactId}`);
+    console.log(`[HubspotCrmSync] Associated call ${callId} with contact ${contactId}`);
     
     return { contactId, created };
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Get tenant-specific resource link for booking notes
+// ---------------------------------------------------------------------------
+
+function getResourceLink(shortName?: string): string | null {
+    switch (shortName) {
+        case 'christies_dubai':
+            return `📚 Explore Christie's Dubai Publication: https://www.christiesrealestatedubai.com/the-journal/category/publications/`;
+        default:
+            return null;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -176,14 +201,14 @@ async function syncToHubSpotWithPrivateToken(
 // ---------------------------------------------------------------------------
 
 export const handler: Handler = async (event) => {
-    console.log('[EshelCrmSync] Handler started - v2.1 with private token support');
+    console.log('[HubspotCrmSync] Handler started');
     
     // --- Auth ---
     const receivedKey = event.headers['x-auro-sidecar-key'];
     const expectedKey = process.env.AURO_SIDECAR_KEY;
 
     if (!expectedKey || receivedKey !== expectedKey) {
-        console.warn('[EshelCrmSync] Unauthorized request — invalid or missing x-auro-sidecar-key');
+        console.warn('[HubspotCrmSync] Unauthorized request — invalid or missing x-auro-sidecar-key');
         return { statusCode: 401, body: JSON.stringify({ error: 'unauthorized' }) };
     }
 
@@ -193,69 +218,52 @@ export const handler: Handler = async (event) => {
 
     // --- Parse body ---
     const body = JSON.parse(event.body || "{}");
-    console.log(`[EshelCrmSync] Received ${body.eventType} for tenant ${body.tenantId}. Phone: ${body.phone}`);
+    console.log(`[HubspotCrmSync] Received ${body.eventType} for tenant ${body.tenantId}. Phone: ${body.phone}`);
     const payload: SidecarPayload = body;
 
     const { tenantId, phone, name, email, noteText, eventType, hubspotContactId, qualificationData } = payload;
 
-    console.log(`[tenant=${tenantId}|eshel][EshelCrmSync] Processing ${eventType || 'unknown'} event for ${name} (${phone})`);
+    console.log(`[tenant=${tenantId}][HubspotCrmSync] Processing ${eventType || 'unknown'} event for ${name} (${phone})`);
 
     // --- Validate tenant is a HubSpot tenant ---
     const { data: tenant, error: tenantErr } = await supabase
         .from('tenants')
-        .select('id, crm_type, hubspot_label')
+        .select('id, short_name, crm_type, hubspot_label')
         .eq('id', tenantId)
         .single();
 
     if (tenantErr || !tenant) {
-        console.error(`[EshelCrmSync] Tenant ${tenantId} not found:`, tenantErr?.message);
+        console.error(`[HubspotCrmSync] Tenant ${tenantId} not found:`, tenantErr?.message);
         return { statusCode: 200, body: JSON.stringify({ status: 'error', reason: 'tenant_not_found' }) };
     }
 
     if (tenant.crm_type !== 'hubspot') {
-        console.warn(`[EshelCrmSync] Tenant ${tenantId} crm_type is '${tenant.crm_type}', not 'hubspot'. Skipping.`);
+        console.warn(`[HubspotCrmSync] Tenant ${tenantId} crm_type is '${tenant.crm_type}', not 'hubspot'. Skipping.`);
         return { statusCode: 200, body: JSON.stringify({ status: 'skipped', reason: 'not_hubspot_tenant' }) };
     }
 
-    const label = `[tenant=${tenantId}|${tenant.hubspot_label || 'eshel'}]`;
+    const label = `[tenant=${tenantId}|${tenant.hubspot_label || 'hubspot'}]`;
 
-    // --- Build final note body and check priority (Eshel T2 only) ---
-    // User requested to prioritize certain System_Note content for CRM sync.
+    // --- Build final note body ---
     let finalNoteText = noteText;
-    const priorityPatterns = [
-        "Cal.com Consultation Booked",
-        "Booking successful",
-        "Eshel Consultation Booked",
-        "WhatsApp outreach sent",
-        "AI Call Ended"
-    ];
-
-    if (tenantId === 2 && (eventType as string) === 'conversation_note') {
-        const isPriority = priorityPatterns.some(p => noteText.includes(p));
-        if (!isPriority) {
-            console.log(`${label}[EshelCrmSync] Skipping non-priority conversation note: "${noteText.substring(0, 40)}..."`);
-            return { statusCode: 200, body: JSON.stringify({ status: 'skipped', reason: 'non_priority' }) };
-        }
-    }
 
     if (eventType === 'whatsapp_inbound') {
         finalNoteText = `[WhatsApp Inbound] Lead: ${noteText}`;
-        console.log(`${label}[EshelCrmSync] Formatting WhatsApp inbound note for ${phone}`);
+        console.log(`${label}[HubspotCrmSync] Formatting WhatsApp inbound note for ${phone}`);
     } else if (eventType === 'whatsapp_outbound') {
         finalNoteText = `[WhatsApp Outbound] Auro: ${noteText}`;
-        console.log(`${label}[EshelCrmSync] Formatting WhatsApp outbound note for ${phone}`);
+        console.log(`${label}[HubspotCrmSync] Formatting WhatsApp outbound note for ${phone}`);
     } else if (eventType === 'vapi_call_ended') {
         const summary = payload.vapi?.summary || 'No summary available';
         const duration = payload.vapi?.duration ? `${Math.floor(payload.vapi.duration)}s` : 'N/A';
         const callId = payload.vapi?.callId || 'N/A';
         
-        console.log(`${label}[EshelCrmSync] Formatting Vapi call ended note for ${phone}`, {
+        console.log(`${label}[HubspotCrmSync] Formatting Vapi call ended note for ${phone}`, {
             hasContext: !!payload.whatsappContext,
             hasQualification: !!qualificationData,
             summaryLength: summary.length,
         });
         
-        // Build enhanced note with WhatsApp context and qualification data
         let noteParts = [`📞 AI Call Ended`];
         
         // Add WhatsApp conversation context if available
@@ -294,51 +302,38 @@ export const handler: Handler = async (event) => {
         const propType = qualificationData?.propertyType || payload.booking?.propertyType || 'Not specified';
         const area = qualificationData?.area || payload.booking?.area || projectLabel;
 
-        console.log(`${label}[EshelCrmSync] Formatting booking note for ${phone}`, {
+        console.log(`${label}[HubspotCrmSync] Formatting booking note for ${phone}`, {
             meetingTime: formattedTime,
             project: projectLabel,
         });
 
+        const tenantName = tenant.hubspot_label || tenantId.toString();
+        const resourceLink = getResourceLink(tenant.short_name);
         finalNoteText =
-            `Eshel Consultation Booked – 30 min call on ${formattedTime} (Dubai Time) ` +
+            `${tenantName} Consultation Booked – 30 min call on ${formattedTime} (Dubai Time) ` +
             `about ${budget}, ${propType}, ${area}.\n\n` +
-            `Join the meeting: ${meetingUrl || 'N/A'}\n\n` +
-            `📚 Explore Eshel's 2026 UAE Off-Plan Playbook: https://bit.ly/eshel-prop-uae-playbook\n` +
-            `🏠 Explore Eshel's property portfolio: https://www.eshelproperties.com/property-listings`;
+            `Join the meeting: ${meetingUrl || 'N/A'}` +
+            (resourceLink ? `\n\n${resourceLink}` : '');
     }
 
     // --- Sync to HubSpot ---
-    // For tenant 2 (Eshel), use private app token directly instead of OAuth flow
+    // Use private app token (Auro CRM Connector) for all HubSpot tenants
     try {
-        let result;
-        
-        if (tenantId === 2) {
-            // Eshel: Use private app token for direct API calls
-            console.log(`${label}[EshelCrmSync] Using private app token for Eshel (tenant 2)`);
-            result = await syncToHubSpotWithPrivateToken({
-                tenantId,
-                phone,
-                name,
-                email,
-                noteText: finalNoteText,
-                hubspotContactId: payload.hubspotContactId,
-                hsTimestamp: payload.hsTimestamp,
-            });
-        } else {
-            // Other tenants: Use OAuth flow via crmRouter
-            result = await syncLeadNote(tenant.crm_type, {
-                tenantId,
-                phone,
-                name,
-                email,
-                noteText: finalNoteText,
-                qualificationData,
-                hsTimestamp: payload.hsTimestamp,
-            });
-        }
+        console.log(`${label}[HubspotCrmSync] Using private app token for HubSpot sync`);
+        const result = await syncToHubSpotWithPrivateToken({
+            tenantId,
+            phone,
+            name,
+            email,
+            noteText: finalNoteText,
+            hubspotContactId: payload.hubspotContactId,
+            hsTimestamp: payload.hsTimestamp,
+            eventType: payload.eventType as SidecarEventType,
+            vapi: payload.vapi,
+        });
 
         console.log(
-            `${label}[EshelCrmSync] ${eventType} synced. ` +
+            `${label}[HubspotCrmSync] ${eventType} synced. ` +
             `Contact: ${result.contactId} (${result.created ? 'created' : 'updated'})`
         );
 
@@ -353,9 +348,7 @@ export const handler: Handler = async (event) => {
             }),
         };
     } catch (err: any) {
-        // Errors are logged but never surface as HTTP errors — sidecar failures
-        // must not cause retry storms or impact the primary flow.
-        console.error(`${label}[EshelCrmSync] syncLeadNote failed for ${phone}:`, err.message);
+        console.error(`${label}[HubspotCrmSync] sync failed for ${phone}:`, err.message);
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },

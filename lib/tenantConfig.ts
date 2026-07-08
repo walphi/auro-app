@@ -31,6 +31,8 @@ function applyTenantOverrides(tenant: Tenant | null): Tenant | null {
         tenant.vapi_assistant_id = process.env.VAPI_ASSISTANT_ID;
     } else if (tenant.id === 2 && process.env.VAPI_ASSISTANT_ID_ESHEL) {
         tenant.vapi_assistant_id = process.env.VAPI_ASSISTANT_ID_ESHEL;
+    } else if (tenant.id === 3 && process.env.VAPI_ASSISTANT_ID_CHRISTIES_DUBAI) {
+        tenant.vapi_assistant_id = process.env.VAPI_ASSISTANT_ID_CHRISTIES_DUBAI;
     }
 
     return tenant;
@@ -46,9 +48,10 @@ export async function getTenantByTwilioNumber(phone: string): Promise<Tenant | n
     const normalizedPhone = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`;
 
     // Hard-coded direct mapping for production number to avoid multi-hop resolution if needed
-    // This ensures +12098994972 and +971565203832 always resolve to Provident (ID 1)
-    if (normalizedPhone === 'whatsapp:+12098994972' || normalizedPhone === 'whatsapp:+971565203832') {
-        return getTenantById(1);
+    if (normalizedPhone === 'whatsapp:+12098994972') {
+        return getTenantById(3); // Christie's Demo Tenant
+    } else if (normalizedPhone === 'whatsapp:+971565203832') {
+        return getTenantById(1); // Provident
     }
 
     const { data, error } = await supabase

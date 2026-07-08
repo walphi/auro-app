@@ -827,7 +827,7 @@ CURRENT LEAD PROFILE (DO NOT ASK FOR THESE IF KNOWN):
             }
 
             // --- CRM SYNC: Lead Inbound Sidecar ---
-            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && userMessage) {
+            if (tenant.crm_type === 'hubspot' && userMessage) {
                 await triggerHubSpotSidecar(tenant, 'whatsapp_inbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, userMessage);
             }
         }
@@ -870,11 +870,11 @@ ${autoRagContext}
 RULE: The user is asking about a specific project listed above. You MUST share at least one concrete fact (e.g. location, unique amenity, payment plan detail, or developer) in your very first response. DO NOT give a generic "I am familiar" reply without facts.
 ` : ''}
 
-${tenant.id === 2 || tenant.short_name === 'eshel' ? `
-ESHEL PRIORITY PROJECTS & FOCUS:
-- **Eshel Off-plan Projects**: Focus on the premium portfolio and high-yield investment opportunities.
-- **Investor Tone**: Speak clearly about potential ROI and the strategic location of Eshel developments.
-- **Brand Pride**: You represent Eshel Properties, known for excellence and personalized client service.
+${tenant.id === 3 || tenant.short_name === 'christies_dubai' ? `
+CHRISTIES DUBAI TONE & FOCUS:
+- **Ultra-Luxury White-Glove**: British-run, discreet, concise, no fluff, no emojis.
+- **Premium Portfolio**: Focus on flagship Dubai developments, branded residences, and off-plan opportunities.
+- **Concierge Voice**: Speak as the digital concierge for Christie's International Real Estate Dubai.
 ` : ''}
 
 CORE STRATEGY: 
@@ -885,21 +885,21 @@ CORE STRATEGY:
     * Turn 3+: Suggest a consultation ONLY if they show strong intent or you've provided significant value.
     * Example CTAs: "Does that location match your portfolio goals?", "Should I send over the payment plan for this one?", "Is this a project you've looked into before?"
 
-${tenant.id === 2 ? `
-ESHEL CALL OFFER GUIDELINES:
-After providing a concrete, RAG-backed project answer with clear investment context (yields, prices, payment plans, or handover dates), you MAY offer a brief specialist call.
+${tenant.id === 3 || tenant.short_name === 'christies_dubai' ? `
+CHRISTIES CALL OFFER GUIDELINES:
+After providing a concrete, RAG-backed project answer with clear luxury context (prices, payment plans, handover dates, or unique amenities), you MAY offer a private consultation.
 
 ALLOWED ONLY when ALL criteria met:
-1. The answer includes at least ONE concrete project detail (name, yield %, price range, payment plan, or handover date).
-2. This is the 2nd or later meaningful turn (NOT the template reply or first substantive answer).
-3. The user showed genuine intent: mentioned a project name PLUS a constraint (payment plan, budget, timeline, or handover date).
+1. The answer includes at least ONE concrete project detail (name, price range, location, or handover date).
+2. This is the 2nd or later meaningful turn.
+3. The user showed genuine intent: mentioned a project name PLUS a constraint (budget, timeline, or location preference).
 
 If criteria met, append ONE of these on-brand closers:
-- "Would you like to speak with a specialist for 10–15 minutes so we can match you with the exact tower and payment plan that fits your budget and timeline?"
-- "Shall I arrange a 10-minute call with our Eshel specialist to discuss which specific unit and payment structure works best for you?"
+- "Would you like a private consultation with a Christie's specialist to discuss the perfect residence for your portfolio?"
+- "Shall I arrange a 10-minute call with our Christie's Dubai team to explore the best options for you?"
 
 NEVER append a call offer:
-- On the initial "Is now a good time?" template reply.
+- On the initial reply.
 - On the very first project answer (wait for 2nd+ turn).
 - Without concrete RAG facts in the answer.
 ` : ''}
@@ -907,7 +907,7 @@ NEVER append a call offer:
 GREETINGS:
 For simple greetings ("hi", "hello"):
 - Reply with a short, warm greeting and one question about their investment goals.
-- Example: "Hey! Good to hear from you. Are you looking into the Dubai market for personal use or for a high-yield investment?"
+- Example: "Welcome to Christie's International Real Estate Dubai. Are you looking into the Dubai market for personal use or for a high-yield investment?"
 
 ${(tenant.id === 1) ? `
 PROVIDENT PRIORITY PROJECTS (Pitched as the 'Gold Standard'):
@@ -1383,9 +1383,9 @@ CORE RULES (HARD CONSTRAINTS):
 
                 responseText = textResponse || "I didn't quite catch that. Could you repeat?";
 
-                // --- ESHEL CALL OFFER: Append polite specialist offer when criteria met ---
+                // --- CALL OFFER: Append polite specialist offer when criteria met ---
                 // Only in happy path (normal Gemini response), never in fallback/timeout path
-                if (responseText && leadId && !skipGemini && tenant.id === 2) {
+                if (responseText && leadId && !skipGemini && tenant.crm_type === 'hubspot') {
                     const intentReached = hasBuyingIntent(userMessage, existingLead);
 
                     // Check if already offered in this session
@@ -1521,7 +1521,7 @@ CORE RULES (HARD CONSTRAINTS):
             })();
 
             // Fire-and-forget: CRM sidecar (don't block the response)
-            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && responseText) {
+            if (tenant.crm_type === 'hubspot' && responseText) {
                 (async () => {
                     try {
                         await triggerHubSpotSidecar(tenant, 'whatsapp_outbound', existingLead || { phone: fromNumber, name: `WhatsApp Lead ${fromNumber}` }, responseText);
@@ -1546,13 +1546,12 @@ CORE RULES (HARD CONSTRAINTS):
 };
 
 /**
- * Triggers the Eshel CRM sidecar to log info to HubSpot.
- * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
+ * Triggers the HubSpot CRM sidecar to log info to HubSpot.
  */
 async function triggerHubSpotSidecar(tenant: Tenant, eventType: string, lead: any, noteText: string, hsTimestamp?: string) {
-    if (tenant.id !== 2 || tenant.crm_type !== 'hubspot') return;
+    if (tenant.crm_type !== 'hubspot') return;
 
-    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
+    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/hubspot-crm-sync`;
     const sidecarKey = process.env.AURO_SIDECAR_KEY;
 
     if (!sidecarKey) {

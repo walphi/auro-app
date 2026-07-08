@@ -15,14 +15,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * Sends a WhatsApp notification to the lead about their scheduled call.
  */
 async function sendWhatsAppNotification(to: string, projectName: string, startTimeIso: string, tenant: Tenant) {
-    const accountSid = tenant.id === 2 
-        ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
-        : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
-    const authToken = tenant.id === 2 
-        ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
-        : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
-    const fromOverride = tenant.id === 2 ? process.env.ESHEL_T2_WHATSAPP_FROM : undefined;
-    const from = fromOverride || resolveWhatsAppSender(tenant);
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const from = resolveWhatsAppSender(tenant);
 
     if (!accountSid || !authToken) {
         console.error('[MEETING_WHATSAPP] Missing Twilio credentials');
@@ -44,13 +39,11 @@ async function sendWhatsAppNotification(to: string, projectName: string, startTi
     });
 
     // Dynamically set branding
-    const brandName = tenant.name || 'Eshel Properties';
+    const brandName = tenant.name || 'Auro';
     let message = `Your call about ${projectName} with ${brandName} has been scheduled. You’ll be contacted at ${timeStr} on ${dateStr} (Dubai Time) on this number.`;
 
     if (tenant.id === 1 || tenant.name?.toLowerCase().includes('provident')) {
-        message += `\n\nIn the meantime, you can explore Provident’s Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
-    } else if (tenant.id === 2) {
-        message += `\n\nIn the meantime, you can explore Eshel's 2026 UAE Off-Plan Playbook here: https://147683870.fs1.hubspotusercontent-eu1.net/hubfs/147683870/THE_2026_UAE_OFF-PLAN_PLAYBOOK_FINAL_%20(2).pdf`;
+        message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
     }
 
     console.log(`[MEETING_WHATSAPP] Booking received from Cal.com: booking_id=N/A lead_phone=${to}`);
@@ -156,8 +149,8 @@ const handler: Handler = async (event) => {
             structuredData.meeting_scheduled === 'true' ||
             analysis.bookingMade === true;
 
-        // --- CRM SYNC: Vapi Call Ended Sidecar (Always triggered if Eshel) ---
-        if (tenant?.id === 2 && tenant?.crm_type === 'hubspot') {
+        // --- CRM SYNC: Vapi Call Ended Sidecar ---
+        if (tenant?.crm_type === 'hubspot') {
             const summary = analysis.summary || structuredData.summary || "Conversation completed.";
             const duration = call?.duration || 0;
             
@@ -214,9 +207,7 @@ const handler: Handler = async (event) => {
         // User provided specific ID: 4644939 for Provident
         let eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_PROVIDENT || "4644939";
 
-        if (tenant.id === 2 || tenant.short_name?.toLowerCase() === 'eshel') {
-            eventTypeIdAttr = process.env.CALCOM_EVENT_TYPE_ID_ESHEL || process.env.CALCOM_EVENT_TYPE_ID_TENANT_2 || eventTypeIdAttr;
-        } else if (tenant.id !== 1) {
+        if (tenant.id !== 1) {
             const tenantEnvKey = `CALCOM_EVENT_TYPE_ID_${tenant.short_name?.toUpperCase()}`;
             eventTypeIdAttr = process.env[tenantEnvKey] || eventTypeIdAttr;
         }
@@ -233,10 +224,10 @@ const handler: Handler = async (event) => {
             email = normalizeSTTEmail(email);
         }
 
-        // ESHEL Fallback: If no email found for Tenant 2, use a unique phone-based placeholder
-        if (!email && (tenant.id === 2 || tenant.short_name?.toLowerCase() === 'eshel')) {
+        // Fallback: If no email found, use a unique phone-based placeholder
+        if (!email) {
             const fallbackEmail = `${phoneNumber.replace('+', '')}@no-email.auro`;
-            console.log(`[Vapi Webhook] Using Eshel fallback email: ${fallbackEmail} (Original STT might have been unusable)`);
+            console.log(`[Vapi Webhook] Using fallback email: ${fallbackEmail}`);
             email = fallbackEmail;
             
             // Log fallback usage for monitoring
@@ -318,7 +309,8 @@ const handler: Handler = async (event) => {
         }).eq('id', leadId);
 
         // --- LOG SUCCESS TO LEAD TIMELINE ---
-        const systemNotePrefix = (tenant.id === 2) ? '✅ Eshel Consultation Booked' : '✅ Cal.com Consultation Booked';
+        const tenantLabel = tenant.short_name || `Tenant ${tenant.id}`;
+        const systemNotePrefix = `${tenantLabel} Consultation Booked`;
         await supabase.from('messages').insert({
             lead_id: leadId,
             type: 'System_Note',
@@ -343,6 +335,9 @@ const handler: Handler = async (event) => {
             meetingUrl: calResult.meetingUrl,
             projectName: finalProject,
             bookingId: calResult.bookingId,
+            budget: structuredData.budget || leadData.budget,
+            propertyType: structuredData.property_type || leadData.property_type,
+            area: structuredData.preferred_area || leadData.location,
             notificationType: 'booking_confirmed',
             source: 'vapi_webhook'
         });
@@ -350,7 +345,7 @@ const handler: Handler = async (event) => {
         console.log(`[Vapi Webhook] Notification result: whatsapp=${notificationResult.whatsappSent}, deduplicated=${notificationResult.deduplicated}`);
 
         // --- CRM SYNC: Booking Created Sidecar ---
-        if (tenant?.id === 2 && tenant?.crm_type === 'hubspot' && calResult) {
+        if (tenant?.crm_type === 'hubspot' && calResult) {
             await triggerHubSpotSidecar(tenant, 'booking_created', leadData, "Meeting Scheduled", undefined, {
                 booking: {
                     meetingUrl: calResult.meetingUrl,
@@ -465,13 +460,12 @@ function normalizeSTTEmail(email: string): string {
 }
 
 /**
- * Triggers the Eshel CRM sidecar to log info to HubSpot.
- * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
+ * Triggers the HubSpot CRM sidecar to log info to HubSpot.
  */
 async function triggerHubSpotSidecar(tenant: Tenant, eventType: string, lead: any, noteText: string, hsTimestamp?: string, extra?: any) {
-    if (tenant.id !== 2 || tenant.crm_type !== 'hubspot') return;
+    if (tenant.crm_type !== 'hubspot') return;
 
-    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
+    const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/hubspot-crm-sync`;
     const sidecarKey = process.env.AURO_SIDECAR_KEY;
 
     if (!sidecarKey) {

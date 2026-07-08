@@ -1,0 +1,13 @@
+[{
+  "eventId": "test-eshel-note-001",
+  "subscriptionType": "contact.creation",
+  "portalId": 147683870,
+  "occurredAt": 1774624473292,
+  "objectId": 123456789,
+  "properties": {
+    "phone": "+971509999888",
+    "email": "test.eshel.note@example.com",
+    "firstname": "Test",
+    "lastname": "EshelNote"
+  }
+}]

@@ -11,7 +11,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { TwilioWhatsAppClient } from './twilioWhatsAppClient';
+import { TwilioWhatsAppClient, resolveWhatsAppSender } from './twilioWhatsAppClient';
 import type { Tenant } from './tenantConfig';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
@@ -28,6 +28,9 @@ export interface NotificationParams {
   meetingUrl?: string;
   projectName?: string;
   bookingId?: string;
+  budget?: string;
+  propertyType?: string;
+  area?: string;
   notificationType: 'booking_confirmed' | 'viewing_booked';
   source: 'vapi' | 'vapi_webhook' | 'booking_notify' | 'tool_call';
 }
@@ -172,26 +175,16 @@ async function sendWhatsAppConfirmation(params: NotificationParams): Promise<boo
       return false;
     }
 
-    // Refactored: Resolve correct Twilio credentials by tenant
-    const accountSid = tenant.id === 2 
-      ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
-      : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
-    const authToken = tenant.id === 2 
-      ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
-      : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
-    const messagingServiceSid = tenant.id === 2 
-      ? undefined 
-      : (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
-    const explicitFrom = tenant.id === 2 
-      ? process.env.ESHEL_T2_WHATSAPP_FROM 
-      : undefined;
-
+    // Resolve Twilio credentials from tenant config or defaults
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
     if (!accountSid || !authToken) {
       console.error('[NotificationOrchestrator] Missing Twilio credentials');
       return false;
     }
 
-    const client = new TwilioWhatsAppClient(accountSid, authToken, messagingServiceSid);
+    const fromNumber = resolveWhatsAppSender(tenant);
+    const client = new TwilioWhatsAppClient(accountSid, authToken);
 
     const dateObj = new Date(meetingStartIso);
     const dateStr = dateObj.toLocaleString('en-US', { 
@@ -207,30 +200,31 @@ async function sendWhatsAppConfirmation(params: NotificationParams): Promise<boo
       timeZone: 'Asia/Dubai' 
     });
 
+    const { budget, propertyType, area } = params;
+
     // Tenant-aware branding
-    const brandName = tenant.id === 1 ? 'Provident Real Estate' : (tenant.name || 'Eshel Properties');
-    const projectLabel = projectName || (tenant.id === 1 ? 'Apartment' : 'our latest properties');
+    const tenantLabel = tenant.id === 1 ? 'Provident Real Estate' : tenant.id === 3 ? "Christie's Dubai" : (tenant.name || 'Auro');
+    const projectLabel = projectName || 'your property inquiry';
     const firstName = name?.split(' ')[0] || 'there';
+    const budgetLabel = budget || 'budget to be confirmed';
+    const propTypeLabel = propertyType || 'property type to be confirmed';
+    const areaLabel = area || projectLabel;
+    const resourceLink = getWAResourceLink(tenant.short_name);
 
-    let message = `Hi ${firstName}, your call about ${projectLabel} with ${brandName} has been scheduled.\n` +
-      `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n` +
-      `Join the meeting: ${meetingUrl || 'Link in calendar invite'}`;
-
-    if (tenant.id === 1) {
-      message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
-    } else if (tenant.id === 2) {
-      message += `\n\nIn the meantime, you can explore Eshel's 2026 UAE Off-Plan Playbook here: https://bit.ly/eshel-prop-uae-playbook`;
-    }
+    let message = `Hi ${firstName},\n\n` +
+      `${tenantLabel} Consultation Booked – 30 min call on ${dateStr} at ${timeStr} (Dubai Time) about ${budgetLabel}, ${propTypeLabel}, ${areaLabel}.\n\n` +
+      `Join the meeting: ${meetingUrl || 'Link in calendar invite'}` +
+      (resourceLink ? `\n\n${resourceLink}` : '');
 
     console.log('[NotificationOrchestrator] Sending WhatsApp confirmation:', {
       to: phoneCleaned,
-      branding: brandName,
-      sender: explicitFrom ? `From: ${explicitFrom}` : `Messaging Service: ${messagingServiceSid}`,
+      branding: tenantLabel,
+      sender: fromNumber,
       bodyLength: message.length,
       bodyPreview: message.substring(0, 120),
     });
 
-    const result = await client.sendTextMessage(phoneCleaned, message, explicitFrom);
+    const result = await client.sendTextMessage(phoneCleaned, message, fromNumber);
 
     if (result.success) {
       console.log(`[NotificationOrchestrator] WhatsApp sent successfully. SID=${result.sid}`);
@@ -242,5 +236,14 @@ async function sendWhatsAppConfirmation(params: NotificationParams): Promise<boo
   } catch (error: any) {
     console.error('[NotificationOrchestrator] WhatsApp send failed:', error.message);
     return false;
+  }
+}
+
+function getWAResourceLink(shortName?: string): string | null {
+  switch (shortName) {
+    case 'christies_dubai':
+      return `📚 Explore Christie's Dubai Publication: https://www.christiesrealestatedubai.com/the-journal/category/publications/`;
+    default:
+      return null;
   }
 }

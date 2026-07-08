@@ -164,20 +164,10 @@ async function sendSimpleWhatsAppConfirmation(
       return false;
     }
 
-    // Refactored: Resolve correct Twilio credentials by tenant
-    const accountSid = tenant.id === 2 
-      ? process.env.TWILIO_ACCOUNT_SID_ESHEL_T2 
-      : (tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID);
-    const authToken = tenant.id === 2 
-      ? process.env.TWILIO_AUTH_TOKEN_ESHEL_T2 
-      : (tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN);
-    const messagingServiceSid = tenant.id === 2 
-      ? undefined 
-      : (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
-    const explicitFrom = tenant.id === 2 
-      ? process.env.ESHEL_T2_WHATSAPP_FROM 
-      : undefined;
-
+    // Resolve Twilio credentials from tenant config or defaults
+    const accountSid = tenant.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = tenant.twilio_auth_token || process.env.TWILIO_AUTH_TOKEN;
+    const messagingServiceSid = (process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
     const client = new TwilioWhatsAppClient(accountSid, authToken, messagingServiceSid);
 
     const dateObj = new Date(meetingStartIso);
@@ -185,8 +175,8 @@ async function sendSimpleWhatsAppConfirmation(
     const timeStr = dateObj.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Dubai' });
 
     // Refactored: Tenant-aware branding
-    const brandName = tenant.id === 1 ? 'Provident Real Estate' : (tenant.name || 'Eshel Properties');
-    const projectLabel = projectName || (tenant.id === 1 ? 'Apartment' : 'our latest properties');
+    const brandName = tenant.id === 1 ? 'Provident Real Estate' : (tenant.name || 'Auro');
+    const projectLabel = projectName || (tenant.id === 1 ? 'Apartment' : 'your property inquiry');
 
     let message = `Your call about ${projectLabel} with ${brandName} has been scheduled.\n` +
       `Date & time: ${dateStr} at ${timeStr} (Dubai Time).\n` +
@@ -194,20 +184,17 @@ async function sendSimpleWhatsAppConfirmation(
 
     if (tenant.id === 1) {
       message += `\n\nIn the meantime, you can explore Provident's Top Branded Residences PDF here: https://drive.google.com/file/d/1gKCSGYCO6ObmPJ0VRfk4b4TvKZl9sLuB/view`;
-    } else if (tenant.id === 2) {
-      message += `\n\nIn the meantime, you can explore Eshel's 2026 UAE Off-Plan Playbook here: https://147683870.fs1.hubspotusercontent-eu1.net/hubfs/147683870/THE_2026_UAE_OFF-PLAN_PLAYBOOK_FINAL_%20(2).pdf`;
     }
 
     console.log('[WhatsApp Helper] Sending confirmation:', {
       to: phoneCleaned,
       branding: brandName,
-      sender: explicitFrom ? `From: ${explicitFrom}` : `Messaging Service: ${messagingServiceSid}`,
+      sender: `Messaging Service: ${messagingServiceSid}`,
       bodyLength: message.length,
       bodyPreview: message.substring(0, 120),
     });
 
-    // Pass the explicit 'from' number for Eshel/Tenant 2
-    const result = await client.sendTextMessage(phoneCleaned, message, explicitFrom);
+    const result = await client.sendTextMessage(phoneCleaned, message);
 
     if (result.success) {
       console.log(`[WhatsApp Helper] Sent successfully. SID=${result.sid}`);
@@ -566,8 +553,8 @@ CURRENT LEAD PROFILE:
           meta: JSON.stringify({ outcome, bookingMade, recordingUrl })
         });
 
-        // --- CRM SYNC: Vapi Call Ended Sidecar (Tenant 2 / Eshel) ---
-        if (tenant.id === 2 && tenant.crm_type === 'hubspot') {
+        // --- CRM SYNC: Vapi Call Ended Sidecar ---
+        if (tenant.crm_type === 'hubspot') {
           const syncSummary = summary || "Conversation completed.";
           const duration = body.message?.call?.duration || body.call?.duration || 0;
           const structuredData = getStructuredData(body);
@@ -771,7 +758,8 @@ CURRENT LEAD PROFILE:
               const budget = structuredData.budget || leadData?.budget || "Not specified";
               const propType = structuredData.property_type || leadData?.property_type || "Not specified";
               const area = structuredData.preferred_area || leadData?.location || "Not specified";
-              const notePrefix = tenant.id === 2 ? "Eshel Consultation Booked" : "✅ Cal.com Consultation Booked";
+              const tenantLabel = tenant.short_name || `Tenant ${tenant.id}`;
+              const notePrefix = `${tenantLabel} Consultation Booked`;
 
               await supabase.from('messages').insert({
                 lead_id: leadId,
@@ -819,8 +807,8 @@ CURRENT LEAD PROFILE:
               });
             }
 
-            // --- WHATSAPP CONFIRMATION (Tenant 1 or 2, only if Cal.com succeeded) ---
-            if (calResult && (tenant.id === 1 || tenant.id === 2)) {
+            // --- WHATSAPP CONFIRMATION (only if Cal.com succeeded) ---
+            if (calResult && (tenant.id === 1 || tenant.id === 3)) {
               console.log(`[MeetingConfirmation] Sending WhatsApp confirmation for tenant ${tenant.id}, lead=${leadId} to=${normalizedAttendeePhone}`);
               
               // Use unified orchestrator with deduplication
@@ -833,8 +821,11 @@ CURRENT LEAD PROFILE:
                 meetingStartIso,
                 meetingUrl: calResult.meetingUrl || calResult.raw?.meetingUrl || '',
                 projectName: structuredData.preferred_area || structuredData.property_type || 
-                            (tenant.id === 2 ? 'our latest properties' : 'Apartment'),
+                            (tenant.id === 1 ? 'Apartment' : 'your property inquiry'),
                 bookingId: calResult.bookingId,
+                budget: structuredData.budget || leadData?.budget,
+                propertyType: structuredData.property_type || leadData?.property_type,
+                area: structuredData.preferred_area || leadData?.location,
                 notificationType: 'booking_confirmed',
                 source: 'vapi'
               });
@@ -854,8 +845,8 @@ CURRENT LEAD PROFILE:
               }
             }
 
-            // --- CRM SYNC: Booking Created Sidecar (Tenant 2 / Eshel) ---
-            if (tenant.id === 2 && tenant.crm_type === 'hubspot' && calResult) {
+            // --- CRM SYNC: Booking Created Sidecar ---
+            if (tenant.crm_type === 'hubspot' && calResult) {
               const finalProject = structuredData.project_name || structuredData.preferred_area || leadData?.location || "our latest properties";
               const budget = structuredData.budget || leadData?.budget || "";
               const propertyType = structuredData.property_type || leadData?.property_type || "";
@@ -1125,7 +1116,7 @@ CURRENT LEAD PROFILE:
               }, { onConflict: 'lead_id,tenant_id,meeting_start_iso' });
 
               // 5. Trigger Meeting Confirmation via orchestrator
-              if (tenant.id === 1 || tenant.id === 2) {
+              if (tenant.id === 1 || tenant.id === 3) {
                 console.log(`[MeetingConfirmation] Sending WhatsApp confirmation via orchestrator for tenant ${tenant.id}, lead=${leadId} to=${prioritizedPhone}`);
                 
                 const notificationResult = await orchestratePostMeetingNotification({
@@ -1137,6 +1128,9 @@ CURRENT LEAD PROFILE:
                   meetingUrl: calResult?.meetingUrl || '',
                   projectName: listingTitle,
                   bookingId: calResult?.bookingId,
+                  budget: leadData?.budget,
+                  propertyType: leadData?.property_type,
+                  area: leadData?.location || listingTitle,
                   notificationType: 'viewing_booked',
                   source: 'tool_call'
                 });
@@ -1342,13 +1336,12 @@ RULES & BEHAVIOR:
 export { handler };
 
 /**
- * Triggers the Eshel CRM sidecar to log info to HubSpot.
- * Only runs if tenant.id === 2 (Eshel) and crm_type is hubspot.
+ * Triggers the HubSpot CRM sidecar to log info to HubSpot.
  */
 async function triggerHubSpotSidecar(tenant: any, eventType: string, lead: any, noteText: string, hsTimestamp?: string, extra?: any) {
-  if (tenant.id !== 2 || tenant.crm_type !== 'hubspot' || !lead) return;
+  if (tenant.crm_type !== 'hubspot' || !lead) return;
 
-  const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/eshel-hubspot-crm-sync`;
+  const sidecarUrl = `https://${process.env.MEDIA_HOST || 'auro-app.netlify.app'}/.netlify/functions/hubspot-crm-sync`;
   const sidecarKey = process.env.AURO_SIDECAR_KEY;
 
   try {
