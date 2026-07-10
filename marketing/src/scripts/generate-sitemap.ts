@@ -42,6 +42,11 @@ function sitemapXml(): string {
   </url>`);
   }
 
+  urls.push(`  <url>
+    <loc>${SITE_URL}/rss.xml</loc>
+    <priority>0.3</priority>
+  </url>`);
+
   for (const insight of allInsights) {
     urls.push(`  <url>
     <loc>${SITE_URL}/insights/${insight.slug}/</loc>
