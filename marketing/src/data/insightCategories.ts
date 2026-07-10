@@ -10,6 +10,7 @@ export const PRIMARY_CATEGORIES: InsightCategory[] = [
   "multi-agent-systems",
   "product-updates",
   "faq-explainers",
+  "ai-news",
 ];
 
 export const SEO_FOCUS_CATEGORIES: InsightCategory[] = [

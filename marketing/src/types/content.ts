@@ -15,7 +15,8 @@ export type InsightCategory =
   | "experiments"
   | "product-updates"
   | "case-studies"
-  | "faq-explainers";
+  | "faq-explainers"
+  | "ai-news";
 
 export type ArticleSection =
   | { type: "p"; text: string }
@@ -72,6 +73,7 @@ export const INSIGHT_CATEGORY_LABELS: Record<InsightCategory, string> = {
   "product-updates": "Product Updates",
   "case-studies": "Case Studies",
   "faq-explainers": "FAQ",
+  "ai-news": "AI News",
 };
 
 export const CATEGORY_DESCRIPTIONS: Record<InsightCategory, string> = {
@@ -92,4 +94,5 @@ export const CATEGORY_DESCRIPTIONS: Record<InsightCategory, string> = {
   "product-updates": "AURO product releases, feature updates, and evolution.",
   "case-studies": "Real-world results and success stories from AURO customers.",
   "faq-explainers": "Frequently asked questions about AURO, lead nurturing, and AI qualification.",
+  "ai-news": "Breaking news and developments in AI across real estate, marketing, and technology.",
 };
