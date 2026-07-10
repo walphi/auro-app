@@ -6,6 +6,21 @@ import { allInsights } from "../data/insights.ts";
 const DIST = path.resolve(import.meta.dirname, "../../dist");
 const PUBLIC = path.resolve(import.meta.dirname, "../../public");
 
+const staticSeoSlugs = [
+  "lead-nurturing-definition",
+  "what-is-lead-nurturing",
+  "lead-nurturing-strategy",
+  "lead-nurturing-automation",
+  "ai-marketing-real-estate",
+  "ai-marketing-tools-real-estate",
+  "real-estate-marketing-dubai",
+  "real-estate-marketing-strategy",
+  "off-plan-properties-dubai-marketing",
+  "luxury-real-estate-marketing-dubai",
+  "booking-automation-dubai-real-estate",
+  "multi-agent-lead-nurturing",
+];
+
 const staticPages = [
   "",
   "insights",
@@ -13,6 +28,7 @@ const staticPages = [
   "product-updates",
   "about",
   "solutions",
+  ...staticSeoSlugs,
 ];
 
 function sitemapXml(): string {
