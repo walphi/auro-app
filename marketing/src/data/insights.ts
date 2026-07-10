@@ -1,6 +1,35 @@
 import type { Insight } from "../types/content.ts";
 
 export const allInsights: Insight[] = [
+  {
+  "slug": "test-article-pipeline",
+  "title": "Test Article — Content Pipeline Verification",
+  "excerpt": "Verifying the Auro App content engine pipeline works end-to-end from research to WhatsApp notification.",
+  "category": "product-updates",
+  "author": "Phillip Walsh",
+  "authorRole": "Founder",
+  "authorImage": "https://auroapp.com/phillip-profile.jpg",
+  "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+  "publishedAt": "2026-07-10",
+  "updatedAt": "2026-07-10",
+  "readMinutes": 2,
+  "heroImage": "https://images.pexels.com/photos/7641852/pexels-photo-7641852.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  "heroAlt": "Real estate agent meeting with clients",
+  "keyStat": { "value": "100%", "label": "Pipeline test success target" },
+  "metaTitle": "Test Article — Content Pipeline Verification | AURO",
+  "metaDescription": "Verifying the Auro App content engine pipeline works end-to-end.",
+  "sections": [
+    { "type": "p", "text": "This is a test article to verify the content pipeline works correctly." },
+    { "type": "h2", "text": "Pipeline Stages" },
+    { "type": "p", "text": "The pipeline includes research, writing, editing, publishing, and notification." },
+    { "type": "stat", "value": "5", "label": "Stages in the pipeline" },
+    { "type": "h2", "text": "Verification" },
+    { "type": "p", "text": "If you see this article live, the pipeline is working." }
+  ],
+  "internalLinks": [
+    { "label": "How AURO Works", "to": "/#how-it-works" }
+  ]
+},
   // ── Lead Nurturing Core ─────────────────────────────────────
   {
     slug: "lead-nurturing-definition",
