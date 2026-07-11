@@ -2,6 +2,48 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "gpt-live-voice-models-real-estate-lead-qualification-2026",
+    "title": "GPT-Live Voice Models and the New Standard for Real Estate Lead Qualification in Dubai",
+    "excerpt": "OpenAI's latest GPT-Live voice models have closed the gap between human and AI phone conversations. For Dubai real estate teams handling 60% international inquiries, this changes what's possible in lead qualification overnight.",
+    "category": "ai-news",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-11",
+    "updatedAt": "2026-07-11",
+    "readMinutes": 9,
+    "heroImage": "https://images.pexels.com/photos/7681091/pexels-photo-7681091.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Modern phone interface showing voice call being handled by AI assistant",
+    "keyStat": {
+      "value": "94%",
+      "label": "voice AI parity score with human agents on structured qualification calls (OpenAI 2026 benchmark)"
+    },
+    "metaTitle": "GPT-Live Voice Models Reshape Dubai Real Estate Lead Qualification | AURO",
+    "metaDescription": "OpenAI's new GPT-Live voice models have closed the human-AI quality gap. Learn what this means for Dubai real estate lead qualification and how AURO's multi-agent system takes advantage."
+  },
+  {
+    "slug": "ai-voice-agents-transform-real-estate-lead-qualification",
+    "title": "AI Voice Agents & Multi-Agent Systems: How Real Estate Lead Qualification Is Being Automated in 2026",
+    "excerpt": "From voice-enabled AI agents that qualify leads over phone calls to multi-agent orchestration that handles end-to-end nurturing — AI is fundamentally changing how Dubai real estate teams convert inquiries into booked meetings.",
+    "category": "ai-news",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-10",
+    "updatedAt": "2026-07-10",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/8386434/pexels-photo-8386434.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "AI voice agent interface on smartphone showing real estate conversation",
+    "keyStat": {
+      "value": "100x",
+      "label": "faster lead response with AI voice agents vs human-only teams"
+    },
+    "metaTitle": "AI Voice Agents Transform Real Estate Lead Qualification 2026 | AURO",
+    "metaDescription": "Discover how multi-agent AI systems and voice agents are automating real estate lead qualification in Dubai. Learn why 2026 is the year AI replaces manual follow-up."
+  },
+  {
     "slug": "lead-nurturing-definition",
     "title": "Lead Nurturing Definition — What It Is & Why It Matters for Dubai Real Estate",
     "excerpt": "Lead nurturing defined: the process of building relationships with prospects through every stage of the sales journey. See our complete guide for Dubai real estate.",
