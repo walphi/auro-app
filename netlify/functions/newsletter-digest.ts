@@ -151,7 +151,7 @@ export const handler = schedule("0 9 * * 1,4", async () => {
             const personalizedHtml = emailHtml.replace("__NAME__", sub.name);
 
             await axios.post("https://api.resend.com/emails", {
-                from: "AURO Insights <insights@insights.auroapp.com>",
+                from: "AURO Insights <hello@insights.auroapp.com>",
                 to: [sub.email],
                 subject: `AURO Insights Digest — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
                 html: personalizedHtml,

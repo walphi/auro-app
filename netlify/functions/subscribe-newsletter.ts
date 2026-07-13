@@ -75,7 +75,7 @@ export const handler: Handler = async (event) => {
         if (RESEND_API_KEY) {
             try {
                 await axios.post('https://api.resend.com/emails', {
-                    from: 'AURO Insights <insights@insights.auroapp.com>',
+                    from: 'AURO Insights <hello@insights.auroapp.com>',
                     to: [email],
                     subject: 'Welcome to AURO Insights',
                     html: `
