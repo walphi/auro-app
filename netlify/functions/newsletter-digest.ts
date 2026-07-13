@@ -51,32 +51,55 @@ function parseRssItems(xml: string): Article[] {
 }
 
 function buildDigestEmail(articles: Article[]): string {
-    const articleList = articles.map(a => `
-        <tr>
-            <td style="padding:16px 0;border-bottom:1px solid #222;">
-                <a href="${a.link}" style="color:#D4FF00;font-size:14px;font-weight:bold;text-decoration:none;">${a.title}</a>
-                <p style="color:#999;font-size:12px;margin:4px 0 0;line-height:1.5;">${a.description}</p>
-                <p style="color:#666;font-size:11px;margin:4px 0 0;">${new Date(a.pubDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
-            </td>
-        </tr>
-    `).join("");
+    const shortDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+    const articleList = articles.map((a, i) => {
+        const num = String(i + 1).padStart(2, "0");
+        const dateStr = new Date(a.pubDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return `
+            <div style="padding:20px 0;border-bottom:1px solid #222;">
+                <p style="margin:0 0 6px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;font-weight:bold;">// ${num}</p>
+                <a href="${a.link}" style="color:#D4FF00;font-size:16px;font-weight:bold;text-decoration:none;line-height:1.4;display:inline-block;margin:2px 0 6px 0;">${a.title}</a>
+                <p style="color:#aaaaaa;font-size:13px;margin:6px 0 0;line-height:1.55;">${a.description}</p>
+                <p style="color:#666;font-size:11px;margin:8px 0 0;letter-spacing:.15em;font-family:'Courier New',monospace;text-transform:uppercase;">// ${dateStr}</p>
+            </div>
+        `;
+    }).join("");
 
     return `
-        <div style="background:#0a0a0a;padding:40px 20px;font-family:sans-serif;">
-            <div style="max-width:560px;margin:0 auto;background:#111;border:1px solid #333;padding:40px;">
-                <h1 style="color:#D4FF00;font-size:24px;margin:0 0 4px;">AURO</h1>
-                <p style="color:#666;font-size:12px;margin:0 0 24px;">Insights Digest</p>
-                <p style="color:#ccc;font-size:14px;line-height:1.6;">Here's what we've been publishing on AURO Insights:</p>
-                <table style="width:100%;border-collapse:collapse;margin:24px 0;">
-                    ${articleList}
+        <div style="background:#0a0a0a;padding:40px 20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;">
+            <div style="max-width:560px;margin:0 auto;background:#0b0b0bed;border:1px solid #333;padding:40px;">
+
+                <!-- brandmark -->
+                <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                    <tr>
+                        <td style="vertical-align:middle;padding:0 10px 0 0;">
+                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D4FF00;line-height:10px;">&nbsp;</span>
+                        </td>
+                        <td style="vertical-align:middle;color:#D4FF00;font-size:14px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;font-weight:bold;">AURO</td>
+                    </tr>
                 </table>
-                <p style="color:#ccc;font-size:14px;line-height:1.6;margin-top:24px;">
-                    <a href="${SITE_URL}/insights" style="color:#D4FF00;text-decoration:underline;">Read more on AURO Insights →</a>
-                </p>
-                <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #333;padding-top:16px;line-height:1.5;">
-                    You're receiving this because you subscribed to AURO Insights. 
+                <div style="height:1px;background:#333;margin:0 0 28px 0;"></div>
+
+                <p style="margin:0 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// DIGEST &middot; ${shortDate}</p>
+
+                <h1 style="margin:0 0 16px 0;color:#f4f4f4;font-size:30px;font-style:italic;font-family:Georgia,'Times New Roman',serif;font-weight:normal;line-height:1.3;">What we've published.</h1>
+
+                <p style="margin:0 0 24px 0;color:#aaaaaa;font-size:15px;line-height:1.6;">Hi __NAME__, here's the latest from AURO Insights &mdash; Dubai real estate signals and the AI lead nurturing patterns we're seeing work.<span aria-hidden="true">&nbsp;📰</span></p>
+
+                <p style="margin:0 0 8px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// LATEST ${DIGEST_ARTICLE_COUNT}</p>
+
+                ${articleList}
+
+                <p style="margin:32px 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// NEXT</p>
+                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Next digest lands Monday at 9am GST.<span aria-hidden="true">&nbsp;📅</span></p>
+
+                <div style="height:1px;background:#333;margin:32px 0 16px 0;"></div>
+                <p style="margin:0;color:#666;font-size:11px;line-height:1.5;">
+                    You're receiving this because you subscribed to AURO Insights.
                     <a href="${SITE_URL}/unsubscribe" style="color:#666;text-decoration:underline;">Unsubscribe</a>
                 </p>
+
             </div>
         </div>
     `;
@@ -125,13 +148,10 @@ export const handler = schedule("0 9 * * 1,4", async () => {
 
     for (const sub of subscribers) {
         try {
-            const personalizedHtml = emailHtml.replace(
-                "<p style=\"color:#ccc;font-size:14px;line-height:1.6;\">Here's what we've been publishing on AURO Insights:</p>",
-                `<p style="color:#ccc;font-size:14px;line-height:1.6;">Hi ${sub.name}, here's what we've been publishing on AURO Insights:</p>`
-            );
+            const personalizedHtml = emailHtml.replace("__NAME__", sub.name);
 
             await axios.post("https://api.resend.com/emails", {
-                from: "AURO Insights <insights@auroapp.com>",
+                from: "AURO Insights <insights@insights.auroapp.com>",
                 to: [sub.email],
                 subject: `AURO Insights Digest — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
                 html: personalizedHtml,
