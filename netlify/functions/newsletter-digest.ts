@@ -70,15 +70,8 @@ function buildDigestEmail(articles: Article[]): string {
         <div style="background:#0a0a0a;padding:40px 20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;">
             <div style="max-width:560px;margin:0 auto;background:#0b0b0bed;border:1px solid #333;padding:40px;">
 
-                <!-- brandmark -->
-                <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
-                    <tr>
-                        <td style="vertical-align:middle;padding:0 10px 0 0;">
-                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D4FF00;line-height:10px;">&nbsp;</span>
-                        </td>
-                        <td style="vertical-align:middle;color:#D4FF00;font-size:14px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;font-weight:bold;">AURO</td>
-                    </tr>
-                </table>
+                <!-- brandmark (hosted logo - bg transparent so it inherits email card #0b0b0bed) -->
+                <img src="https://auroapp.com/auro-logo-email.png" alt="AURO" width="140" style="display:block;border:0;outline:none;margin:0 0 24px 0;">
                 <div style="height:1px;background:#333;margin:0 0 28px 0;"></div>
 
                 <p style="margin:0 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// DIGEST &middot; ${shortDate}</p>
