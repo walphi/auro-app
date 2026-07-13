@@ -75,17 +75,38 @@ export const handler: Handler = async (event) => {
         if (RESEND_API_KEY) {
             try {
                 await axios.post('https://api.resend.com/emails', {
-                    from: 'AURO Insights <updates@auro-app.com>',
+                    from: 'AURO Insights <insights@auroapp.com>',
                     to: [email],
                     subject: 'Welcome to AURO Insights',
                     html: `
-                        <div style="background:#0a0a0a;padding:40px 20px;font-family:sans-serif;">
-                            <div style="max-width:560px;margin:0 auto;background:#111;border:1px solid #333;padding:40px;">
-                                <h1 style="color:#D4FF00;font-size:24px;margin:0 0 8px;">AURO</h1>
-                                <p style="color:#ccc;font-size:14px;line-height:1.6;">Hi ${name},</p>
-                                <p style="color:#ccc;font-size:14px;line-height:1.6;">Welcome to the AURO Insights newsletter. You'll receive curated content on AI-powered lead nurturing, Dubai real estate trends, and product updates — delivered to your inbox twice a week.</p>
-                                <p style="color:#ccc;font-size:14px;line-height:1.6;">Stay ahead of the curve.</p>
-                                <p style="color:#666;font-size:12px;margin-top:24px;border-top:1px solid #333;padding-top:16px;">If you didn't sign up for this, you can ignore this email.</p>
+                        <div style="background:#0a0a0a;padding:40px 20px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;">
+                            <div style="max-width:560px;margin:0 auto;background:#0b0b0bed;border:1px solid #333;padding:40px;">
+
+                                <!-- brandmark -->
+                                <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                                    <tr>
+                                        <td style="vertical-align:middle;padding:0 10px 0 0;">
+                                            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D4FF00;line-height:10px;">&nbsp;</span>
+                                        </td>
+                                        <td style="vertical-align:middle;color:#D4FF00;font-size:14px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;font-weight:bold;">AURO</td>
+                                    </tr>
+                                </table>
+                                <div style="height:1px;background:#333;margin:0 0 28px 0;"></div>
+
+                                <p style="margin:0 0 6px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// WELCOME</p>
+
+                                <h1 style="margin:0 0 16px 0;color:#f4f4f4;font-size:30px;font-style:italic;font-family:Georgia,'Times New Roman',serif;font-weight:normal;line-height:1.25;">You're in.</h1>
+
+                                <p style="margin:0 0 14px 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Hi ${name},</p>
+                                <p style="margin:0 0 14px 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Thanks for subscribing to <strong style="color:#ffffff;">AURO Insights</strong>. A curated digest lands in your inbox every <strong style="color:#ffffff;">Monday and Thursday at 9am GST</strong> &mdash; Dubai real estate signals, AI lead nurturing patterns, and the operational moves we're seeing work.</p>
+                                <p style="margin:18px 0 0 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Stay ahead of the curve.<span aria-hidden="true">&nbsp;🚀</span></p>
+
+                                <p style="margin:32px 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// NEXT</p>
+                                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Your first digest arrives this Thursday &mdash; or next Monday if you signed up mid-week.<span aria-hidden="true">&nbsp;📅</span></p>
+
+                                <div style="height:1px;background:#333;margin:32px 0 16px 0;"></div>
+                                <p style="margin:0;color:#666;font-size:11px;line-height:1.5;">If this wasn't you, ignore this email &mdash; your address won't be added.</p>
+
                             </div>
                         </div>
                     `

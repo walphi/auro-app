@@ -17,6 +17,10 @@ interface Article {
     description: string;
 }
 
+// Rule (locked-in): ship the latest N articles from the insights array, ranked
+// strictly by publication date (descending). Tunable via the constant below.
+const DIGEST_ARTICLE_COUNT = 8;
+
 function parseRssItems(xml: string): Article[] {
     const items: Article[] = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/g;
@@ -36,7 +40,14 @@ function parseRssItems(xml: string): Article[] {
             });
         }
     }
-    return items.slice(0, 5);
+    // Sort by publication date descending so the digest always carries the
+    // most-recent insights regardless of array order in insights.ts.
+    items.sort((a, b) => {
+        const da = new Date(a.pubDate).getTime();
+        const db = new Date(b.pubDate).getTime();
+        return db - da;
+    });
+    return items.slice(0, DIGEST_ARTICLE_COUNT);
 }
 
 function buildDigestEmail(articles: Article[]): string {
@@ -120,7 +131,7 @@ export const handler = schedule("0 9 * * 1,4", async () => {
             );
 
             await axios.post("https://api.resend.com/emails", {
-                from: "AURO Insights <updates@auro-app.com>",
+                from: "AURO Insights <insights@auroapp.com>",
                 to: [sub.email],
                 subject: `AURO Insights Digest — ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}`,
                 html: personalizedHtml,
