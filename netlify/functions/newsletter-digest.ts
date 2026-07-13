@@ -98,7 +98,7 @@ function buildDigestEmail(articles: Article[]): string {
     `;
 }
 
-export const handler = schedule("0 9 * * 1,4", async () => {
+export const handler = schedule("0 9 1,15 * *", async () => {
     console.log("[Digest] Starting bi-weekly newsletter digest...");
 
     if (!RESEND_API_KEY) {

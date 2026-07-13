@@ -174,7 +174,7 @@ export function SiteLayout() {
 
           <div className="flex flex-col gap-4">
             <div className="text-[9px] uppercase tracking-[3px] font-mono text-neutral-500 font-semibold select-none">Newsletter</div>
-            <p className="text-[10px] text-neutral-500 font-mono leading-relaxed">Get AI insights & Dubai real estate updates twice a week.</p>
+            <p className="text-[10px] text-neutral-500 font-mono leading-relaxed">Get AI insights & Dubai real estate updates twice a month.</p>
             <form id="subscribe-form-sitelayout" className="flex flex-col gap-2" onSubmit={(e) => {
               e.preventDefault();
               const form = e.currentTarget;
