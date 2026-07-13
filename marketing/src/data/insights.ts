@@ -139,8 +139,9 @@ export const allInsights: Insight[] = [
     { label: `GPT-Live Voice Models on Lead Qualification`, to: "/insights/gpt-live-voice-models-real-estate-lead-qualification-2026/" },
     { label: `Request a Demo`, to: "/" },
   ]
-,{
-    "slug": "gpt-live-voice-models-real-estate-lead-qualification-2026",
+},
+{
+  "slug": "gpt-live-voice-models-real-estate-lead-qualification-2026",
     "title": "GPT-Live Voice Models and the New Standard for Real Estate Lead Qualification in Dubai",
     "excerpt": "OpenAI's latest GPT-Live voice models have closed the gap between human and AI phone conversations. For Dubai real estate teams handling 60% international inquiries, this changes what's possible in lead qualification overnight.",
     "category": "ai-news",

@@ -2,6 +2,27 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "dubai-off-plan-auction-regulation-2026-dld-buyer-protection",
+    "title": "New Dubai Off-Plan Auction Regulations: What Every Real Estate Agent Should Re-Qualify In 2026",
+    "excerpt": "The DLD updated 2026 off-plan auction framework introduces strict buyer-protection rules. Every Dubai real estate team needs to re-qualify lead flows before the next quarterly auction cycle. Here is the new compliance checklist and how multi-agent systems apply it automatically.",
+    "category": "off-plan-dubai",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-13",
+    "updatedAt": "2026-07-13",
+    "readMinutes": 9,
+    "heroImage": "https://images.pexels.com/photos/8721319/pexels-photo-8721319.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai skyline with new development towers under construction representing off-plan property market",
+    "keyStat": {
+      "value": "73%",
+      "label": "of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows"
+    },
+    "metaTitle": "Dubai Off-Plan Auction Regulations 2026: Re-Qualification Playbook for Real Estate Teams | AURO",
+    "metaDescription": "DLD's updated 2026 off-plan auction framework changes buyer eligibility, escrow verification, and bid-to-purchase ratios. Learn what to capture in lead qualification flows and how AURO's multi-agent system applies the new compliance checks automatically."
+  },
+  {
     "slug": "gpt-live-voice-models-real-estate-lead-qualification-2026",
     "title": "GPT-Live Voice Models and the New Standard for Real Estate Lead Qualification in Dubai",
     "excerpt": "OpenAI's latest GPT-Live voice models have closed the gap between human and AI phone conversations. For Dubai real estate teams handling 60% international inquiries, this changes what's possible in lead qualification overnight.",
