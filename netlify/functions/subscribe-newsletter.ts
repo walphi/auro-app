@@ -83,7 +83,7 @@ export const handler: Handler = async (event) => {
                             <div style="max-width:560px;margin:0 auto;background:#0b0b0bed;border:1px solid #333;padding:40px;">
 
                                 <!-- brandmark (hosted logo - bg transparent so it inherits email card #0b0b0bed) -->
-                                <img src="https://auroapp.com/auro-logo-email.png" alt="AURO" width="140" style="display:block;border:0;outline:none;margin:0 0 24px 0;">
+                                <img src="https://auroapp.com/auro-logo-email.png" alt="AURO" width="120" style="display:block;border:0;outline:none;margin:0 0 24px 0;">
                                 <div style="height:1px;background:#333;margin:0 0 28px 0;"></div>
 
                                 <p style="margin:0 0 6px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// WELCOME</p>
@@ -91,11 +91,11 @@ export const handler: Handler = async (event) => {
                                 <h1 style="margin:0 0 16px 0;color:#f4f4f4;font-size:30px;font-style:italic;font-family:Georgia,'Times New Roman',serif;font-weight:normal;line-height:1.25;">You're in.</h1>
 
                                 <p style="margin:0 0 14px 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Hi ${name},</p>
-                                <p style="margin:0 0 14px 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Thanks for subscribing to <strong style="color:#ffffff;">AURO Insights</strong>. A curated digest lands in your inbox every <strong style="color:#ffffff;">Monday and Thursday at 9am GST</strong> &mdash; Dubai real estate signals, AI lead nurturing patterns, and the operational moves we're seeing work.</p>
+                                <p style="margin:0 0 14px 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Thanks for subscribing to <strong style="color:#ffffff;">AURO Insights</strong>. A curated digest lands in your inbox on the <strong style="color:#ffffff;">1st &amp; 15th of each month at 9am GST</strong> &mdash; Dubai real estate signals, AI lead nurturing patterns, and the operational moves we're seeing work.</p>
                                 <p style="margin:18px 0 0 0;color:#aaaaaa;font-size:15px;line-height:1.65;">Stay ahead of the curve.<span aria-hidden="true">&nbsp;🚀</span></p>
 
                                 <p style="margin:32px 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// NEXT</p>
-                                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Your first digest arrives this Thursday &mdash; or next Monday if you signed up mid-week.<span aria-hidden="true">&nbsp;📅</span></p>
+                                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Your first digest arrives on the 1st &mdash; or the 15th, whichever comes first.<span aria-hidden="true">&nbsp;📅</span></p>
 
                                 <div style="height:1px;background:#333;margin:32px 0 16px 0;"></div>
                                 <p style="margin:0;color:#666;font-size:11px;line-height:1.5;">If this wasn't you, ignore this email &mdash; your address won't be added.</p>

@@ -71,7 +71,7 @@ function buildDigestEmail(articles: Article[]): string {
             <div style="max-width:560px;margin:0 auto;background:#0b0b0bed;border:1px solid #333;padding:40px;">
 
                 <!-- brandmark (hosted logo - bg transparent so it inherits email card #0b0b0bed) -->
-                <img src="https://auroapp.com/auro-logo-email.png" alt="AURO" width="140" style="display:block;border:0;outline:none;margin:0 0 24px 0;">
+                <img src="https://auroapp.com/auro-logo-email.png" alt="AURO" width="120" style="display:block;border:0;outline:none;margin:0 0 24px 0;">
                 <div style="height:1px;background:#333;margin:0 0 28px 0;"></div>
 
                 <p style="margin:0 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// DIGEST &middot; ${shortDate}</p>
@@ -85,7 +85,7 @@ function buildDigestEmail(articles: Article[]): string {
                 ${articleList}
 
                 <p style="margin:32px 0 4px 0;color:#D4FF00;font-size:11px;letter-spacing:.2em;font-family:'Courier New',monospace;text-transform:uppercase;">// NEXT</p>
-                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Next digest lands Monday at 9am GST.<span aria-hidden="true">&nbsp;📅</span></p>
+                <p style="margin:0;color:#aaaaaa;font-size:14px;line-height:1.6;">Next digest lands on the 1st — or the 15th — at 9am GST.<span aria-hidden="true">&nbsp;📅</span></p>
 
                 <div style="height:1px;background:#333;margin:32px 0 16px 0;"></div>
                 <p style="margin:0;color:#666;font-size:11px;line-height:1.5;">
