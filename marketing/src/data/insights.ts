@@ -13,7 +13,7 @@ export const allInsights: Insight[] = [
   publishedAt: "2026-07-13",
   updatedAt: "2026-07-13",
   readMinutes: 9,
-  heroImage: "https://images.pexels.com/photos/8961148/pexels-photo-8961148.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+  heroImage: "https://images.pexels.com/photos/36813102/pexels-photo-36813102.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
   heroAlt: `Real estate professional reviewing off-plan property sale documents with buyers, representing Dubai Land Department regulatory compliance`,
   keyStat: {
     value: "73%",
