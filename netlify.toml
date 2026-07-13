@@ -47,6 +47,11 @@
   to = "/sites/index.html"
   status = 200
 
+[[redirects]]
+  from = "/api/subscribe"
+  to = "/.netlify/functions/subscribe-newsletter"
+  status = 200
+
 [[edge_functions]]
 function = "intents"
 path = "/edge/intents"

@@ -96,6 +96,7 @@ const Sidebar = ({ activeView, setActiveView, currentTenant, allTenants, onTenan
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', view: 'dashboard' },
         { icon: Users, label: 'Leads', view: 'leads' },
+        { icon: Mail, label: 'Subscribers', view: 'subscribers' },
         { icon: MessageSquare, label: 'Messages', view: 'messages' },
         { icon: CalendarIcon, label: 'Calendar', view: 'calendar' },
         { icon: Book, label: 'Knowledge Base', view: 'knowledge' },
@@ -227,6 +228,7 @@ const BottomNav = ({ activeView, setActiveView }) => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dash', view: 'dashboard' },
         { icon: Users, label: 'Leads', view: 'leads' },
+        { icon: Mail, label: 'Subs', view: 'subscribers' },
         { icon: MessageSquare, label: 'Chat', view: 'messages' },
         { icon: CalendarIcon, label: 'Cal', view: 'calendar' },
         { icon: Book, label: 'KB', view: 'knowledge' },
@@ -260,6 +262,85 @@ const BottomNav = ({ activeView, setActiveView }) => {
                 })}
             </div>
         </nav>
+    );
+};
+
+// Subscribers List Component
+const SubscribersList = () => {
+    const [subscribers, setSubscribers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSubscribers = async () => {
+            const { data, error } = await supabase
+                .from('subscribers')
+                .select('*')
+                .order('subscribed_at', { ascending: false });
+            if (!error && data) {
+                setSubscribers(data);
+            }
+            setLoading(false);
+        };
+        fetchSubscribers();
+    }, []);
+
+    const total = subscribers.length;
+    const active = subscribers.filter(s => s.status === 'active').length;
+
+    if (loading) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-[#D4FF00] border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex-1 flex flex-col p-6 overflow-auto">
+            <div className="max-w-5xl w-full mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                    <h1 className="text-xl font-bold font-mono">Subscribers</h1>
+                    <div className="flex gap-6 text-xs font-mono text-neutral-400">
+                        <span>{total} total</span>
+                        <span className="text-[#D4FF00]">{active} active</span>
+                    </div>
+                </div>
+                <div className="bg-[#111] border border-[#333] overflow-hidden">
+                    {subscribers.length === 0 ? (
+                        <div className="p-8 text-center text-neutral-500 text-sm font-mono">No subscribers yet.</div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs font-mono">
+                                <thead>
+                                    <tr className="border-b border-[#333] bg-[#0a0a0a]">
+                                        <th className="text-left px-4 py-3 text-neutral-500 font-bold uppercase tracking-wider">Name</th>
+                                        <th className="text-left px-4 py-3 text-neutral-500 font-bold uppercase tracking-wider">Email</th>
+                                        <th className="text-left px-4 py-3 text-neutral-500 font-bold uppercase tracking-wider">Subscribed</th>
+                                        <th className="text-left px-4 py-3 text-neutral-500 font-bold uppercase tracking-wider">Status</th>
+                                        <th className="text-left px-4 py-3 text-neutral-500 font-bold uppercase tracking-wider">Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {subscribers.map((sub, i) => (
+                                        <tr key={sub.id} className={`border-b border-[#222] hover:bg-[#0a0a0a]/50 transition-colors ${i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`}>
+                                            <td className="px-4 py-3 text-neutral-200 font-semibold">{sub.name}</td>
+                                            <td className="px-4 py-3 text-neutral-400">{sub.email}</td>
+                                            <td className="px-4 py-3 text-neutral-500">{new Date(sub.subscribed_at).toLocaleDateString()}</td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${sub.status === 'active' ? 'text-[#D4FF00] bg-[#D4FF00]/10' : 'text-red-400 bg-red-400/10'}`}>
+                                                    {sub.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-neutral-500">{sub.source}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 };
 
@@ -1261,6 +1342,8 @@ function CRMApp() {
                         onBack={() => setSelectedLeadId(null)}
                     />
                 );
+            case 'subscribers':
+                return <SubscribersList />;
             case 'knowledge':
                 return <KnowledgeBaseAdmin tenantId={currentTenant?.id} />;
             case 'leads':

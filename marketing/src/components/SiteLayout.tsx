@@ -173,11 +173,46 @@ export function SiteLayout() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="text-[9px] uppercase tracking-[3px] font-mono text-neutral-500 font-semibold select-none">Connect</div>
-            <div className="text-neutral-400 font-mono text-xs cursor-default flex flex-col gap-1.5">
-              <span>// Dubai, United Arab Emirates</span>
-              <a href="mailto:pw@auroapp.com" className="hover:text-[#D4FF00] transition-colors text-[#D4FF00] underline">pw@auroapp.com</a>
-              <a href="https://www.linkedin.com/company/auro-app/" target="_blank" rel="noopener noreferrer" className="hover:text-[#D4FF00] transition-colors text-neutral-400">// LinkedIn</a>
+            <div className="text-[9px] uppercase tracking-[3px] font-mono text-neutral-500 font-semibold select-none">Newsletter</div>
+            <p className="text-[10px] text-neutral-500 font-mono leading-relaxed">Get AI insights & Dubai real estate updates twice a week.</p>
+            <form id="subscribe-form-sitelayout" className="flex flex-col gap-2" onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const name = (form.elements.namedItem('name') as HTMLInputElement).value;
+              const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+              const msg = form.querySelector('.sub-msg') as HTMLElement;
+              fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, source: 'footer' })
+              }).then(r => r.json()).then(data => {
+                if (data.success) {
+                  msg.textContent = 'Thanks for subscribing!';
+                  msg.className = 'sub-msg text-[10px] text-[#D4FF00] font-mono mt-1';
+                  form.querySelector('input')?.focus();
+                } else {
+                  msg.textContent = data.error === 'Already subscribed' ? 'Already subscribed, thank you!' : 'Something went wrong. Try again.';
+                  msg.className = 'sub-msg text-[10px] text-neutral-400 font-mono mt-1';
+                }
+              }).catch(() => {
+                msg.textContent = 'Network error. Please try again.';
+                msg.className = 'sub-msg text-[10px] text-red-400 font-mono mt-1';
+              });
+              form.reset();
+            }}>
+              <input type="text" name="name" placeholder="Your name" required
+                className="bg-[#111] border border-[#333] px-3 py-2 text-xs text-neutral-200 font-mono placeholder-neutral-600 focus:outline-none focus:border-[#D4FF00]/50 transition-colors" />
+              <input type="email" name="email" placeholder="Your email" required
+                className="bg-[#111] border border-[#333] px-3 py-2 text-xs text-neutral-200 font-mono placeholder-neutral-600 focus:outline-none focus:border-[#D4FF00]/50 transition-colors" />
+              <button type="submit"
+                className="bg-[#D4FF00] text-[#0a0a0a] text-xs font-bold font-mono px-3 py-2 hover:bg-[#b8e000] transition-colors">
+                Subscribe
+              </button>
+              <span className="sub-msg text-[10px] font-mono mt-1"></span>
+            </form>
+            <div className="text-neutral-500 font-mono text-[10px] flex flex-col gap-1 mt-2 pt-3 border-t border-[#222]">
+              <a href="mailto:pw@auroapp.com" className="hover:text-[#D4FF00] transition-colors">pw@auroapp.com</a>
+              <a href="https://www.linkedin.com/company/auro-app/" target="_blank" rel="noopener noreferrer" className="hover:text-[#D4FF00] transition-colors">// LinkedIn</a>
             </div>
           </div>
         </div>
