@@ -516,8 +516,8 @@ export const handler: Handler = async (event) => {
     
     // --- TRANSPORT RELIABILITY: Time budgets for Twilio/Netlify timeouts ---
     // Netlify free tier is 10s, Twilio is 15s. We bump the budget to allow cold starts to finish.
-    const MAX_PROCESSING_MS = 9000;  // Hard limit: 9s (1s buffer before Netlify 10s timeout)
-    const GEMINI_DEADLINE_MS = 7500; // Must start Gemini by 7.5s
+    const MAX_PROCESSING_MS = 9500;  // Hard limit: 9.5s (0.5s buffer before Netlify 10s timeout)
+    const GEMINI_DEADLINE_MS = 8500; // Must start Gemini by 8.5s
     const getElapsedMs = () => Date.now() - handlerStart;
 
     

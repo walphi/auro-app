@@ -13,8 +13,8 @@ export const insightsMeta: InsightMeta[] = [
     "publishedAt": "2026-07-13",
     "updatedAt": "2026-07-13",
     "readMinutes": 9,
-    "heroImage": "https://images.pexels.com/photos/8721319/pexels-photo-8721319.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Dubai skyline with new development towers under construction representing off-plan property market",
+    "heroImage": "https://images.pexels.com/photos/8961148/pexels-photo-8961148.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate professional reviewing off-plan property sale documents with buyers, representing Dubai Land Department regulatory compliance",
     "keyStat": {
       "value": "73%",
       "label": "of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows"
