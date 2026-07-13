@@ -1371,7 +1371,7 @@ export default function App() {
               <input type="email" name="email" placeholder="Your email" required
                 className="bg-[#111] border border-[#333] px-3 py-2 text-xs text-neutral-200 font-mono placeholder-neutral-600 focus:outline-none focus:border-[#D4FF00]/50 transition-colors" />
               <button type="submit"
-                className="bg-[#D4FF00] text-[#0a0a0a] text-xs font-bold font-mono px-3 py-2 hover:bg-[#b8e000] transition-colors uppercase">
+                className="bg-[#D4FF00] text-[#0a0a0a] text-xs font-bold font-mono px-3 py-2 hover:bg-[#b8e000] transition-colors uppercase tracking-widest">
                 SUBSCRIBE
               </button>
               <span className="sub-msg text-[10px] font-mono mt-1"></span>
