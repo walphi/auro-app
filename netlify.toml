@@ -51,6 +51,7 @@
   from = "/api/subscribe"
   to = "/.netlify/functions/subscribe-newsletter"
   status = 200
+  force = true
 
 [[edge_functions]]
 function = "intents"
