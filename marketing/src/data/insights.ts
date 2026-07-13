@@ -14,7 +14,7 @@ export const allInsights: Insight[] = [
   updatedAt: "2026-07-13",
   readMinutes: 9,
   heroImage: "https://images.pexels.com/photos/36813102/pexels-photo-36813102.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-  heroAlt: `Real estate professional reviewing off-plan property sale documents with buyers, representing Dubai Land Department regulatory compliance`,
+  heroAlt: `Dubai skyline at golden hour featuring Sheikh Zayed Road towers and Burj Khalifa, representing the scale of the 2026 DLD off-plan auction regulation framework`,
   keyStat: {
     value: "73%",
     label: `of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows`,
