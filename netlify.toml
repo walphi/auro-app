@@ -4,7 +4,6 @@
 
 [functions]
   directory = "netlify/functions"
-  version = "v2"
 
 [functions.chat-bridge]
   schedule = "*/2 * * * *"
