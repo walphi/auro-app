@@ -21,7 +21,7 @@ function HeroCard({ insight }: { insight: Insight }) {
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/35 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/75 to-[#0a0a0a]/20" />
         <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-10">
           <span className="inline-block text-[8px] font-mono text-[#D4FF00] uppercase tracking-[0.3em] bg-[#0a0a0a]/70 px-2 py-1 mb-4">
             {INSIGHT_CATEGORY_LABELS[insight.category]}
