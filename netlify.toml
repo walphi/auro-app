@@ -6,7 +6,7 @@
   directory = "netlify/functions"
 
 [functions.chat-bridge]
-  schedule = "@every 2m"
+  schedule = "*/2 * * * *"
 
 [[redirects]]
   from = "/property-image/:id/:index"
