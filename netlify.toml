@@ -5,6 +5,9 @@
 [functions]
   directory = "netlify/functions"
 
+[functions.chat-bridge]
+  schedule = "@every 2m"
+
 [[redirects]]
   from = "/property-image/:id/:index"
   to = "/.netlify/functions/image-proxy?listingId=:id&index=:index"
