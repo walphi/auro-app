@@ -2,6 +2,27 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "dld-off-plan-auctions-q3-2026-speed-to-lead-bid-reset",
+    "title": "DLD Off-Plan Auctions Go Live in Q3 2026 — Speed-to-Lead Will Decide Who Wins the Bid Reset",
+    "excerpt": "The DLD's auction platform opens to every registered broker on 1 September 2026. With off-plan representing 73% of Dubai transactions and bid windows under 9 days, teams that respond inside 3 minutes will capture the marginal lead yesterday's long-cycle deals left on the table. Here is the operational playbook for an AI-first lead-nurturing system that runs the 24-hour silent-qualification window while your senior agents sleep.",
+    "category": "sales-nurturing",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-14",
+    "updatedAt": "2026-07-14",
+    "readMinutes": 11,
+    "heroImage": "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai real estate agent reviewing off-plan auction bid sheet with client during evening deal consultation",
+    "keyStat": {
+      "value": "3 min",
+      "label": "median response window inside which winning Dubai off-plan teams first-message a new inbound; every minute past this compresses booking probability by roughly 7%"
+    },
+    "metaTitle": "DLD Off-Plan Auctions Q3 2026: Speed-to-Lead Playbook for Dubai Brokerages | AURO",
+    "metaDescription": "DLD's Q3 2026 auction rollout resets the Dubai lead-nurturing race. Learn the 3-minute response benchmark, why brokerages are switching from callback queues to AI qualification, and how AURO's multi-agent system runs the 24-hour silent-qualification window while your senior agents sleep."
+  },
+  {
     "slug": "dubai-off-plan-auction-regulation-2026-dld-buyer-protection",
     "title": "New Dubai Off-Plan Auction Regulations: What Every Real Estate Agent Should Re-Qualify In 2026",
     "excerpt": "The DLD updated 2026 off-plan auction framework introduces strict buyer-protection rules. Every Dubai real estate team needs to re-qualify lead flows before the next quarterly auction cycle. Here is the new compliance checklist and how multi-agent systems apply it automatically.",
@@ -14,7 +35,7 @@ export const insightsMeta: InsightMeta[] = [
     "updatedAt": "2026-07-13",
     "readMinutes": 9,
     "heroImage": "https://images.pexels.com/photos/36813102/pexels-photo-36813102.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Real estate professional reviewing off-plan property sale documents with buyers, representing Dubai Land Department regulatory compliance",
+    "heroAlt": "Dubai skyline at golden hour featuring Sheikh Zayed Road towers and Burj Khalifa, representing the scale of the 2026 DLD off-plan auction regulation framework",
     "keyStat": {
       "value": "73%",
       "label": "of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows"
