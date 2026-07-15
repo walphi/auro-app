@@ -1,6 +1,28 @@
 import type { Insight } from "../types/content.ts";
 
 export const allInsights: Insight[] = [
+  {
+    slug: "2026-07-15-auro-daily",
+    title: "Dubai Property Boom",
+    excerpt: "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. This isn't merely a shift in volume; it's",
+    category: "real-estate-marketing",
+    author: "Phillip Walsh",
+    authorRole: "Founder",
+    authorImage: "/team/phillip-profile.jpg",
+    authorLink: "https://www.linkedin.com/in/phillipwalsh/",
+    publishedAt: "2026-07-15",
+    updatedAt: "2026-07-15",
+    readMinutes: 2,
+    heroImage: "https://images.pexels.com/photos/1687678/pexels-photo-1687678.jpeg?w=1600&auto=compress&cs=tinysrgb&dpr=2",
+    heroAlt: "Dubai real-estate market backdrop",
+    keyStat: { value: "Daily", label: "Insight" },
+    metaTitle: "Dubai Property Boom",
+    metaDescription: "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. This isn't merely a shift in volume; it's",
+    sections: [
+      {"type": "p", "text": "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. This isn't merely a shift in volume; it's"},    ],
+    internalLinks: [{ label: "How it works", to: "/#how-it-works" }],
+  },
+
 {
   slug: "whatsapp-first-touch-dubai-off-plan-lead-qualification-multi-agent",
   title: `WhatsApp Is the First Touch: Why Dubai Off-Plan Qualification Lives in a Chat Thread, Not a Phone Queue`,
