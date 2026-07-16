@@ -2,6 +2,28 @@ import type { Insight } from "../types/content.ts";
 
 export const allInsights: Insight[] = [
   {
+    slug: "2026-07-16-auro-daily",
+    title: "Dubai Property:",
+    excerpt: "Dubai's booming property landscape is undergoing a profound shift. A surge in digital inquiries and discerning buyers means passive lead conversion is over. For agency founders, this is a stark reality: simply generating leads won't secure market share.",
+    category: "real-estate-marketing",
+    author: "Phillip Walsh",
+    authorRole: "Founder",
+    authorImage: "/team/phillip-profile.jpg",
+    authorLink: "https://www.linkedin.com/in/phillipwalsh/",
+    publishedAt: "2026-07-16",
+    updatedAt: "2026-07-16",
+    readMinutes: 2,
+    heroImage: "https://images.pexels.com/photos/1700159/pexels-photo-1700159.jpeg?w=1600&auto=compress&cs=tinysrgb&dpr=2",
+    heroAlt: "Dubai real-estate market backdrop",
+    keyStat: { value: "Daily", label: "Insight" },
+    metaTitle: "Dubai Property:",
+    metaDescription: "Dubai's booming property landscape is undergoing a profound shift. A surge in digital inquiries and discerning buyers means passive lead conversion is over. For agency founders, this is a stark reality: simply generating leads won't secure market share.",
+    sections: [
+      {"type": "p", "text": "Dubai's booming property landscape is undergoing a profound shift. A surge in digital inquiries and discerning buyers means passive lead conversion is over. For agency founders, this is a stark reality: simply generating leads won't secure market share."},    ],
+    internalLinks: [{ label: "How it works", to: "/#how-it-works" }],
+  },
+
+  {
     slug: "2026-07-15-auro-daily",
     title: "Dubai Property Boom",
     excerpt: "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. This isn't merely a shift in volume; it's",
