@@ -2,6 +2,27 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "whatsapp-first-touch-dubai-off-plan-lead-qualification-multi-agent",
+    "title": "WhatsApp Is the First Touch: Why Dubai Off-Plan Qualification Lives in a Chat Thread, Not a Phone Queue",
+    "excerpt": "Dubai real estate buyers send their first message on WhatsApp 82% of the time before they ever dial a number. With the DLD auction window compressing qualification from 90 days to 9, the teams that capture the five eligibility data points inside that first WhatsApp conversation — autonomously, multilingually, within seconds — will own the bid pipeline. Here is the operational architecture for WhatsApp-first multi-agent lead qualification.",
+    "category": "lead-nurturing-automation",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-16",
+    "updatedAt": "2026-07-16",
+    "readMinutes": 9,
+    "heroImage": "https://images.pexels.com/photos/7652187/pexels-photo-7652187.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai real estate agent managing WhatsApp messages on smartphone showing property inquiries and multi-agent AI responses",
+    "keyStat": {
+      "value": "82%",
+      "label": "of Dubai real-estate buyer inquiries begin on WhatsApp before any other channel — making the chat thread the primary qualification surface, not the phone call or the form fill"
+    },
+    "metaTitle": "WhatsApp Multi-Agent Lead Qualification for Dubai Off-Plan Auctions | AURO",
+    "metaDescription": "Dubai's DLD auction cadence compresses qualification from 90 days to 9. Learn why WhatsApp-first multi-agent qualification captures the five eligibility data points inside the first conversation, and how AURO's chat-and-voice agents handle the 24/7 bid pipeline autonomously."
+  },
+  {
     "slug": "dld-off-plan-auctions-q3-2026-speed-to-lead-bid-reset",
     "title": "DLD Off-Plan Auctions Go Live in Q3 2026 — Speed-to-Lead Will Decide Who Wins the Bid Reset",
     "excerpt": "The DLD's auction platform opens to every registered broker on 1 September 2026. With off-plan representing 73% of Dubai transactions and bid windows under 9 days, teams that respond inside 3 minutes will capture the marginal lead yesterday's long-cycle deals left on the table. Here is the operational playbook for an AI-first lead-nurturing system that runs the 24-hour silent-qualification window while your senior agents sleep.",
