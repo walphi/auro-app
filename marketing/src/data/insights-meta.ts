@@ -2,6 +2,27 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "dubai-agency-pipeline-bottleneck-2026",
+    "title": "Dubai Real Estate Agencies Are Losing 60% of Their Pipeline — Here Is the Fix",
+    "excerpt": "A recent study reveals a staggering truth about the Dubai real estate market: a significant 85% of online property inquiries in the emirate are not receiving a first response within the critical 5-minute window. This alarming statistic isn't just a minor operational hiccup; it re",
+    "category": "lead-nurturing",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-17",
+    "updatedAt": "2026-07-17",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai real estate agency pipeline analysis",
+    "keyStat": {
+      "value": "60%",
+      "label": "of inbound leads never receive a response within 5 minutes in Dubai real estate agencies (2026 industry benchmark)"
+    },
+    "metaTitle": "Dubai Real Estate Agencies Are Losing 60% of Their Pipeline ",
+    "metaDescription": "A recent study reveals a staggering truth about the Dubai real estate market: a significant 85% of online property inquiries in the emirate are not receiving a first response within the critical 5-minute window. This alarming statistic isn't just a minor operational hiccup; it re"
+  },
+  {
     "slug": "whatsapp-first-touch-dubai-off-plan-lead-qualification-multi-agent",
     "title": "WhatsApp Is the First Touch: Why Dubai Off-Plan Qualification Lives in a Chat Thread, Not a Phone Queue",
     "excerpt": "Dubai real estate buyers send their first message on WhatsApp 82% of the time before they ever dial a number. With the DLD auction window compressing qualification from 90 days to 9, the teams that capture the five eligibility data points inside that first WhatsApp conversation — autonomously, multilingually, within seconds — will own the bid pipeline. Here is the operational architecture for WhatsApp-first multi-agent lead qualification.",
