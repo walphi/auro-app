@@ -15,6 +15,7 @@ const StaticSeoPage = lazy(() => import("./pages/StaticSeoPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const WhatsAppAgent = lazy(() => import("./pages/WhatsAppAgent.tsx"));
 const ChristiesBriefPage = lazy(() => import("./pages/ChristiesBriefPage.tsx"));
+const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 
 const staticSeoSlugs = [
   "lead-nurturing-definition",
@@ -102,6 +103,7 @@ const router = createBrowserRouter([
   {
     element: <SiteLayout />,
     children: [
+      { path: "dashboard", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper> },
       { path: "insights", element: <SuspenseWrapper><Insights /></SuspenseWrapper> },
       { path: "insights/:slug", element: <SuspenseWrapper><InsightDetail /></SuspenseWrapper> },
       { path: "faq", element: <SuspenseWrapper><Faq /></SuspenseWrapper> },

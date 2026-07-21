@@ -8,6 +8,7 @@ import type { InsightCategory, InsightMeta } from "../types/content.ts";
 
 const insightMeta: InsightMeta[] = allInsights
   .map(({ sections, internalLinks, ...meta }) => meta)
+  .filter((i) => i.status !== "draft")
   .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 const ALL = "all" as const;

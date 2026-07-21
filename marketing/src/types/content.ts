@@ -43,6 +43,7 @@ export interface Insight {
   authorLink?: string;
   publishedAt: string;
   updatedAt: string;
+  status?: "published" | "draft";
   readMinutes: number;
   heroImage: string;
   heroAlt: string;
