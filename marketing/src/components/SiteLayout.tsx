@@ -38,7 +38,7 @@ const sitewideJsonLd = {
   ],
 };
 
-export function SiteLayout() {
+export function SiteLayout({ children }: { children?: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -129,7 +129,7 @@ export function SiteLayout() {
       <BreadcrumbProvider>
         <Breadcrumbs />
         <main className="min-h-[60vh]">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </BreadcrumbProvider>
 

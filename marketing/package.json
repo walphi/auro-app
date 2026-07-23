@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=1981 --host=0.0.0.0",
-    "build": "npm run insights:meta && vite build && npm run sitemap && npm run rss",
+    "validate": "tsx src/scripts/validate-insights.ts",
+    "build": "npm run validate && npm run insights:meta && vite build && npm run sitemap && npm run rss",
     "preview": "vite preview",
     "insights:meta": "tsx src/scripts/generate-insights-meta.ts",
     "sitemap": "tsx src/scripts/generate-sitemap.ts",
