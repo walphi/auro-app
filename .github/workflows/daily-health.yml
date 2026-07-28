@@ -1,0 +1,27 @@
+name: Daily Health Check
+on:
+  schedule:
+    - cron: "15 23 * * *"
+  workflow_dispatch:
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marketing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marketing/package-lock.json
+      - run: npm ci
+      - name: Validate insights data
+        run: npx tsx src/scripts/validate-insights.ts
+      - name: Check homepage
+        run: curl -sf https://auroapp.com/ > /dev/null
+      - name: Check sitemap
+        run: curl -sf https://auroapp.com/sitemap.xml > /dev/null
+      - name: Check RSS feed
+        run: curl -sf https://auroapp.com/rss.xml > /dev/null
