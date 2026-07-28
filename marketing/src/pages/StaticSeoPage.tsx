@@ -76,6 +76,14 @@ const SLUG_TITLE_MAP: Record<string, { title: string; excerpt: string }> = {
   },
 };
 
+const ALWAYS_INDEX = new Set([
+  "real-estate-ai-agents",
+  "ai-in-real-estate",
+  "real-estate-ai-tools",
+  "ai-lead-generation-real-estate",
+  "best-ai-chatbot-2026",
+]);
+
 const slugToInsight = (slug: string) => allInsights.find((i) => i.slug === slug);
 
 interface StaticSeoPageProps {
@@ -96,7 +104,7 @@ export default function StaticSeoPage({ slug }: StaticSeoPageProps) {
         metaDescription={excerpt}
         canonicalUrl={insight ? canonicalUrl(`/insights/${insight.slug}/`) : canonicalUrl(`/${slug}/`)}
         ogType="article"
-        robots={insight ? "noindex, follow" : "index, follow"}
+        robots={ALWAYS_INDEX.has(slug) || !insight ? "index, follow" : "noindex, follow"}
       />
 
       <div className="px-6 md:px-10 lg:px-16 py-8 max-w-4xl mx-auto min-h-[50vh]">
