@@ -695,7 +695,7 @@ export const allInsights: Insight[] = [
       { type: "p", text: "What's Next plays a pivotal role in shaping Dubai real estate agency outcomes in 2026. AURO's agent evolution continues with deeper CRM integrations that will enable two-way data synchronization, enhanced multilingual support adding more languages and improving natural language understanding across dialects, and more sophisticated qualification algorithms leveraging the growing dataset of real estate conversations to predict lead intent with increasing accuracy." },
     ],
     internalLinks: [
-      { label: "AURO 2.0 Release", to: "/auro-2-0-release" },
+      { label: "AURO 2.0 Release", to: "/insights/auro-2-0-release" },
       { label: "Product Updates", to: "/product-updates" },
     ],
   },
@@ -980,7 +980,7 @@ export const allInsights: Insight[] = [
       { type: "p", text: "Get Early Access plays a pivotal role in shaping Dubai real estate agency outcomes in 2026. Interested in shaping AURO's roadmap? Book a demo to share your requirements and get early access to upcoming features. Your feedback directly influences our development priorities." },
     ],
     internalLinks: [
-      { label: "AURO 2.0 Release", to: "/auro-2-0-release" },
+      { label: "AURO 2.0 Release", to: "/insights/auro-2-0-release" },
       { label: "Request Demo", to: "/" },
     ],
   },
@@ -1062,7 +1062,7 @@ export const allInsights: Insight[] = [
       { type: "callout", title: "One-Click Booking", text: "Qualified leads can book a meeting in under 30 seconds — no phone calls, no email chains, no friction. AURO clients see booking completion rates of 85%+ and show rates above 90%." },
     ],
     internalLinks: [
-      { label: "Booking Automation Dubai", to: "/booking-automation-dubai" },
+      { label: "Booking Automation Dubai", to: "/insights/booking-automation-dubai" },
       { label: "Request Demo", to: "/" },
     ],
   },
@@ -1145,7 +1145,7 @@ export const allInsights: Insight[] = [
       { type: "callout", title: "Zero-Context-Loss Handover", text: "Every lead detail captured by AURO transfers to your CRM automatically. Sales agents start every conversation informed, and leads never have to repeat themselves." },
     ],
     internalLinks: [
-      { label: "Lead Qualification Automation", to: "/lead-qualification-automation" },
+      { label: "Lead Qualification Automation", to: "/insights/lead-qualification-automation" },
       { label: "How AURO Works", to: "/#how-it-works" },
     ],
   },
@@ -1799,7 +1799,7 @@ export const allInsights: Insight[] = [
     },
   ],
   internalLinks: [
-    { label: `Lead Qualification Automation`, to: "/lead-qualification-automation" },
+    { label: `Lead Qualification Automation`, to: "/insights/lead-qualification-automation" },
     { label: `How AURO's Multi-Agent System Works`, to: "/#how-it-works" },
     { label: `AI Voice Agents in Real Estate`, to: "/insights/ai-voice-agents-transform-real-estate-lead-qualification/" },
     { label: `GPT-Live Voice Models on Lead Qualification`, to: "/insights/gpt-live-voice-models-real-estate-lead-qualification-2026/" },
@@ -1985,7 +1985,7 @@ export const allInsights: Insight[] = [
     "internalLinks": [
       { label: "How AURO's Multi-Agent System Works", to: "/#how-it-works" },
       { label: "AI Voice Agents in Real Estate", to: "/insights/ai-voice-agents-transform-real-estate-lead-qualification/" },
-      { label: "Lead Qualification Automation", to: "/lead-qualification-automation" },
+      { label: "Lead Qualification Automation", to: "/insights/lead-qualification-automation" },
       { label: "Request a Demo", to: "/" }
     ]
 },
@@ -2149,7 +2149,7 @@ export const allInsights: Insight[] = [
       { type: "p", text: "AURO Automates the Entire Process plays a pivotal role in shaping Dubai real estate agency outcomes in 2026. AURO handles all six steps automatically, ensuring every lead receives the same thorough nurturing regardless of volume or time of day. The system processes leads 24/7 across all channels, maintains consistent quality regardless of how many conversations are active, and only involves human agents when a lead is fully qualified and ready for a meeting." },
     ],
     internalLinks: [
-      { label: "Nurturing Campaign Guide", to: "/nurturing-campaign-guide" },
+      { label: "Nurturing Campaign Guide", to: "/insights/nurturing-campaign-guide" },
       { label: "Lead Nurturing Definition", to: "/lead-nurturing-definition" },
     ],
   },
@@ -2274,7 +2274,7 @@ export const allInsights: Insight[] = [
       { type: "callout", title: "Qualify Without Interrogating", text: "AURO extracts qualification data through natural conversation, not intrusive surveys. Leads never feel like they are being interrogated — yet AURO captures budget, timeline, intent, and preferences from every conversation." },
     ],
     internalLinks: [
-      { label: "CRM Handover Automation", to: "/crm-handover-automation" },
+      { label: "CRM Handover Automation", to: "/insights/crm-handover-automation" },
       { label: "Booking Automation Dubai", to: "/booking-automation-dubai-real-estate" },
     ],
   },
@@ -2405,7 +2405,7 @@ export const allInsights: Insight[] = [
       { type: "p", text: "AURO's Multi Agent Architecture plays a pivotal role in shaping Dubai real estate agency outcomes in 2026. AURO's platform is built on a multi-agent architecture from the ground up. When you deploy AURO for your agency, the system automatically creates and manages agent pools optimized for your specific lead types, channels, and conversion goals. The orchestrator monitors performance continuously, adjusting routing rules based on which agents and messaging approaches drive the highest engagement and conversion." },
     ],
     internalLinks: [
-      { label: "AI Agent Orchestrator", to: "/ai-agent-orchestrator-real-estate" },
+      { label: "AI Agent Orchestrator", to: "/insights/ai-agent-orchestrator-real-estate" },
       { label: "How AURO Works", to: "/#how-it-works" },
     ],
   },
@@ -2477,7 +2477,7 @@ export const allInsights: Insight[] = [
     ],
     internalLinks: [
       { label: "What Is Lead Nurturing? Complete Guide", to: "/what-is-lead-nurturing" },
-      { label: "Sales Nurturing", to: "/sales-nurturing" },
+      { label: "Sales Nurturing", to: "/insights/sales-nurturing" },
       { label: "Lead Nurturing Strategy", to: "/lead-nurturing-strategy" },
     ],
   },
@@ -2518,7 +2518,7 @@ export const allInsights: Insight[] = [
       { type: "callout", title: "Off-Plan Nurturing at Scale", text: "AURO handles thousands of off-plan inquiries simultaneously, providing consistent, personalized nurturing that continues for weeks or months until the buyer is ready to book. Developers using AURO see off-plan engagement rates of 75%+ and significantly faster time-to-booking." },
     ],
     internalLinks: [
-      { label: "Developer Funnels", to: "/developer-funnels-dubai" },
+      { label: "Developer Funnels", to: "/insights/developer-funnels-dubai" },
       { label: "Luxury Real Estate Marketing", to: "/luxury-real-estate-marketing-dubai" },
     ],
   },
@@ -2683,7 +2683,7 @@ export const allInsights: Insight[] = [
       { type: "p", text: "Why Sales Nurturing Requires AI has become a central strategic question for Dubai real estate agencies in 2026. At scale, human teams cannot maintain step-by-step nurturing for every lead. AURO handles the entire process automatically, ensuring no lead is neglected and every interaction moves the prospect closer to a booking. The same 5-stage funnel runs consistently for every lead, 24/7, across every channel." },
     ],
     internalLinks: [
-      { label: "Nurturing Leads Meaning", to: "/nurturing-leads-meaning" },
+      { label: "Nurturing Leads Meaning", to: "/insights/nurturing-leads-meaning" },
       { label: "Lead Nurturing Strategy", to: "/lead-nurturing-strategy" },
     ],
   },

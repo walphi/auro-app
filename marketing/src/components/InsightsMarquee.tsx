@@ -138,7 +138,7 @@ export default function InsightsMarquee() {
         {/* CTA */}
         <div className="text-center mt-8 lg:mt-10">
           <Link
-            to="/insights/"
+            to="/insights"
             className="inline-block px-4 py-2 border border-[#333] text-[9px] font-mono text-neutral-400 hover:text-[#D4FF00] hover:border-[#D4FF00] uppercase tracking-wider transition-all duration-300"
           >
             View all insights →

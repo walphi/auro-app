@@ -5,6 +5,7 @@ import { SiteLayout } from "./components/SiteLayout.tsx";
 import { Seo } from "./components/Seo.tsx";
 import App from "./App.tsx";
 
+const ContactDemo = lazy(() => import("./pages/ContactDemo.tsx"));
 const Insights = lazy(() => import("./pages/Insights.tsx"));
 const InsightDetail = lazy(() => import("./pages/InsightDetail.tsx"));
 const Faq = lazy(() => import("./pages/Faq.tsx"));
@@ -108,6 +109,7 @@ const router = createBrowserRouter([
   {
     element: <SiteLayout />,
     children: [
+      { path: "contact/demo", element: <SuspenseWrapper><ContactDemo /></SuspenseWrapper> },
       { path: "dashboard", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper> },
       { path: "insights", element: <SuspenseWrapper><Insights /></SuspenseWrapper> },
       { path: "insights/:slug", element: <SuspenseWrapper><InsightDetail /></SuspenseWrapper> },

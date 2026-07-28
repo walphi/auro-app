@@ -178,7 +178,7 @@ export function SiteLayout({ children }: { children?: React.ReactNode }) {
             <Link to="/product-updates" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Product Updates</Link>
             <Link to="/about" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// About</Link>
             <Link to="/solutions" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Solutions</Link>
-            <a href="/dashboard/" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Login</a>
+            <a href="/dashboard" className="text-xs text-neutral-400 hover:text-[#D4FF00] transition-colors font-mono">// Login</a>
           </div>
 
           <div className="flex flex-col gap-4">
