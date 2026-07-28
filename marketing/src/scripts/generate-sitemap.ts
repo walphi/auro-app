@@ -66,35 +66,10 @@ ${urls.join("\n")}
 </urlset>`;
 }
 
-function imagesSitemapXml(): string {
-  const urls: string[] = [];
-
-  for (const insight of allInsights) {
-    if (insight.heroImage) {
-      urls.push(`  <url>
-    <loc>${SITE_URL}/insights/${insight.slug}/</loc>
-    <image:image>
-      <image:loc>${insight.heroImage}</image:loc>
-      <image:caption>${insight.heroAlt}</image:caption>
-    </image:image>
-  </url>`);
-    }
-  }
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${urls.join("\n")}
-</urlset>`;
-}
-
 const sitemapIndex = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>${SITE_URL}/sitemap.xml</loc>
-  </sitemap>
-  <sitemap>
-    <loc>${SITE_URL}/sitemap-images.xml</loc>
   </sitemap>
 </sitemapindex>`;
 
@@ -106,7 +81,6 @@ function writeToDirs(filename: string, content: string) {
 
 fs.mkdirSync(DIST, { recursive: true });
 writeToDirs("sitemap.xml", sitemapXml());
-writeToDirs("sitemap-images.xml", imagesSitemapXml());
 writeToDirs("sitemap-index.xml", sitemapIndex);
 
 console.log("Sitemaps generated.");
