@@ -48,6 +48,7 @@ export interface Insight {
   heroImage: string;
   heroAlt: string;
   keyStat: { value: string; label: string };
+  keyFindings?: string[];
   metaTitle: string;
   metaDescription: string;
   sections: ArticleSection[];

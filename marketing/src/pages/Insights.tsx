@@ -63,9 +63,10 @@ export default function Insights() {
           "@context": "https://schema.org",
           "@graph": [
             {
-              "@type": "Blog",
+              "@type": "CollectionPage",
               headline: "AURO Insights",
               description: "Expert insights on lead nurturing, AI marketing automation, and Dubai real estate.",
+              about: { "@type": "Thing", name: "Dubai Real Estate & AI Lead Nurturing" },
               publisher: { "@type": "Organization", name: "AURO" },
             },
             {

@@ -35,6 +35,24 @@ const sitewideJsonLd = {
         "query-input": "required name=search_term_string",
       },
     },
+    {
+      "@type": "SoftwareApplication",
+      name: "AURO",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description: "AI-first lead nurturing and qualification multi-agent system for Dubai real estate. Automates lead qualification, personalized outreach, and meeting booking via WhatsApp, email, and SMS.",
+      url: SITE_URL,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      author: {
+        "@type": "Organization",
+        name: "AURO Technologies",
+        url: SITE_URL,
+      },
+    },
   ],
 };
 

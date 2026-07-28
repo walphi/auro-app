@@ -16,10 +16,8 @@ export const SITE_ADDRESS = {
 };
 
 export const SITE_CONTACT = {
-  telephone: "",
   email: "pw@auroapp.com",
   contactType: "Sales",
-  whatsApp: "",
 };
 
 export const NAV_LINKS = [

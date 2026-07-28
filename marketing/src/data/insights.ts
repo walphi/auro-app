@@ -16,6 +16,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/35707773/pexels-photo-35707773.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai urban development and property market landscape",
     keyStat: { value: "78%", label: "Increase in Prime Property Transaction Value, Q1 2026 vs. Q1 2025" },
+    keyFindings: [
+      "Key metric: 78% — Increase in Prime Property Transaction Value, Q1 2026 vs. Q1 2025",
+      "78% — Increase in Prime Property Transaction Value, Q1 2026 vs. Q1 2025",
+      "In a market where new supply consistently meets robust demand, securing allocations and understanding developer launch c",
+      "Expert perspective: \"The sheer velocity of the Dubai market in 2026 demands a radical shift in how we engage prospects. G...\" — Omar Al Fardan, CEO of Elite Properties Group",
+    ],
     metaTitle: "Dubai Luxury Real Estate 2026 – Off-Plan Market & AI Lead Nurturing Insights for Agencies",
     metaDescription: "Explore the 2026 Dubai luxury real estate market, from record off-plan transactions to prime property appreciation. Discover how AI-powered platforms like AURO are essential for agencies to nurture high-value leads and capitalize on the emirate's sustained growth and investor influx.",
     sections: [
@@ -61,6 +67,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8292780/pexels-photo-8292780.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate office interior with city view through windows",
     keyStat: { value: "AED 2.3 Million", label: "Average transaction value for off-plan luxury units in Dubai, Q2 2026" },
+    keyFindings: [
+      "Key metric: AED 2.3 Million — Average transaction value for off-plan luxury units in Dubai, Q2 2026",
+      "18.5% — Year-on-year price appreciation for prime luxury properties in Dubai, Q2 2026 (Source: Knight Frank Dubai Prime Index)",
+      "For real estate agencies, off-plan sales offer compelling advantages: attractive commission structures, a consistent pip",
+      "Expert perspective: \"In today's Dubai market, closing a deal isn't just about finding a buyer; it's about building trust ...\" — — Omar Al Shamsi, Senior Real Estate Strategist",
+    ],
     metaTitle: "Dubai Real Estate Market 2026: Luxury, Off-Plan & Lead Nurturing Strategies",
     metaDescription: "Explore the mid-2026 Dubai real estate landscape with AURO's expert analysis. Understand the dynamics of luxury and off-plan segments, investor profiles, and the vital role of AI-driven lead nurturing for agencies aiming to thrive in a competitive, high-value market.",
     sections: [
@@ -108,6 +120,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/31640028/pexels-photo-31640028.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai waterfront cityscape with modern residential towers",
     keyStat: { value: "28%", label: "Year-on-year increase in Dubai's ultra-luxury residential transactions by value in H1 2026" },
+    keyFindings: [
+      "Key metric: 28% — Year-on-year increase in Dubai's ultra-luxury residential transactions by value in H1 2026",
+      "AED 4,800 — Average price per square foot for prime luxury properties on Palm Jumeirah in Q2 2026",
+      "High-value luxury leads are often fewer in number but require exponentially more sophisticated, nuanced, and persistent ",
+      "Expert perspective: \"In the current Dubai market, an agent without sophisticated AI tools for lead nurturing is like a ca...\" — Sarah Al Hashmi, Senior Market Strategist, Dubai Luxury Group",
+    ],
     metaTitle: "Dubai Luxury Real Estate 2026: AI-Powered Lead Nurturing for Agents | AURO",
     metaDescription: "Explore the 2026 Dubai luxury real estate market with AURO. Learn how AI-driven lead nurturing strategies are crucial for agents to convert high-value leads amidst intense competition and soaring demand. Data-driven insights for Palm Jumeirah, Jumeirah Bay, and Emirates Hills.",
     sections: [
@@ -151,6 +169,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/26838249/pexels-photo-26838249.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai business district high-rise towers and financial centre",
     keyStat: { value: "AED 250 Billion", label: "Total transaction value in H1 2026, marking an 18% year-on-year increase." },
+    keyFindings: [
+      "Key metric: AED 250 Billion — Total transaction value in H1 2026, marking an 18% year-on-year increase.",
+      "AED 250 Billion — Total real estate transaction value recorded in Dubai during H1 2026, representing an impressive 18% increase compared to H1 2025. This figure underscores the market's robust health and investor confidence.",
+      "Today's ultra-luxury buyer in Dubai is not just acquiring real estate; they are investing in a lifestyle, a global hub, ",
+      "Expert perspective: \"The Dubai market has matured significantly. Buyers, especially at the luxury end, are incredibly sop...\" — Ahmed Al Maktoum, CEO, Elite Properties Dubai",
+    ],
     metaTitle: "Dubai Real Estate H1 2026 Insights – Luxury & Off-Plan Market Analysis | AURO",
     metaDescription: "Explore H1 2026 Dubai real estate trends: luxury sector growth, off-plan dominance, and the imperative of AI-powered lead nurturing for agencies. Data-driven insights from a senior Dubai real estate analyst for AURO.",
     sections: [
@@ -195,6 +219,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/31472687/pexels-photo-31472687.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Stunning high-angle view of the Burj Khalifa and modern Dubai skyline during the day",
     keyStat: { value: "28%", label: "Projected average price appreciation for prime luxury villas and branded residences in Dubai for H2 2026 – H1 2027, driven by sustained UHNWI influx and limited new supply in core areas." },
+    keyFindings: [
+      "Key metric: 28% — Projected average price appreciation for prime luxury villas and branded residences in Dubai for H2 2026 – H1 2027, driven by sustained UHNWI influx and limited new supply in core areas.",
+      "28% — Projected average price appreciation for prime luxury villas and branded residences in Dubai for H2 2026 – H1 2027, driven by sustained UHNWI influx and limited new supply in core areas.",
+      "Jumeirah Bay Island has emerged as a micro-market powerhouse within the luxury segment. Properties here, particularly br",
+      "Expert perspective: \"“The luxury market isn't just about new builds anymore. Savvy UHNWIs are equally keen on acquiring r...\" — — Maria Khan, Head of Luxury Sales, leading Dubai brokerage",
+    ],
     metaTitle: "Dubai Luxury Real Estate Market 2026-2027 Outlook – AI Insights for Agencies | AURO",
     metaDescription: "Explore the 2026-2027 Dubai luxury real estate market trends, UHNWI drivers, and how AI-powered platforms like AURO are revolutionizing lead nurturing and sales for top agencies. Data-driven analysis for strategic growth and sustained success in the luxury segment.",
     sections: [
@@ -248,6 +278,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/35705174/pexels-photo-35705174.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Burj Khalifa towering over downtown Dubai skyline at dusk",
     keyStat: { value: "28% YOY", label: "Growth in Dubai luxury transactions (Q1 2026, properties > AED 20M)" },
+    keyFindings: [
+      "Key metric: 28% YOY — Growth in Dubai luxury transactions (Q1 2026, properties > AED 20M)",
+      "28% YOY — Growth in Dubai luxury transactions (Q1 2026, properties > AED 20M)",
+      "In the off-plan segment, the window of opportunity is incredibly narrow. The first agency to establish meaningful contac",
+    ],
     metaTitle: "Dubai Luxury Real Estate 2026: Off-Plan Trends & AI Lead Nurturing Strategies for Agencies",
     metaDescription: "Explore Dubai's dynamic luxury and off-plan real estate market in 2026. Understand key growth drivers, transaction trends, and how AI-first lead nurturing platforms like AURO are essential for converting high-value prospects amidst increasing competition. Data-driven insights for Dubai real estate...",
     sections: [
@@ -293,6 +328,13 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/20337902/pexels-photo-20337902.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai cityscape with Burj Khalifa across the waterfront at sunset",
     keyStat: { value: "AED 125 Billion", label: "Total Dubai Real Estate Transaction Value, YTD July 2026" },
+    keyFindings: [
+      "Key metric: AED 125 Billion — Total Dubai Real Estate Transaction Value, YTD July 2026",
+      "AED 125 Billion — Total Dubai Real Estate Transaction Value, YTD July 2026",
+      "60% — Off-Plan Share of Total Sales Volume in Q2 2026",
+      "For savvy investors, off-plan projects continue to offer superior capital appreciation potential, particularly in early-",
+      "Expert perspective: \"“Dubai’s luxury market isn't just selling homes; it’s selling a curated lifestyle, an investment in ...\" — — Maria Khan, Head of Luxury Sales, Property Dynamics Group",
+    ],
     metaTitle: "Dubai Luxury Real Estate Mid-2026: Off-Plan Trends & Resale Opportunities | AURO",
     metaDescription: "Explore Dubai's luxury real estate market in mid-2026 with AURO. Understand off-plan dominance, resale scarcity, and how AI-powered lead nurturing is crucial for agents leveraging DLD Q2 2026 data and investor trends.",
     sections: [
@@ -343,6 +385,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/34025535/pexels-photo-34025535.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Sunrise view of Burj Khalifa and Dubai skyline from a curved road",
     keyStat: { value: "AED 210 Billion", label: "Total DLD Transaction Value YTD H1 2026" },
+    keyFindings: [
+      "Key metric: AED 210 Billion — Total DLD Transaction Value YTD H1 2026",
+      "AED 210 Billion — Total DLD Transaction Value YTD H1 2026, representing an 18% increase over H1 2025",
+      "Branded residences in Dubai are commanding a premium of 30-50% over comparable non-branded properties in the same locati",
+      "Expert perspective: \"“The market velocity in Dubai today means that a lead's value diminishes exponentially with every pa...\" — Anya Sharma, Head of Research, Property Insights Group",
+    ],
     metaTitle: "Dubai Real Estate Market Insights 2026 – Luxury, Off-Plan & Agency Strategies | AURO",
     metaDescription: "Explore the latest Dubai real estate analysis for mid-2026, focusing on luxury and off-plan market trends, global investment drivers, and critical strategies for agencies to thrive amidst record growth. Get data-driven insights for lead nurturing and conversion from AURO.",
     sections: [
@@ -394,6 +442,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/33363140/pexels-photo-33363140.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Burj Khalifa view from a balcony framed by chairs at dusk",
     keyStat: { value: "AED 125 Billion", label: "Total real estate transaction value recorded by DLD in Q2 2026, marking a 15% year-on-year increase." },
+    keyFindings: [
+      "Key metric: AED 125 Billion — Total real estate transaction value recorded by DLD in Q2 2026, marking a 15% year-on-year increase.",
+      "35,000 — Number of real estate transactions recorded by DLD in Q2 2026, showcasing broad market activity.",
+      "Global economic uncertainties are paradoxically driving HNWIs towards Dubai's luxury real estate. The emirate is perceiv",
+      "Expert perspective: \"“Dubai's off-plan market is not just about new inventory; it’s about a vision. Investors are buying ...\" — — Maria Al-Falah, Head of Sales, Azizi Developments",
+    ],
     metaTitle: "Dubai Real Estate Market Analysis Mid-2026 – Luxury & Off-Plan Insights for Agencies",
     metaDescription: "Explore the latest Dubai real estate trends in mid-2026, focusing on the luxury and off-plan market segments. Get data-driven insights on transaction volumes, price appreciation, investor inflows, and strategic growth areas from a senior analyst at AURO.",
     sections: [
@@ -435,6 +489,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/37166308/pexels-photo-37166308.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai urban development and property market landscape",
     keyStat: { value: "AED 105 Billion", label: "Total Q2 2026 off-plan transaction value in Dubai, marking a 28% YoY increase." },
+    keyFindings: [
+      "Key metric: AED 105 Billion — Total Q2 2026 off-plan transaction value in Dubai, marking a 28% YoY increase.",
+      "24% — Year-on-year growth in prime luxury property sales volume (units) in H1 2026 across Dubai.",
+      "Despite a surge in new project launches, the absorption rate for well-located, high-quality off-plan luxury units remain",
+      "Expert perspective: \"“The Dubai market isn't just hot; it's surgically precise. Buyers know what they want, and developer...\" — — Maria Al-Falah, Senior Analyst, Knight Frank Middle East",
+    ],
     metaTitle: "Dubai Luxury Real Estate 2026: Off-Plan Market & AI Lead Nurturing Insights for Agencies",
     metaDescription: "Unpack the latest 2026 trends in Dubai's luxury and off-plan real estate market. Discover how AI-powered lead nurturing platforms like AURO are revolutionizing client acquisition and conversion for agencies in a booming, high-value segment.",
     sections: [
@@ -482,6 +542,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/27277167/pexels-photo-27277167.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai waterfront cityscape with modern residential towers",
     keyStat: { value: "AED 112 Billion", label: "Total Value of Dubai Real Estate Transactions in Q2 2026 – a 32% increase year-on-year." },
+    keyFindings: [
+      "Key metric: AED 112 Billion — Total Value of Dubai Real Estate Transactions in Q2 2026 – a 32% increase year-on-year.",
+      "AED 112 Billion — Total Value of Dubai Real Estate Transactions in Q2 2026 – a 32% increase year-on-year, across 36,500 transactions.",
+      "In Dubai's off-plan market, speed is paramount. Agencies equipped to identify, qualify, and engage high-intent buyers wi",
+    ],
     metaTitle: "Dubai Real Estate 2026: Off-Plan & Luxury Sales Nurturing Strategies – AURO Insights",
     metaDescription: "Unpack the 2026 Dubai property market's robust performance, focusing on off-plan and ultra-luxury segments. Discover how sophisticated sales nurturing, powered by data and AI, is indispensable for agencies to capture and convert high-net-worth leads amidst record demand and evolving buyer...",
     sections: [
@@ -534,6 +599,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "Dubai's real estate market in 2026 is a spectacle of growth, with transaction volumes shattering records and international capital pouring in. Yet, beneath this glittering surface,...",
+      "AI-powered lead qualification and multi-agent system capabilities",
+    ],
     metaTitle: "The Conversion Conundrum: Why Dubai's Booming Real Estate Ma",
     metaDescription: "The Conversion Conundrum: Why Dubai's Booming Real Estate Market Demands a Ruthless Focus on Booked Meetings",
     sections: [
@@ -558,6 +628,10 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/1687678/pexels-photo-1687678.jpeg?w=1600&auto=compress&cs=tinysrgb&dpr=2",
     heroAlt: "Dubai real-estate market backdrop",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. Th...",
+    ],
     metaTitle: "Dubai Property Boom",
     metaDescription: "Dubai's property market has fundamentally shifted. A relentless surge in high-net-worth individuals and a definitive pivot to digital-first client acquisition mark this new era. This isn't merely a shift in volume; it's",
     sections: [
@@ -579,6 +653,10 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/1700159/pexels-photo-1700159.jpeg?w=1600&auto=compress&cs=tinysrgb&dpr=2",
     heroAlt: "Dubai real-estate market backdrop",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "Dubai's booming property landscape is undergoing a profound shift. A surge in digital inquiries and discerning buyers means passive lead conversion is over. For agency founders, th...",
+    ],
     metaTitle: "Dubai Property:",
     metaDescription: "Dubai's booming property landscape is undergoing a profound shift. A surge in digital inquiries and discerning buyers means passive lead conversion is over. For agency founders, this is a stark reality: simply generating leads won't secure market share.",
     sections: [
@@ -600,6 +678,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8847042/pexels-photo-8847042.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Professional team collaborating over documents in bright office",
     keyStat: { value: "200+", label: "improvements shipped in 2026" },
+    keyFindings: [
+      "Key metric: 200+ — improvements shipped in 2026",
+      "AURO's AI agents have undergone significant evolution since the platform's initial launch. What started as basic response automation has grown into a sophisticated multi-agent nurt...",
+      "This evolution reflects both advances in AI technology and deep learning from real-world deployment across Dubai's leading real estate agencies. Each version has incorporated feedb...",
+    ],
     metaTitle: "Agent Evolution — AURO AI Advances in 2026 | AURO",
     metaDescription: "The evolution of AURO's AI agents in 2026. From basic response automation to sophisticated multi-agent nurturing and qualification.",
     sections: [
@@ -631,6 +714,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8815821/pexels-photo-8815821.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Business professionals reviewing documents on a balcony",
     keyStat: { value: "300%", label: "more conversations handled with multi-agent orchestration" },
+    keyFindings: [
+      "Key metric: 300% — more conversations handled with multi-agent orchestration",
+      "1,248 — active conversations managed by AURO per pool",
+      "An AI agent orchestrator is the brain behind multi-agent lead nurturing systems. It manages pools of AI agents, routes conversations intelligently, maintains context across interac...",
+    ],
     metaTitle: "AI Agent Orchestrator — Multi-Agent Systems for Real Estate | AURO",
     metaDescription: "Learn how AI agent orchestrators manage multi-agent lead nurturing systems for Dubai real estate. Intelligent routing, pool management, and CRM handoff.",
     sections: [
@@ -665,6 +753,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/30530414/pexels-photo-30530414.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "AI interface on dark screen displaying digital communication technology",
     keyStat: { value: "40%", label: "faster lead conversion with AI marketing" },
+    keyFindings: [
+      "Key metric: 40% — faster lead conversion with AI marketing",
+      "40% — average improvement in lead conversion with AI marketing",
+      "AURO helps Dubai agencies respond to every inquiry instantly, nurture leads persistently across channels, and qualify pr",
+    ],
     metaTitle: "AI Marketing for Real Estate — Complete Guide 2026 | AURO",
     metaDescription: "AI marketing is transforming Dubai real estate. Learn how AI-powered lead nurturing, qualification, and booking automation help agencies convert more leads.",
     sections: [
@@ -735,6 +828,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/6949525/pexels-photo-6949525.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Business team collaborating over documents in modern office",
     keyStat: { value: "73%", label: "of real estate agencies investing in AI tools" },
+    keyFindings: [
+      "Key metric: 73% — of real estate agencies investing in AI tools",
+      "AURO combines engagement, nurturing, qualification, and booking into a single AI platform purpose-built for Dubai real e",
+      "The real estate technology landscape has transformed dramatically. AI marketing tools now handle everything from lead capture to meeting booking, and agencies that leverage these t...",
+    ],
     metaTitle: "AI Marketing Tools for Real Estate — Best Picks 2026 | AURO",
     metaDescription: "Explore the best AI marketing tools for real estate agents in Dubai. From lead nurturing to booking automation, find the right AI tools for your agency.",
     sections: [
@@ -778,6 +876,13 @@ export const allInsights: Insight[] = [
   "heroImage": "https://images.pexels.com/photos/8386434/pexels-photo-8386434.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
   "heroAlt": "AI voice agent interface on smartphone showing real estate conversation",
   "keyStat": { "value": "100x", "label": "faster lead response with AI voice agents vs human-only teams" },
+    keyFindings: [
+      "Key metric: 100x — faster lead response with AI voice agents vs human-only teams",
+      "3x — higher qualification rate with voice AI vs text-only chatbots",
+      "40% — increase in booked meetings for teams using AI voice qualification",
+      "AURO's multi-agent system handles voice qualification, WhatsApp nurturing, and CRM handoff in a single unified platform ",
+      "Expert perspective: \"Multi-agent systems don't just automate tasks — they replicate the division of labor that high-perfo...\" — AURO AI Research, 2026",
+    ],
   "metaTitle": "AI Voice Agents Transform Real Estate Lead Qualification 2026 | AURO",
   "metaDescription": "Discover how multi-agent AI systems and voice agents are automating real estate lead qualification in Dubai. Learn why 2026 is the year AI replaces manual follow-up.",
   "sections": [
@@ -822,6 +927,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/4427929/pexels-photo-4427929.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Professionals collaborating in a modern office setting",
     keyStat: { value: "2.0", label: "major version" },
+    keyFindings: [
+      "Key metric: 2.0 — major version",
+      "AURO 2.0 is available to all customers. Existing users receive the upgrade automatically. New users get AURO 2.0 from da",
+      "AURO 2.0 represents a major evolution of our lead nurturing platform. This release introduces multi-agent orchestration, persistent follow-up across channels, and intelligent CRM h...",
+    ],
     metaTitle: "AURO 2.0 — Multi-Agent Qualification Release Notes | AURO",
     metaDescription: "AURO 2.0 is live with multi-agent orchestration, persistent nurturing, and CRM handoff. Learn about the new features for Dubai real estate lead qualification.",
     sections: [
@@ -853,6 +963,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7433853/pexels-photo-7433853.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Business professionals working together in contemporary office",
     keyStat: { value: "Q2 2026", label: "next major release" },
+    keyFindings: [
+      "Key metric: Q2 2026 — next major release",
+      "AURO's product roadmap focuses on three strategic areas: deeper integrations with the real estate technology ecosystem, enhanced AI capabilities that improve qualification accuracy...",
+      "Our roadmap is shaped by direct feedback from Dubai real estate agencies using AURO every day. Every feature we build is driven by real-world requirements from agencies who rely on...",
+    ],
     metaTitle: "AURO Platform Roadmap — Upcoming Features | AURO",
     metaDescription: "The AURO platform roadmap. See what features are coming next for Dubai real estate lead nurturing, qualification, and booking automation.",
     sections: [
@@ -884,6 +999,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8729979/pexels-photo-8729979.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Family gathering around desk discussing documents during home meeting",
     keyStat: { value: "60%", label: "faster time-to-meeting with automation" },
+    keyFindings: [
+      "Key metric: 60% — faster time-to-meeting with automation",
+      "AURO + Cal.com reduces the booking process from hours or days to under 30 seconds. When a lead is qualified, they book d",
+      "Booking automation eliminates the back-and-forth of scheduling meetings. Instead of emailing, calling, and waiting for confirmation, the system handles the entire process — present...",
+    ],
     metaTitle: "Booking Automation Dubai — Streamline Real Estate Meetings | AURO",
     metaDescription: "Booking automation reduces the time between lead qualification and booked meeting. Learn how AURO helps Dubai real estate teams close meetings faster.",
     sections: [
@@ -920,6 +1040,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/37393078/pexels-photo-37393078.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Three professionals engaged in business discussion indoors",
     keyStat: { value: "80%", label: "faster booking with automation" },
+    keyFindings: [
+      "Key metric: 80% — faster booking with automation",
+      "Qualified leads can book a meeting in under 30 seconds — no phone calls, no email chains, no friction. AURO clients see ",
+      "Booking automation represents the final piece of the lead nurturing puzzle. After engaging, nurturing, and qualifying a lead, the system must make booking a meeting as frictionless...",
+    ],
     metaTitle: "Booking Automation Dubai Real Estate — AI Qualification | AURO",
     metaDescription: "Booking automation transforms lead qualification for Dubai real estate. Learn how AURO's AI qualifies leads and books meetings automatically via Cal.com.",
     sections: [
@@ -956,6 +1081,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/3611545/pexels-photo-3611545.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Modern architectural building with sleek glass design in Dubai",
     keyStat: { value: "+40%", label: "increase in booked meetings" },
+    keyFindings: [
+      "Key metric: +40% — increase in booked meetings",
+      "+40% — Booked meetings in 30 days",
+      "A mid-sized Dubai real estate agency was struggling to keep up with inbound lead volume. With 200+ weekly inquiries across WhatsApp, web, and property portals, their team of five a...",
+    ],
     metaTitle: "Case Study: +40% Booked Meetings with AURO | AURO",
     metaDescription: "A Dubai real estate agency increased booked meetings by 40% in the first month using AURO. Read the full case study on AI lead nurturing results.",
     sections: [
@@ -994,6 +1124,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7641825/pexels-photo-7641825.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Real estate agent discussing property details with clients",
     keyStat: { value: "100%", label: "context preserved at handoff" },
+    keyFindings: [
+      "Key metric: 100% — context preserved at handoff",
+      "Every lead detail captured by AURO transfers to your CRM automatically. Sales agents start every conversation informed, ",
+      "CRM handover is the critical moment when an AI-nurtured lead transitions to a human sales agent. Without proper handover, the lead has to repeat themselves, and the AI's nurturing ...",
+    ],
     metaTitle: "CRM Handover Automation — AI-to-Human Lead Transfer | AURO",
     metaDescription: "Automate CRM handover with full lead context. Learn how AURO transfers qualified leads with transcripts, scores, and preferences to your existing CRM.",
     sections: [
@@ -1029,6 +1164,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/20419510/pexels-photo-20419510.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Burj Al Arab sail-shaped hotel against Dubai coastline",
     keyStat: { value: "70%", label: "of developer leads require nurturing before booking" },
+    keyFindings: [
+      "Key metric: 70% — of developer leads require nurturing before booking",
+      "AURO automates the entire developer funnel from first inquiry to booked meeting, handling thousands of concurrent conver",
+      "Dubai property developers face a unique funnel challenge: high inquiry volume from international buyers, long consideration cycles, and the need to educate prospects who may be unf...",
+    ],
     metaTitle: "Developer Funnels Dubai — Convert Inquiries into Off-Plan Sales | AURO",
     metaDescription: "Sales funnel strategies for Dubai property developers. Learn how AI lead nurturing converts more off-plan inquiries into qualified meetings and sales.",
     sections: [
@@ -1069,6 +1209,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/29445834/pexels-photo-29445834.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "3 MIN — MEDIAN RESPONSE WINDOW INSIDE WHICH WINNING DUBAI OFF-PLAN TEAMS FIRST-MESSAGE A NEW INBOUND; EVERY MINUTE PAST THIS COMPRESSES BOOKING PROBABILITY BY ROUGHLY 7%",
+      "With auction windows averaging 9 days and buyer consideration cycles compressing to 72 hours, a team that responds insid",
+    ],
     metaTitle: "DLD Off-Plan Auctions Go Live in Q3 2026 \u2014 Speed-to-Lead Wil",
     metaDescription: "DLD Off-Plan Auctions Go Live in Q3 2026 \u2014 Speed-to-Lead Will Decide Who Wins the Bid Reset\nThe Dubai Land Department\\u2019s off-plan auction platform opens to every registered broker on 1 September 2026, turning the city\\u2019s already-fast property cycle into a real-time bidding engine. With off-p",
     sections: [
@@ -1109,6 +1254,12 @@ export const allInsights: Insight[] = [
     value: "3 min",
     label: `median response window inside which winning Dubai off-plan teams first-message a new inbound; every minute past this compresses booking probability by roughly 7%`,
   },
+    keyFindings: [
+      "Key metric: 3 min — median response window inside which winning Dubai off-plan teams first-message a new inbound; every minute past this compresses booking probability by roughly 7%",
+      "73% — of Dubai property transactions are now off-plan — meaning the auction cadence the DLD introduces in Q3 2026 reaches the dominant share of inbound Dubai real-estate lead flow",
+      "Inside an auction window the 9-day surface minus a 5-day minimum developer response lag leaves ~4 days for the broker to",
+      "Expert perspective: \"We stopped measuring speed-to-first-reply at the Dubai pilot level last quarter. What we now track i...\" — Head of Off-Plan brokerage, top-10 Dubai RERA firm (Q2 2026 DLD pilot cohort, anonymised counsel)",
+    ],
   metaTitle: `DLD Off-Plan Auctions Q3 2026: Speed-to-Lead Playbook for Dubai Brokerages | AURO`,
   metaDescription: `DLD's Q3 2026 auction rollout resets the Dubai lead-nurturing race. Learn the 3-minute response benchmark, why brokerages are switching from callback queues to AI qualification, and how AURO's multi-agent system runs the 24-hour silent-qualification window while your senior agents sleep.`,
   sections: [
@@ -1222,6 +1373,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/28350363/pexels-photo-28350363.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "90 seconds — Maximum lead response window required to pre-empt DMCC Index-informed buyer price objections on the first touch",
+      "On 1 August 2026, the Dubai Multi Commodities Centre will publish the first live benchmark of its DMCC Property Index, a price-and-volume transparency layer that exposes granular t...",
+    ],
     metaTitle: "DMCC Index --",
     metaDescription: "The DMCC Property Index Is Rewriting Dubai Real Estate Lead Qualification \u2014 Most Agencies Haven't Updated Their Funnel\nOn 1 August 2026, the Dubai Multi Commodities Centre will publish the first live benchmark of its DMCC Property Index, a price-and-volume transparency layer that exposes granular tr",
     sections: [
@@ -1257,6 +1413,10 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/4491949/pexels-photo-4491949.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "┊ review diff\na/articles/dubai-off-plan-ai-nurture-2026.md → b/articles/dubai-off-plan-ai-nurture-2026.md\n@@ -0,0 +1,61 @@\n+## The 9-Day Window: Why Dubai's Off-Plan Auction Cycle ...",
+    ],
     metaTitle: "Dubai",
     metaDescription: "\u250a review diff\na/articles/dubai-off-plan-ai-nurture-2026.md \u2192 b/articles/dubai-off-plan-ai-nurture-2026.md\n@@ -0,0 +1,61 @@\n+## The 9-Day Window: Why Dubai's Off-Plan Auction Cycle Makes Lead Nurture the Only Sales Strategy That Still Works\n+\n+On 1 September 2026, the Dubai Land Department opens its ",
     sections: [
@@ -1279,6 +1439,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/4471199/pexels-photo-4471199.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate agency pipeline analysis",
     keyStat: { value: "60%", label: "of inbound leads never receive a response within 5 minutes in Dubai real estate agencies (2026 industry benchmark)" },
+    keyFindings: [
+      "Key metric: 60% — of inbound leads never receive a response within 5 minutes in Dubai real estate agencies (2026 industry benchmark)",
+      "400% — Decrease in lead qualification odds beyond 10 minutes",
+      "Every minute a lead goes uncontacted, its conversion potential drops. After just one hour, the likelihood of conversion ",
+    ],
     metaTitle: "Dubai Real Estate Agencies Are Losing 60% of Their Pipeline ",
     metaDescription: "A recent study reveals a staggering truth about the Dubai real estate market: a significant 85% of online property inquiries in the emirate are not receiving a first response within the critical 5-minute window. This alarming statistic isn't just a minor operational hiccup; it re",
     sections: [
@@ -1321,6 +1486,13 @@ export const allInsights: Insight[] = [
   heroImage: "https://images.pexels.com/photos/3183183/pexels-photo-3183183.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
   heroAlt: `Dubai city skyline with modern architecture showing residential towers and urban landscape`,
   keyStat: { value: "AED 226B", label: `Total Dubai residential transaction value in H1 2026 — down 16% in volume but still marking one of the strongest half-years in the emirate's real estate history, with AI-augmented brokerages capturing disproportionate share` },
+    keyFindings: [
+      "Key metric: AED 226B — Total Dubai residential transaction value in H1 2026 — down 16% in volume but still marking one of the strongest half-years in the emirate's real estate history, with AI-augmented brokerages capturing disproportionate share",
+      "AED 226B — in Dubai residential transaction value recorded in H1 2026 — the second-highest half-year figure on record, driven by sustained retail and expatriate buyer demand even as institutional and ultra-wealthy capital pulled back",
+      "38% re-engagement — Automated WhatsApp nurturing sequences converted 38% of 30+ day dormant leads back to active consultation booking in Q2 2026 — compared to 12% re-engagement from brokerages using manual call-back nurture for the same lead cohort",
+      "The brokerages reporting the strongest H1 performance are not the ones with the biggest marketing budgets. They are the ",
+      "Expert perspective: \"We looked at our H1 2026 closed deals and found that 64% of them came from leads that had gone cold ...\" — Head of Operations, top-15 Dubai RERA brokerage (internal pipeline analysis, Q2 2026)",
+    ],
   metaTitle: `Dubai H1 2026 Housing Market: Sales Drop 16% but Nurture-Driven Brokerages Still Fill the Pipeline | AURO`,
   metaDescription: `Dubai residential transactions hit AED 226 billion in H1 2026 despite 16% volume decline and 7% price correction. Learn why AI-powered lead nurturing on WhatsApp separates the brokerages that maintain pipeline density from those that don't.`,
   sections: [
@@ -1463,6 +1635,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/4612749/pexels-photo-4612749.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "Industry average: 85% of inbound enquiries fail to convert to a site visit within 48 hours. This translates directly to ",
+      "The recent tightening of RERA’s \"Verified Broker Protocol\" for 2026 isn’t just another regulatory update—it’s a seismic shift, fundamentally re-architecting the lead generation lan...",
+    ],
     metaTitle: "Why This Matters Now",
     metaDescription: "The recent tightening of RERA\u2019s \"Verified Broker Protocol\" for 2026 isn\u2019t just another regulatory update\u2014it\u2019s a seismic shift, fundamentally re-architecting the lead generation landscape in Dubai. For agency founders, the immediate practical implication is stark: access to high-q",
     sections: [
@@ -1502,6 +1679,12 @@ export const allInsights: Insight[] = [
     value: "73%",
     label: `of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows`,
   },
+    keyFindings: [
+      "Key metric: 73% — of Dubai property transactions in 2026 are off-plan — auction rules now reach the majority of lead flows",
+      "5 — new mandatory eligibility data points required at qualification step before any auction bid",
+      "AURO's multi-agent system was built to capture exactly this kind of structured data during the natural qualification con",
+      "Expert perspective: \"The 2026 DLD framework does not change what good Dubai real estate brokers already knew to capture. ...\" — AURO Compliance Notes, July 2026",
+    ],
   metaTitle: `Dubai Off-Plan Auction Regulations 2026: Re-Qualification Playbook for Real Estate Teams | AURO`,
   metaDescription: `DLD's updated 2026 off-plan auction framework changes buyer eligibility, escrow verification, and bid-to-purchase ratios. Learn what to capture in lead qualification flows and how AURO's multi-agent system applies the new compliance checks automatically.`,
   sections: [
@@ -1638,6 +1821,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/35665798/pexels-photo-35665798.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai real estate market analysis",
     keyStat: { value: "Daily", label: "Insight" },
+    keyFindings: [
+      "Key metric: Daily — Insight",
+      "AED 52,500 — Average DLD registration fee on a Q2 2026 secondary-market transaction",
+      "The DLD's secondary-market registration fee of 2.5% applies to every completed-property sale. At the current average tra",
+    ],
     metaTitle: "Dubai Secondary Market \u2014",
     metaDescription: "The Secondary Market Just Hit 45% of Dubai Transactions \u2014 Your Nurture Flow Is Still Built for Off-Plan\nOn 1 July 2026, the Dubai Land Department reported that secondary-market transactions now represent 44.8% of all Dubai property deals \u2014 up from 27% in 2023 and the highest share since the modern m",
     sections: [
@@ -1677,6 +1865,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/4502690/pexels-photo-4502690.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Modern glass building exterior with contemporary architecture",
     keyStat: { value: "100x", label: "higher engagement under 5 minutes" },
+    keyFindings: [
+      "Key metric: 100x — higher engagement under 5 minutes",
+      "Speed-to-lead is one of the most cited factors in real estate conversion, but how much does it actually matter? We analyzed response time data across AURO deployments in Dubai real...",
+      "The hypothesis was straightforward: faster response times lead to higher engagement rates. But the magnitude of the effect surprised even our team.",
+    ],
     metaTitle: "Experiment: Response Time & Lead Conversion in Dubai Real Estate | AURO",
     metaDescription: "Analysis of how response time impacts lead conversion in Dubai real estate. Data shows 100x higher engagement when responses arrive within 5 minutes.",
     sections: [
@@ -1718,6 +1911,9 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/1537493/pexels-photo-1537493.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Burj Khalifa skyscraper against Dubai skyline",
     keyStat: { value: "95%", label: "of questions answered within 2 seconds by AURO" },
+    keyFindings: [
+      "Key metric: 95% — of questions answered within 2 seconds by AURO",
+    ],
     metaTitle: "FAQ — Lead Nurturing in Dubai Real Estate | AURO",
     metaDescription: "Frequently asked questions about lead nurturing in Dubai real estate. Learn how AI-powered nurturing converts more inquiries into booked meetings.",
     sections: [
@@ -1752,6 +1948,12 @@ export const allInsights: Insight[] = [
       "value": "94%",
       "label": "voice AI parity score with human agents on structured qualification calls (OpenAI 2026 benchmark)"
     },
+    keyFindings: [
+      "Key metric: 94% — voice AI parity score with human agents on structured qualification calls (OpenAI 2026 benchmark)",
+      "2.1x — increase in qualification completion rate when voice AI latency drops below 300ms",
+      "AURO's system was designed from day one as a multi-agent orchestration platform. The Voice Agent uses the latest convers",
+      "Expert perspective: \"When voice AI latency drops below 300ms and tone quality passes the casual listener test, the remain...\" — AURO Engineering Notes, July 2026",
+    ],
     "metaTitle": "GPT-Live Voice Models Reshape Dubai Real Estate Lead Qualification | AURO",
     "metaDescription": "OpenAI's new GPT-Live voice models have closed the human-AI quality gap. Learn what this means for Dubai real estate lead qualification and how AURO's multi-agent system takes advantage.",
     "sections": [
@@ -1802,6 +2004,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8730000/pexels-photo-8730000.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Business professionals shaking hands after a successful meeting",
     keyStat: { value: "10x", label: "more leads nurtured with automation" },
+    keyFindings: [
+      "Key metric: 10x — more leads nurtured with automation",
+      "AURO clients typically see lead engagement rates jump from 40% to 85%+ and booked meetings increase by 30-40% within the",
+      "Lead nurturing automation uses technology to manage, personalize, and scale the follow-up process. For real estate teams receiving hundreds of inbound inquiries daily — common for ...",
+    ],
     metaTitle: "Lead Nurturing Automation — Scale Follow-Up in Dubai Real Estate | AURO",
     metaDescription: "Automate lead nurturing without losing quality. Learn how AI-powered automation helps Dubai real estate teams nurture more leads and book more meetings.",
     sections: [
@@ -1891,6 +2098,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7641852/pexels-photo-7641852.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Real estate agent meeting with clients discussing property details",
     keyStat: { value: "80%", label: "of leads require 5+ follow-ups before booking" },
+    keyFindings: [
+      "Key metric: 80% — of leads require 5+ follow-ups before booking",
+      "Lead nurturing is the process of developing and maintaining relationships with buyers at every stage of the sales funnel. It is about guiding each prospect from first inquiry to bo...",
+      "For a comprehensive overview of lead nurturing definitions, strategies, and AI-powered automation, read our complete guide.",
+    ],
     metaTitle: "Lead Nurturing Definition — What It Is for Dubai Real Estate | AURO",
     metaDescription: "Lead nurturing defined: the process of building relationships with prospects through every stage of the sales journey. See our complete guide for Dubai real estate.",
     sections: [
@@ -1920,6 +2132,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7937709/pexels-photo-7937709.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Architects in hard hats examining construction plans at building site",
     keyStat: { value: "4x", label: "more leads converted with structured process" },
+    keyFindings: [
+      "Key metric: 4x — more leads converted with structured process",
+      "A defined lead nurturing process ensures every lead receives consistent, high-quality engagement from the moment they inquire to the moment they book a meeting or are handed off to...",
+      "In Dubai's competitive market, where multiple agencies pursue the same buyers, a structured nurturing process is a competitive advantage. It ensures every lead — whether they inqui...",
+    ],
     metaTitle: "Lead Nurturing Process — Step-by-Step Framework | AURO",
     metaDescription: "A complete framework for the lead nurturing process in Dubai real estate. Learn how AURO automates each stage from first contact to CRM handover.",
     sections: [
@@ -1951,6 +2168,12 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7642119/pexels-photo-7642119.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Young professionals collaborating at a modern office table",
     keyStat: { value: "3x", label: "higher conversion with structured nurturing" },
+    keyFindings: [
+      "Key metric: 3x — higher conversion with structured nurturing",
+      "3x — higher conversion with structured nurturing vs. ad-hoc follow-up",
+      "100x — Higher engagement when response is within 5 minutes",
+      "One AURO client increased booked meetings by 40% within the first month by implementing automated lead nurturing across ",
+    ],
     metaTitle: "Lead Nurturing Strategy — Framework for Dubai Real Estate | AURO",
     metaDescription: "Build a lead nurturing strategy that converts. Learn how Dubai real estate agencies use structured follow-up and AI automation to turn inquiries into booked meetings.",
     sections: [
@@ -2028,6 +2251,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/10375937/pexels-photo-10375937.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Business team reviewing architectural floor plans in modern office",
     keyStat: { value: "60%", label: "reduction in unqualified leads reaching sales teams" },
+    keyFindings: [
+      "Key metric: 60% — reduction in unqualified leads reaching sales teams",
+      "70% — of sales time wasted on unqualified leads",
+      "AURO extracts qualification data through natural conversation, not intrusive surveys. Leads never feel like they are bei",
+    ],
     metaTitle: "Lead Qualification Automation — Scale Without Headcount | AURO",
     metaDescription: "Automate lead qualification for Dubai real estate. Learn how AURO's AI qualifies leads around budget, timeline, and intent before CRM handoff.",
     sections: [
@@ -2065,6 +2293,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/13752348/pexels-photo-13752348.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Modern luxury villa exterior with contemporary architecture illuminated at dusk",
     keyStat: { value: "AED 15M+", label: "average luxury property transaction in Dubai" },
+    keyFindings: [
+      "Key metric: AED 15M+ — average luxury property transaction in Dubai",
+      "85% — of luxury buyers expect response within 5 minutes",
+      "AURO's luxury engagement mode adapts its tone, frequency, and style for high-net-worth buyers. Every interaction feels p",
+    ],
     metaTitle: "Luxury Real Estate Marketing Dubai — HNWI Strategies | AURO",
     metaDescription: "Marketing luxury real estate in Dubai requires high-touch, personalized engagement. Learn how AI-powered nurturing helps agencies convert high-net-worth leads.",
     sections: [
@@ -2102,6 +2335,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8470832/pexels-photo-8470832.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Diverse group of adults engaged in a business handshake outdoors",
     keyStat: { value: "30 sec", label: "average booking time with automation" },
+    keyFindings: [
+      "Key metric: 30 sec — average booking time with automation",
+      "AURO eliminates all friction between a lead saying 'yes' and a meeting appearing on your calendar. The process takes und",
+      "Meeting booking automation is the process of eliminating every step between a lead saying 'yes' and a meeting appearing on your calendar. The fewer steps, the higher the conversion...",
+    ],
     metaTitle: "Meeting Booking Automation — Book More Meetings Faster | AURO",
     metaDescription: "Meeting booking automation removes scheduling friction. Learn how AURO helps Dubai real estate teams convert qualified leads into booked meetings in seconds.",
     sections: [
@@ -2138,6 +2376,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/10375945/pexels-photo-10375945.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Diverse business team discussing architectural plans around a table",
     keyStat: { value: "85%", label: "lead response rate with multi-agent nurturing" },
+    keyFindings: [
+      "Key metric: 85% — lead response rate with multi-agent nurturing",
+      "85% — lead engagement rate with multi-agent nurturing",
+      "Multi-agent lead nurturing represents the next evolution of sales automation. Instead of a single AI handling one conversation at a time, a multi-agent system orchestrates pools of...",
+    ],
     metaTitle: "Multi-Agent Lead Nurturing — AI Orchestration at Scale | AURO",
     metaDescription: "Multi-agent lead nurturing uses AI orchestrators to manage thousands of conversations. Learn how AURO's pool-based system converts more Dubai real estate leads.",
     sections: [
@@ -2181,6 +2424,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7937357/pexels-photo-7937357.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Construction professionals reviewing project plans on site",
     keyStat: { value: "5-12", label: "touchpoints per nurturing campaign" },
+    keyFindings: [
+      "Key metric: 5-12 — touchpoints per nurturing campaign",
+      "A nurturing campaign is a structured series of touchpoints designed to move a lead from initial interest to booking decision. In real estate, effective campaigns balance informatio...",
+      "Unlike generic marketing campaigns that broadcast the same message to everyone, nurturing campaigns are dynamic and responsive. They adjust based on how each lead engages — what th...",
+    ],
     metaTitle: "Nurturing Campaign Guide — Real Estate Sequences | AURO",
     metaDescription: "Build effective nurturing campaigns for Dubai real estate. Learn how to structure multi-touch sequences that convert leads into qualified meetings.",
     sections: [
@@ -2214,6 +2462,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7642130/pexels-photo-7642130.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Real estate consultant meeting with clients indoors",
     keyStat: { value: "67%", label: "of buyers choose the first agent who responds" },
+    keyFindings: [
+      "Key metric: 67% — of buyers choose the first agent who responds",
+      "Nurturing leads has become one of the most used — and most misunderstood — phrases in real estate sales. At its core, nurturing means building a relationship with a potential buyer...",
+      "For a complete breakdown of lead nurturing definitions, strategies, and real-world applications for Dubai real estate, read our comprehensive guide.",
+    ],
     metaTitle: "Nurturing Leads Meaning — Modern Real Estate Sales Definition | AURO",
     metaDescription: "What does nurturing leads really mean in modern sales? See our complete guide on how Dubai real estate agents use AI-powered nurturing.",
     sections: [
@@ -2243,6 +2496,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/28720826/pexels-photo-28720826.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Aerial view of Atlantis Hotel on Palm Jumeirah in Dubai",
     keyStat: { value: "65%", label: "of Dubai property buyers consider off-plan" },
+    keyFindings: [
+      "Key metric: 65% — of Dubai property buyers consider off-plan",
+      "AURO handles thousands of off-plan inquiries simultaneously, providing consistent, personalized nurturing that continues",
+      "Off-plan property marketing in Dubai requires handling large volumes of inquiries, educating prospects about payment plans and handover timelines, and maintaining engagement throug...",
+    ],
     metaTitle: "Off-Plan Properties Dubai Marketing — Complete Guide | AURO",
     metaDescription: "Market off-plan properties in Dubai effectively with AI-powered lead nurturing. Learn how AURO helps developers convert off-plan inquiries into booked meetings.",
     sections: [
@@ -2279,6 +2537,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/29470840/pexels-photo-29470840.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Aerial view of Dubai skyline with Burj Khalifa towering above the city",
     keyStat: { value: "AED 500B+", label: "Dubai real estate transactions projected 2026" },
+    keyFindings: [
+      "Key metric: AED 500B+ — Dubai real estate transactions projected 2026",
+      "AURO turns every marketing channel into a revenue channel by ensuring every inquiry receives instant engagement, persist",
+      "Dubai's real estate market continues to break records. With over AED 500 billion in annual transactions projected for 2026 and approximately 60% of buyers coming from international...",
+    ],
     metaTitle: "Real Estate Marketing Dubai — 2026 Strategies | AURO",
     metaDescription: "Dubai real estate marketing strategies for 2026. Learn how AI-powered lead nurturing, WhatsApp engagement, and booking automation transform property sales.",
     sections: [
@@ -2352,6 +2615,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/29470798/pexels-photo-29470798.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Dubai Marina skyline with high-rise buildings and luxury yachts",
     keyStat: { value: "3-5%", label: "typical conversion rate without nurturing" },
+    keyFindings: [
+      "Key metric: 3-5% — typical conversion rate without nurturing",
+      "One AURO client increased booked meetings by 40% within the first month by automating lead nurturing across WhatsApp and",
+      "A real estate marketing strategy is only as good as its ability to convert interest into action. Too many agencies focus on lead generation without building the nurturing infrastru...",
+    ],
     metaTitle: "Real Estate Marketing Strategy — From Listings to Booked Meetings | AURO",
     metaDescription: "Build a complete real estate marketing strategy that converts. Learn how AI lead nurturing bridges the gap between online listings and booked meetings.",
     sections: [
@@ -2388,6 +2656,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/8729973/pexels-photo-8729973.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Real estate agent discussing property details with clients",
     keyStat: { value: "5x", label: "more meetings with persistent nurturing" },
+    keyFindings: [
+      "Key metric: 5x — more meetings with persistent nurturing",
+      "Sales nurturing sits at the intersection of marketing and sales. It is the systematic process of moving a lead from initial interest through consideration and ultimately to a booke...",
+      "The concept sounds simple, but execution is where most agencies fall short. The gap between a lead's initial inquiry and their decision to book a meeting is filled with uncertainty...",
+    ],
     metaTitle: "Sales Nurturing — Convert Real Estate Leads Into Booked Meetings | AURO",
     metaDescription: "Sales nurturing is the systematic process of moving leads through the sales pipeline. Learn how AURO automates nurturing for Dubai real estate teams.",
     sections: [
@@ -2429,6 +2702,11 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/28350360/pexels-photo-28350360.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Burj Khalifa standing tall against Dubai skyline at golden hour",
     keyStat: { value: "AED 800B+", label: "UAE real estate market value 2026" },
+    keyFindings: [
+      "Key metric: AED 800B+ — UAE real estate market value 2026",
+      "The UAE real estate market spans multiple emirates, each with its own dynamics, buyer profiles, and marketing requirements. Dubai leads in transaction volume with over AED 500 bill...",
+      "Across all emirates, the common thread is the need for sophisticated lead nurturing. International buyers, multi-channel engagement, and 24/7 expectations make AI-powered nurturing...",
+    ],
     metaTitle: "UAE Real Estate Marketing — Complete Landscape 2026 | AURO",
     metaDescription: "The UAE real estate marketing landscape explained. Learn how AI-powered lead nurturing is transforming how agencies across the UAE convert inquiries.",
     sections: [
@@ -2463,6 +2741,13 @@ export const allInsights: Insight[] = [
     heroImage: "https://images.pexels.com/photos/7937316/pexels-photo-7937316.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
     heroAlt: "Real estate professionals discussing plans in a modern office",
     keyStat: { value: "80%", label: "of leads require 5+ follow-ups before booking" },
+    keyFindings: [
+      "Key metric: 80% — of leads require 5+ follow-ups before booking",
+      "5-12 — Touchpoints typically needed before a real estate lead converts",
+      "67% — of buyers choose the agent who responds first",
+      "AURO doesn't just respond — it nurtures. It remembers context, follows up intelligently, and only hands off leads that a",
+      "Expert perspective: \"Lead nurturing is the bridge between first click and booked meeting. Without it, most leads never cr...\" — AURO Lead Nurturing Research",
+    ],
     metaTitle: "What Is Lead Nurturing? Complete Guide for Real Estate Agents | AURO",
     metaDescription: "Lead nurturing is the process of building relationships with prospects over time. This complete guide explains how Dubai real estate agents can use AI-powered nurturing to convert more leads into booked meetings.",
     sections: [
@@ -2552,6 +2837,12 @@ export const allInsights: Insight[] = [
     value: "82%",
     label: `of Dubai real-estate buyer inquiries begin on WhatsApp before any other channel — making the chat thread the primary qualification surface, not the phone call or the form fill`,
   },
+    keyFindings: [
+      "Key metric: 82% — of Dubai real-estate buyer inquiries begin on WhatsApp before any other channel — making the chat thread the primary qualification surface, not the phone call or the form fill",
+      "62% — of Dubai off-plan inbound WhatsApp inquiries arrive in a language other than English — Russian (31%), Arabic (22%), Mandarin or Hindi (9%). A single-language qualification pipeline misses more than half the market.",
+      "Analysis of WhatsApp inbound patterns from Dubai off-plan brokerages operating AI-augmented lead response shows that the",
+      "Expert perspective: \"We ran a blind A/B test in April across 400 off-plan WhatsApp inbounds. Control: human agent reads a...\" — Head of Sales Operations, top-20 Dubai RERA brokerage (internal A/B test, Q2 2026)",
+    ],
   metaTitle: `WhatsApp Multi-Agent Lead Qualification for Dubai Off-Plan Auctions | AURO`,
   metaDescription: `Dubai's DLD auction cadence compresses qualification from 90 days to 9. Learn why WhatsApp-first multi-agent qualification captures the five eligibility data points inside the first conversation, and how AURO's chat-and-voice agents handle the 24/7 bid pipeline autonomously.`,
   sections: [

@@ -210,7 +210,6 @@ export default function InsightDetail() {
 
   if (faqSection) {
     jsonLdGraph.push({
-      "@context": "https://schema.org",
       "@type": "FAQPage",
       mainEntity: faqSection.items.map((item) => ({
         "@type": "Question",
@@ -304,6 +303,20 @@ export default function InsightDetail() {
             {insight.excerpt}
           </p>
         </div>
+
+        {insight.keyFindings && insight.keyFindings.length > 0 && (
+          <div className="border border-[#333] bg-[#0c0c0c] p-5 mb-10" role="complementary" aria-label="Key findings">
+            <p className="text-[9px] font-mono text-[#D4FF00] uppercase tracking-wider mb-3">Key Findings</p>
+            <ul className="flex flex-col gap-2">
+              {insight.keyFindings.map((finding, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-neutral-300 font-light">
+                  <span className="text-[#D4FF00] mt-1 shrink-0">▸</span>
+                  {finding}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {toc.length > 1 && (
           <nav className="border border-[#333] bg-[#0c0c0c] p-5 mb-10">
