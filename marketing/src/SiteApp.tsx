@@ -38,10 +38,10 @@ const staticSeoSlugs = [
   "best-ai-chatbot-2026",
 ];
 
-const staticRoutes = staticSeoSlugs.map((slug) => ({
-  path: slug,
-  element: <StaticSeoPage slug={slug} />,
-}));
+const staticRoutes = staticSeoSlugs.flatMap((slug) => [
+  { path: slug, element: <StaticSeoPage slug={slug} /> },
+  { path: slug + "/", element: <StaticSeoPage slug={slug} /> },
+]);
 
 function ClientLogin() {
   return (
@@ -110,13 +110,21 @@ const router = createBrowserRouter([
     element: <SiteLayout />,
     children: [
       { path: "contact/demo", element: <SuspenseWrapper><ContactDemo /></SuspenseWrapper> },
+      { path: "contact/demo/", element: <SuspenseWrapper><ContactDemo /></SuspenseWrapper> },
       { path: "dashboard", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper> },
+      { path: "dashboard/", element: <SuspenseWrapper><Dashboard /></SuspenseWrapper> },
       { path: "insights", element: <SuspenseWrapper><Insights /></SuspenseWrapper> },
+      { path: "insights/", element: <SuspenseWrapper><Insights /></SuspenseWrapper> },
       { path: "insights/:slug", element: <SuspenseWrapper><InsightDetail /></SuspenseWrapper> },
+      { path: "insights/:slug/", element: <SuspenseWrapper><InsightDetail /></SuspenseWrapper> },
       { path: "faq", element: <SuspenseWrapper><Faq /></SuspenseWrapper> },
+      { path: "faq/", element: <SuspenseWrapper><Faq /></SuspenseWrapper> },
       { path: "product-updates", element: <SuspenseWrapper><ProductUpdates /></SuspenseWrapper> },
+      { path: "product-updates/", element: <SuspenseWrapper><ProductUpdates /></SuspenseWrapper> },
       { path: "about", element: <SuspenseWrapper><About /></SuspenseWrapper> },
+      { path: "about/", element: <SuspenseWrapper><About /></SuspenseWrapper> },
       { path: "solutions", element: <SuspenseWrapper><Solutions /></SuspenseWrapper> },
+      { path: "solutions/", element: <SuspenseWrapper><Solutions /></SuspenseWrapper> },
       ...staticRoutes.map(r => ({ ...r, element: <SuspenseWrapper>{r.element}</SuspenseWrapper> })),
       { path: "*", element: <SuspenseWrapper><NotFound /></SuspenseWrapper> },
     ],
