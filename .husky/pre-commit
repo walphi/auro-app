@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+git diff --cached --name-only | grep -q "marketing/src/data/insights.ts" || exit 0
+
+cd marketing && npx tsx src/scripts/validate-insights.ts
