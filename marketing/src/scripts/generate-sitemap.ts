@@ -19,6 +19,11 @@ const staticSeoSlugs = [
   "luxury-real-estate-marketing-dubai",
   "booking-automation-dubai-real-estate",
   "multi-agent-lead-nurturing",
+  "real-estate-ai-agents",
+  "ai-in-real-estate",
+  "real-estate-ai-tools",
+  "ai-lead-generation-real-estate",
+  "best-ai-chatbot-2026",
 ];
 
 const staticPages = [

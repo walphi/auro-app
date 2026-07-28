@@ -54,6 +54,26 @@ const SLUG_TITLE_MAP: Record<string, { title: string; excerpt: string }> = {
     title: "Multi-Agent Lead Nurturing — AI Orchestration at Scale",
     excerpt: "How AURO's multi-agent system orchestrates lead nurturing across pools, channels, and follow-up sequences for maximum conversion.",
   },
+  "real-estate-ai-agents": {
+    title: "Real Estate AI Agents — How Multi-Agent Systems Transform Lead Qualification",
+    excerpt: "Discover how AI agents are reshaping Dubai real estate lead qualification, nurturing, and booking. Learn why multi-agent systems outperform single-bot approaches.",
+  },
+  "ai-in-real-estate": {
+    title: "AI in Real Estate — The Complete Guide to AI-Powered Lead Nurturing (2026)",
+    excerpt: "Explore how artificial intelligence is transforming Dubai real estate sales, from AI-powered lead qualification to automated meeting booking and multi-agent orchestration.",
+  },
+  "real-estate-ai-tools": {
+    title: "Real Estate AI Tools — What Works in 2026 for Dubai Agencies",
+    excerpt: "Compare the best AI tools for real estate lead generation, qualification, nurturing, and booking automation. Find the right tech stack for your Dubai agency.",
+  },
+  "ai-lead-generation-real-estate": {
+    title: "AI Lead Generation for Real Estate — Automate Qualification, Book More Meetings",
+    excerpt: "Learn how AI lead generation transforms real estate sales pipelines in Dubai. Automate qualification, nurture leads at scale, and book more meetings with multi-agent systems.",
+  },
+  "best-ai-chatbot-2026": {
+    title: "Best AI Chatbot 2026 — What Dubai Real Estate Agencies Need to Know",
+    excerpt: "Find the best AI chatbot for your Dubai real estate agency in 2026. Compare features, pricing, and real estate-specific capabilities for lead qualification and nurturing.",
+  },
 };
 
 const slugToInsight = (slug: string) => allInsights.find((i) => i.slug === slug);

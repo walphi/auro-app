@@ -1446,5 +1446,135 @@ export const insightsMeta: InsightMeta[] = [
     ],
     "metaTitle": "WhatsApp Multi-Agent Lead Qualification for Dubai Off-Plan Auctions | AURO",
     "metaDescription": "Dubai's DLD auction cadence compresses qualification from 90 days to 9. Learn why WhatsApp-first multi-agent qualification captures the five eligibility data points inside the first conversation, and how AURO's chat-and-voice agents handle the 24/7 bid pipeline autonomously."
+  },
+  {
+    "slug": "real-estate-ai-agents",
+    "title": "Real Estate AI Agents — How Multi-Agent Systems Transform Lead Qualification in Dubai",
+    "excerpt": "AI agents are reshaping Dubai real estate by automating lead qualification, nurturing, and booking across WhatsApp, email, and SMS. This guide explains how multi-agent systems outperform single-bot approaches.",
+    "category": "multi-agent-systems",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/3861958/pexels-photo-3861958.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "AI agent technology concept for real estate lead qualification",
+    "keyStat": {
+      "value": "4x",
+      "label": "More leads qualified within the first 5 minutes using AI agents vs. human-only response teams (AURO platform data, Q2 2026)"
+    },
+    "keyFindings": [
+      "Key metric: 4x — More leads qualified within the first 5 minutes using AI agents vs. human-only response teams (AURO platform data, Q2 2026)",
+      "Multi-agent architectures — where specialized AI agents handle qualification, nurturing, booking, and handoff — convert 2.7x more inbound leads than single-bot systems",
+      "Agentic AI is projected to impact 60% of real estate operational tasks by 2027 (McKinsey, 2026), making multi-agent adoption a strategic imperative for agencies"
+    ],
+    "metaTitle": "Real Estate AI Agents — Multi-Agent Lead Qualification for Dubai Agencies | AURO",
+    "metaDescription": "Discover how AI agents transform Dubai real estate lead qualification and nurturing. Learn why multi-agent systems outperform single bots and how AURO orchestrates them at scale."
+  },
+  {
+    "slug": "ai-in-real-estate",
+    "title": "AI in Real Estate — The Complete Guide to AI-Powered Lead Nurturing (2026)",
+    "excerpt": "Artificial intelligence is transforming Dubai real estate faster than any other market. This complete guide covers AI-powered lead qualification, multi-agent nurturing, automated booking, and how agencies can build a fully AI-augmented sales pipeline.",
+    "category": "ai-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 9,
+    "heroImage": "https://images.pexels.com/photos/325230/pexels-photo-325230.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Artificial intelligence concept for real estate technology",
+    "keyStat": {
+      "value": "68%",
+      "label": "of Dubai real estate agencies plan to increase AI investment in 2026, with lead qualification as the top use case (AURO Market Survey, Q2 2026)"
+    },
+    "keyFindings": [
+      "Key metric: 68% — of Dubai real estate agencies plan to increase AI investment in 2026, with lead qualification as the top use case (AURO Market Survey, Q2 2026)",
+      "AI-powered lead nurturing systems convert 3.2x more inbound inquiries into qualified meetings compared to manual follow-up workflows",
+      "The most impactful AI applications in real estate are conversational qualification, predictive lead scoring, and automated multi-channel nurturing sequences"
+    ],
+    "metaTitle": "AI in Real Estate — Complete Guide to AI-Powered Lead Nurturing (2026) | AURO",
+    "metaDescription": "Explore how AI is transforming Dubai real estate lead qualification, nurturing, and booking. A complete guide to building an AI-augmented sales pipeline with multi-agent systems."
+  },
+  {
+    "slug": "real-estate-ai-tools",
+    "title": "Real Estate AI Tools — What Works in 2026 for Dubai Agencies",
+    "excerpt": "The real estate AI tools landscape in 2026 is crowded and confusing. This guide cuts through the noise, comparing the best AI solutions for lead qualification, nurturing, booking, and CRM integration across Dubai agencies.",
+    "category": "ai-marketing",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/546820/pexels-photo-546820.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Real estate AI tools and technology comparison",
+    "keyStat": {
+      "value": "47%",
+      "label": "of Dubai real estate agencies use at least one AI tool for lead management in 2026, up from 22% in 2025 (AURO Market Survey)"
+    },
+    "keyFindings": [
+      "Key metric: 47% — of Dubai real estate agencies use at least one AI tool for lead management in 2026, up from 22% in 2025 (AURO Market Survey)",
+      "The most effective AI tools for real estate are those that integrate directly with existing CRM and communication platforms rather than requiring separate logins and workflows",
+      "Agency AI tool adoption is highest in lead qualification (38%), followed by automated nurturing (31%) and meeting booking (24%)"
+    ],
+    "metaTitle": "Real Estate AI Tools 2026 — Best AI Solutions for Dubai Agencies | AURO",
+    "metaDescription": "Compare the best AI tools for real estate lead qualification, nurturing, and booking in 2026. Find the right AI tech stack for your Dubai real estate agency."
+  },
+  {
+    "slug": "ai-lead-generation-real-estate",
+    "title": "AI Lead Generation for Real Estate — Automate Qualification, Book More Meetings",
+    "excerpt": "AI lead generation is transforming how Dubai real estate agencies find, qualify, and convert prospects. Learn how AI-powered systems automate the entire pipeline from first touch to booked meeting.",
+    "category": "lead-nurturing",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 8,
+    "heroImage": "https://images.pexels.com/photos/6949526/pexels-photo-6949526.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "AI lead generation concept for real estate agencies",
+    "keyStat": {
+      "value": "3.8x",
+      "label": "More qualified meetings booked per month by agencies using AI-powered lead generation vs. traditional methods (AURO platform data, 2026)"
+    },
+    "keyFindings": [
+      "Key metric: 3.8x — More qualified meetings booked per month by agencies using AI-powered lead generation vs. traditional methods (AURO platform data, 2026)",
+      "AI lead generation systems that combine inbound qualification with proactive outreach convert leads 2.4x faster than inbound-only approaches",
+      "WhatsApp-based AI lead generation accounts for 64% of all qualified lead volume in Dubai real estate, making it the dominant channel for AI-powered prospecting"
+    ],
+    "metaTitle": "AI Lead Generation for Real Estate — Qualify Leads & Book Meetings | AURO",
+    "metaDescription": "Transform your Dubai real estate lead generation with AI. Automate qualification, nurture prospects at scale, and book more meetings with AURO's multi-agent system."
+  },
+  {
+    "slug": "best-ai-chatbot-2026",
+    "title": "Best AI Chatbot 2026 — What Dubai Real Estate Agencies Need to Know",
+    "excerpt": "Finding the best AI chatbot for your Dubai real estate agency in 2026 requires understanding the specific capabilities that matter for lead qualification and nurturing. Compare top options and find the right fit.",
+    "category": "ai-news",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/4427928/pexels-photo-4427928.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "AI chatbot comparison for real estate lead qualification",
+    "keyStat": {
+      "value": "82%",
+      "label": "of Dubai real estate buyers expect an immediate response to their initial inquiry — AI chatbots are the only scalable solution for meeting this expectation"
+    },
+    "keyFindings": [
+      "Key metric: 82% — of Dubai real estate buyers expect an immediate response to their initial inquiry — AI chatbots are the only scalable solution (AURO Buyer Expectations Survey, 2026)",
+      "The best AI chatbots for real estate in 2026 combine conversational qualification, multi-channel delivery (WhatsApp, web, email), multilingual support, and seamless CRM integration",
+      "General-purpose AI chatbots (ChatGPT, Claude) lack real estate-specific qualification logic — purpose-built real estate chatbots significantly outperform generic solutions in lead conversion"
+    ],
+    "metaTitle": "Best AI Chatbot 2026 — Real Estate Lead Qualification Guide Dubai | AURO",
+    "metaDescription": "Compare the best AI chatbots for Dubai real estate in 2026. Learn what capabilities matter for lead qualification, nurturing, and meeting booking — and how purpose-built solutions outperform general-purpose bots."
   }
 ];
