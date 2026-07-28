@@ -118,8 +118,8 @@ export const insightsMeta: InsightMeta[] = [
     "publishedAt": "2026-07-22",
     "updatedAt": "2026-07-22",
     "readMinutes": 7,
-    "heroImage": "https://images.pexels.com/photos/35707773/pexels-photo-35707773.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Dubai urban development and property market landscape",
+    "heroImage": "https://images.pexels.com/photos/35705174/pexels-photo-35705174.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Burj Khalifa towering over downtown Dubai skyline at dusk",
     "keyStat": {
       "value": "28% YOY",
       "label": "Growth in Dubai luxury transactions (Q1 2026, properties > AED 20M)"
@@ -139,8 +139,8 @@ export const insightsMeta: InsightMeta[] = [
     "publishedAt": "2026-07-21",
     "updatedAt": "2026-07-21",
     "readMinutes": 6,
-    "heroImage": "https://images.pexels.com/photos/8292780/pexels-photo-8292780.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Dubai real estate office interior with city view through windows",
+    "heroImage": "https://images.pexels.com/photos/20337902/pexels-photo-20337902.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai cityscape with Burj Khalifa across the waterfront at sunset",
     "keyStat": {
       "value": "AED 125 Billion",
       "label": "Total Dubai Real Estate Transaction Value, YTD July 2026"
@@ -160,8 +160,8 @@ export const insightsMeta: InsightMeta[] = [
     "publishedAt": "2026-07-20",
     "updatedAt": "2026-07-20",
     "readMinutes": 8,
-    "heroImage": "https://images.pexels.com/photos/31640028/pexels-photo-31640028.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Dubai waterfront cityscape with modern residential towers",
+    "heroImage": "https://images.pexels.com/photos/34025535/pexels-photo-34025535.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Sunrise view of Burj Khalifa and Dubai skyline from a curved road",
     "keyStat": {
       "value": "AED 210 Billion",
       "label": "Total DLD Transaction Value YTD H1 2026"
@@ -181,8 +181,8 @@ export const insightsMeta: InsightMeta[] = [
     "publishedAt": "2026-07-20",
     "updatedAt": "2026-07-20",
     "readMinutes": 6,
-    "heroImage": "https://images.pexels.com/photos/26838249/pexels-photo-26838249.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-    "heroAlt": "Dubai business district high-rise towers and financial centre",
+    "heroImage": "https://images.pexels.com/photos/33363140/pexels-photo-33363140.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Burj Khalifa view from a balcony framed by chairs at dusk",
     "keyStat": {
       "value": "AED 125 Billion",
       "label": "Total real estate transaction value recorded by DLD in Q2 2026, marking a 15% year-on-year increase."
