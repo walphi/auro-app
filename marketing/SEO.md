@@ -23,7 +23,7 @@ Primary geo-target: **Dubai, United Arab Emirates**
 | `/dashboard` | — | — | Internal (noindex) |
 | `/brief/christies` | — | — | Brief (noindex) |
 
-### SEO Landing Pages (12)
+### SEO Landing Pages (17)
 
 | Route | Primary Keyword | Secondary Keywords |
 |---|---|---|
@@ -39,6 +39,11 @@ Primary geo-target: **Dubai, United Arab Emirates**
 | `/luxury-real-estate-marketing-dubai` | luxury real estate marketing Dubai | HNWI buyer marketing, Dubai luxury property |
 | `/booking-automation-dubai-real-estate` | booking automation Dubai real estate | real estate appointment scheduling, automated booking |
 | `/multi-agent-lead-nurturing` | multi-agent lead nurturing | AI multi-agent system, lead qualification orchestration |
+| `/real-estate-ai-agents` | real estate AI agents | AI agent lead qualification, multi-agent real estate |
+| `/ai-in-real-estate` | AI in real estate | artificial intelligence real estate, AI real estate guide |
+| `/real-estate-ai-tools` | real estate AI tools | AI tools for real estate agents, real estate AI software |
+| `/ai-lead-generation-real-estate` | AI lead generation real estate | AI lead qualification, automated lead generation |
+| `/best-ai-chatbot-2026` | best AI chatbot 2026 | AI chatbot real estate, real estate chatbot comparison |
 
 ---
 
@@ -103,15 +108,17 @@ Each cluster has a pillar page (SEO landing page) and supporting articles.
 
 ---
 
-## 4. Keyword Gaps — Pages to Build
+## 4. Keyword Gaps — Built ✅
 
-| Keyword | Suggested Route | Priority | Rationale |
-|---|---|---|---|
-| `ai in real estate` | `/ai-in-real-estate` | High | Broad search volume; current `ai-marketing-real-estate` targets "AI marketing" specifically |
-| `real estate ai tools` | `/real-estate-ai-tools` | High | Listed alongside `/ai-marketing-tools-real-estate` but warrants its own pillar |
-| `real estate ai agents` | `/real-estate-ai-agents` | High | Core AURO differentiator; no dedicated page yet. Ties to McKinsey agentic AI thesis |
-| `what is the best ai chatbot for 2026` | `/best-ai-chatbot-2026` or article | Medium | Year-specific long-tail; good for seasonal/timely content |
-| `ai lead generation` | `/ai-lead-generation-real-estate` | High | Core product benefit; currently only covered indirectly through articles |
+All previously identified keyword gaps have been implemented as SEO landing pages with matching insight articles:
+
+| Keyword | Route | Status |
+|---|---|---|
+| `ai in real estate` | `/ai-in-real-estate` | ✅ Built (2026-07-28) |
+| `real estate ai tools` | `/real-estate-ai-tools` | ✅ Built (2026-07-28) |
+| `real estate ai agents` | `/real-estate-ai-agents` | ✅ Built (2026-07-28) |
+| `what is the best ai chatbot for 2026` | `/best-ai-chatbot-2026` | ✅ Built (2026-07-28) |
+| `ai lead generation` | `/ai-lead-generation-real-estate` | ✅ Built (2026-07-28) |
 
 ---
 
