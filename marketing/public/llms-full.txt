@@ -3384,3 +3384,72 @@ AURO The Purpose Built Advantage is a defining characteristic of the 2026 Dubai 
 Making the Right Choice for Your Agency plays a pivotal role in shaping Dubai real estate agency outcomes in 2026. The right AI chatbot for your agency depends on your specific requirements: lead volume, buyer demographics, existing tech stack, and qualification complexity. Start with a pilot deployment on a single channel (typically WhatsApp), measure the impact on qualification rate and speed-to-qualification, and expand from there. The agencies that achieve the best results with AI chatbots are those that treat the chatbot as the first layer of their lead management system — not a standalone tool — and integrate it fully with their nurturing, booking, and CRM workflows.
 
 ---
+
+## Winning the Agentic Age: Nicola Mendelsohn on AI Agents, Customer Relationships, and the Five Keys to Business Success
+**Category:** ai-news
+**Published:** 2026-07-31
+**Slug:** winning-the-agentic-age-nicola-mendelsohn-meta
+**Excerpt:** Meta's Head of Global Business Group lays out the company's vision for the agentic economy: a world where intelligent agents know your customers, serve them completely, and earn trust with every conversation — and the five things that must work together to get there.
+**Key Stat:** 5 — key things that must work together for business success in the agentic age, per Meta's Nicola Mendelsohn
+**Key Findings:** Key metric: 5 — the five things Meta says must work together for business success in the agentic age: identity, relationships, messaging, commerce, and leading models and protocols | Meta's framing: AI isn't replacing the customer relationship — it's restoring it, through agents that know customers, serve them completely, and earn trust with every conversation | The agentic shift points businesses toward always-on, context-aware agents on the messaging channels customers already use — the same AI-first lead nurturing motion AURO is built around
+
+In a keynote that ran just ten minutes and made a far bigger point, Nicola Mendelsohn — Head of Global Business Group at Meta — laid out the company's vision for what she calls the agentic age. Speaking on day two of "Conversations," Meta's flagship messaging event in London, Mendelsohn framed AI agents not as a technology shift but as a relationship shift: a way to put businesses back in close, continuous contact with their customers. The session, titled "Winning the Agentic Age," is part of Meta's AI Leadership Perspectives series and is now available to watch on demand.
+
+> *AI isn't replacing the customer relationship — it's restoring it.* — Nicola Mendelsohn, Head of Global Business Group, Meta
+
+That single line captures the strategic argument at the heart of the talk. For decades, scale forced businesses to choose between personal attention and reach. A sales team can build real relationships, but only with a limited number of customers. Advertising reaches millions, but without conversation. Mendelsohn's central claim is that intelligent agents collapse that trade-off: a business can now serve every customer individually, in the channel they already use, at the moment they raise their hand — and do it at scale.
+
+### The vision: agents that know your customers and earn trust with every conversation
+
+The world Mendelsohn describes is one where agents know your customers, serve them completely, and earn trust with every conversation. Each part of that sentence carries real weight. Knowing customers means an agent that carries context across every interaction — who the customer is, what they asked for before, what they care about. Serving them completely means an agent that can actually get things done, not just answer questions. And earning trust with every conversation means each exchange compounds the relationship, rather than chipping away at it with friction, repetition, or dead ends.
+
+This is the definition of the agentic economy that Meta is betting on: not chat interfaces bolted onto existing systems, but agents as the operating layer between a business and its customers — with messaging as the connective tissue.
+
+> **The Five Keys:** Mendelsohn identified five things that must work together for business success in the agentic age: identity, relationships, messaging, commerce, and leading models and protocols. They are presented as an integrated system — a business that gets only some of them right will underperform one that treats them as a single strategy.
+
+### The five things that must work together
+
+Rather than a checklist, Mendelsohn described five forces that need to reinforce each other. Here is how each one fits the wider thesis — and what it means in practice.
+
+### 1. Identity
+
+Identity is the foundation. An agent needs to know who it is talking to — verified, persistent identity — so that every interaction can be personalized and every follow-up can build on what came before. Without a reliable identity layer, an agent is guessing. With it, a business can recognize a returning customer across channels and pick up where the last conversation left off.
+
+### 2. Relationships
+
+The second key reframes the entire strategy. The goal of the agentic economy is not transactions — it is relationships. Because agents can hold context and appear on a customer's most-used messaging app, they turn one-off inquiries into ongoing, trust-based conversations. For industries like real estate, where buyers can spend months between first contact and purchase, this is the difference between winning a lead and losing it to silence.
+
+### 3. Messaging
+
+Messaging is the channel where agents live. Mendelsohn's point is that customers already spend their time in messaging apps — WhatsApp, Messenger, Instagram — so that is where the agent should meet them. No new app to install, no login to remember. The conversation simply happens where the customer already is. For businesses, this collapses the distance between awareness and conversation: a customer sees something, messages the business, and is immediately in a relationship with an agent.
+
+### 4. Commerce
+
+Commerce is what turns conversation into outcome. An agent that can only chat is an FAQ bot; an agent that can transact — book a meeting, confirm an order, take a deposit, route to the right human at the right moment — is an operating partner. Mendelsohn ties the agentic economy to a broader shift in which the message becomes the transaction itself. The agents that win are the ones that close loops, not just answer questions.
+
+### 5. Leading models and protocols
+
+The final key is the underlying intelligence layer: access to leading models and the protocols that let agents work together safely and consistently. The quality ceiling of any agent experience is set by the model behind it — and its ability to call the right systems, respect permissions, and hand off context to other agents or to humans. This is the "business superintelligence" layer of the vision: intelligence that is not generic, but applied to a specific business, its data, and its customer relationships.
+
+### Why this matters for business in 2026
+
+- Stat: 5 — key things that must work together for success in the agentic age — identity, relationships, messaging, commerce, leading models and protocols
+
+The strategic takeaway from the talk is that the agentic age is not optional, and it is not about replacing people. It is about a new operating model in which every customer gets continuous, intelligent attention. Mendelsohn's argument is that the businesses that win will be the ones that treat the five keys as one system: they will know who their customers are, build relationships through messaging, transact inside the conversation, and power it all with best-in-class intelligence.
+
+### What it means for real estate and lead nurturing
+
+For Dubai real estate teams, the vision maps directly onto the lead nurturing problem. The agentic age is, in effect, a mandate for always-on, context-aware engagement on WhatsApp — the channel where buyers already spend their time. Identity becomes the qualified lead profile. Relationships become persistent nurturing across a long buying cycle. Messaging becomes the WhatsApp thread the buyer already has open. Commerce becomes the booked meeting or the scheduled viewing.
+
+This is exactly the motion AURO is built around: a multi-agent system that engages inbound inquiries on WhatsApp, qualifies them in conversation, nurtures them across weeks of decision-making, and hands off a complete, context-rich lead profile to a human agent for the meeting. Mendelsohn's five keys read almost like a specification for AI-first lead nurturing — because the same logic applies whether the customer is buying a t-shirt or a penthouse.
+
+### Watch the full keynote
+
+The complete "Winning the Agentic Age" session with Nicola Mendelsohn is available on demand as part of Meta's AI Leadership Perspectives series, alongside sessions from Alex Schultz, PepsiCo, Turkish Airlines, Deliveroo, Movida, Trendyol, and Motorway. It runs approximately ten minutes and is well worth the time for anyone building their 2026 AI strategy.
+
+- Q: What is the "agentic age"? → The agentic age is the period in which AI agents become the operating layer between businesses and their customers — handling conversations, personalization, and transactions at scale on messaging channels. Meta's Nicola Mendelsohn frames it as an era where intelligent agents know your customers, serve them completely, and earn trust with every conversation.
+- Q: Who is Nicola Mendelsohn? → Nicola Mendelsohn is the Head of Global Business Group at Meta, overseeing Meta's business products and customer relationships with the world's largest brands, including WhatsApp Business. She delivered the "Winning the Agentic Age" keynote at Meta's Conversations event in London.
+- Q: What are the five keys to the agentic age? → Identity, relationships, messaging, commerce, and leading models and protocols. Mendelsohn argues these five things must work together — not as independent initiatives, but as one integrated system — for business success in the agentic age.
+- Q: Where can I watch the full talk? → The full ten-minute session is available on demand in Meta's AI Leadership Perspectives resource library on the WhatsApp Business website. The video at the top of this article streams the complete keynote.
+
+---

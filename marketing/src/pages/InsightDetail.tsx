@@ -222,6 +222,18 @@ export default function InsightDetail() {
     });
   }
 
+  if (insight.heroVideo) {
+    jsonLdGraph.push({
+      "@type": "VideoObject",
+      name: insight.title,
+      description: insight.excerpt,
+      thumbnailUrl: insight.heroImage,
+      uploadDate: insight.publishedAt,
+      contentUrl: insight.heroVideo,
+      embedUrl: insight.heroVideo,
+    });
+  }
+
   return (
     <>
       <Seo
@@ -279,21 +291,48 @@ export default function InsightDetail() {
         </div>
 
         {insight.heroImage && (
-          <div className="relative mb-10 overflow-hidden">
+          <div className="relative mb-10">
             <div className="border border-[#333]">
-              <img
-                src={insight.heroImage}
-                alt={insight.heroAlt}
-                className="w-full h-auto max-h-[400px] object-cover"
-              />
+              {insight.heroVideo ? (
+                <video
+                  controls
+                  preload="metadata"
+                  poster={insight.heroImage}
+                  src={insight.heroVideo}
+                  className="w-full max-h-[420px] bg-black object-contain"
+                />
+              ) : (
+                <img
+                  src={insight.heroImage}
+                  alt={insight.heroAlt}
+                  className="w-full h-auto max-h-[400px] object-cover"
+                />
+              )}
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
-            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-[#D4FF00]/15 pointer-events-none" />
-            <div className="absolute top-12 right-12 w-1.5 h-1.5 rounded-full bg-[#D4FF00]/40 pointer-events-none" />
-            <div className="absolute bottom-8 left-8 w-16 h-[1px] bg-gradient-to-r from-[#D4FF00]/20 to-transparent pointer-events-none" />
-            <div className="absolute bottom-8 left-8 w-[1px] h-8 bg-gradient-to-b from-[#D4FF00]/20 to-transparent pointer-events-none" />
-            <div className="absolute inset-0 bg-[#D4FF00] pointer-events-none [clip-path:polygon(0%_0%,50%_100%,0%_100%)]" />
-            <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[#D4FF00]/40" />
+            {insight.heroVideo && (
+              <p className="mt-2 text-[9px] font-mono text-neutral-500">
+                Video: {insight.heroAlt}{" "}
+                <a
+                  href="https://whatsappbusiness.com/resources/resource-library/ai-leadership-perspectives/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-neutral-400 hover:text-[#D4FF00] transition-colors"
+                >
+                  via WhatsApp Business ↗
+                </a>
+              </p>
+            )}
+            {!insight.heroVideo && (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent pointer-events-none" />
+                <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-[#D4FF00]/15 pointer-events-none" />
+                <div className="absolute top-12 right-12 w-1.5 h-1.5 rounded-full bg-[#D4FF00]/40 pointer-events-none" />
+                <div className="absolute bottom-8 left-8 w-16 h-[1px] bg-gradient-to-r from-[#D4FF00]/20 to-transparent pointer-events-none" />
+                <div className="absolute bottom-8 left-8 w-[1px] h-8 bg-gradient-to-b from-[#D4FF00]/20 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-[#D4FF00] pointer-events-none [clip-path:polygon(0%_0%,50%_100%,0%_100%)]" />
+                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[#D4FF00]/40" />
+              </>
+            )}
           </div>
         )}
 

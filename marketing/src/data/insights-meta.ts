@@ -1639,5 +1639,31 @@ export const insightsMeta: InsightMeta[] = [
     ],
     "metaTitle": "Best AI Chatbot 2026 — Real Estate Lead Qualification Guide Dubai | AURO",
     "metaDescription": "Compare the best AI chatbots for Dubai real estate in 2026. Learn what capabilities matter for lead qualification, nurturing, and meeting booking — and how purpose-built solutions outperform general-purpose bots."
+  },
+  {
+    "slug": "winning-the-agentic-age-nicola-mendelsohn-meta",
+    "title": "Winning the Agentic Age: Nicola Mendelsohn on AI Agents, Customer Relationships, and the Five Keys to Business Success",
+    "excerpt": "Meta's Head of Global Business Group lays out the company's vision for the agentic economy: a world where intelligent agents know your customers, serve them completely, and earn trust with every conversation — and the five things that must work together to get there.",
+    "category": "ai-news",
+    "author": "Nicola Mendelsohn",
+    "authorRole": "Head of Global Business Group, Meta",
+    "authorLink": "https://www.linkedin.com/in/nicolamendelsohn1",
+    "publishedAt": "2026-07-31",
+    "updatedAt": "2026-07-31",
+    "readMinutes": 8,
+    "heroImage": "https://auroapp.com/images/winning-agentic-age.jpg",
+    "heroAlt": "Winning the Agentic Age — Nicola Mendelsohn keynote video",
+    "heroVideo": "https://whatsappbusiness.com/wp-content/uploads/2026/06/winning-agentic-age.mp4",
+    "keyStat": {
+      "value": "5",
+      "label": "key things that must work together for business success in the agentic age, per Meta's Nicola Mendelsohn"
+    },
+    "keyFindings": [
+      "Key metric: 5 — the five things Meta says must work together for business success in the agentic age: identity, relationships, messaging, commerce, and leading models and protocols",
+      "Meta's framing: AI isn't replacing the customer relationship — it's restoring it, through agents that know customers, serve them completely, and earn trust with every conversation",
+      "The agentic shift points businesses toward always-on, context-aware agents on the messaging channels customers already use — the same AI-first lead nurturing motion AURO is built around"
+    ],
+    "metaTitle": "Winning the Agentic Age: Nicola Mendelsohn on AI Agents and Customer Relationships | AURO",
+    "metaDescription": "Meta's Nicola Mendelsohn on the agentic economy and the five keys to business success: identity, relationships, messaging, commerce, and leading models and protocols. Watch the full keynote."
   }
 ];

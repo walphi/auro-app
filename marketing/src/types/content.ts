@@ -47,6 +47,7 @@ export interface Insight {
   readMinutes: number;
   heroImage: string;
   heroAlt: string;
+  heroVideo?: string;
   keyStat: { value: string; label: string };
   keyFindings?: string[];
   metaTitle: string;
