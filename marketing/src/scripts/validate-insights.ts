@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { allInsights } from "../data/insights.ts";
 
 let errors = 0;
@@ -37,7 +39,27 @@ for (const insight of allInsights) {
   }
 }
 
-// 3. List all quote citations for manual review
+// 3. Warn if the used-image registry is stale (run `npm run used-images` to refresh)
+const registryPath = path.resolve(import.meta.dirname, "../data/used-images.json");
+if (fs.existsSync(registryPath)) {
+  const registry = JSON.parse(fs.readFileSync(registryPath, "utf-8"));
+  const reserved = new Set<string>(registry.pexelsPhotoIds || []);
+  const PEXELS_RE = /photos\/(\d+)\//;
+  const used = new Set<string>();
+  for (const insight of allInsights) {
+    const match = insight.heroImage.match(PEXELS_RE);
+    if (match) used.add(match[1]);
+  }
+  const stale = [...used].filter((id) => !reserved.has(id));
+  const orphaned = [...reserved].filter((id) => !used.has(id));
+  if (stale.length > 0 || orphaned.length > 0) {
+    warn(`used-images.json is stale — run \`npm run used-images\` (missing: ${stale.join(", ") || "none"}, extra: ${orphaned.join(", ") || "none"})`);
+  }
+} else {
+  warn("used-images.json not found — run `npm run used-images` to generate the registry");
+}
+
+// 4. List all quote citations for manual review
 let quoteCount = 0;
 for (const insight of allInsights) {
   for (const section of insight.sections) {

@@ -2,6 +2,69 @@ import type { InsightMeta } from "../types/content.ts";
 
 export const insightsMeta: InsightMeta[] = [
   {
+    "slug": "dubais-enduring-ascent-navigating-luxury-off-plan-and-the-ai-imperative-in-mid-2",
+    "title": "Dubai's Enduring Ascent: Navigating Luxury, Off-Plan, and the AI Imperative in Mid-2026",
+    "excerpt": "As Dubai's real estate market charges ahead in mid-2026, the luxury and off-plan segments continue to defy global headwinds, driven by robust investor confidence and strategic economic policies. This analysis delves into the market's current trajectory, highlighting key data points and the critical...",
+    "category": "dubai-luxury-real-estate",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-30",
+    "updatedAt": "2026-07-30",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/19612315/pexels-photo-19612315.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai waterfront cityscape with modern residential towers",
+    "keyStat": {
+      "value": "38%",
+      "label": "Year-on-year increase in average price per square foot for prime luxury properties in Dubai (Q2 2025 - Q2 2026)"
+    },
+    "metaTitle": "Dubai Real Estate Market 2026 — Luxury & Off-Plan Trends | AURO Insights",
+    "metaDescription": "Explore Dubai's Q2/Q3 2026 luxury and off-plan real estate performance. Understand investor drivers, supply dynamics, and how AI-powered lead nurturing is essential for agencies to capitalize on high-value opportunities in this booming market."
+  },
+  {
+    "slug": "dubais-ascendant-apex-navigating-the-luxury-and-off-plan-boom-in-2026",
+    "title": "Dubai's Ascendant Apex – Navigating the Luxury and Off-Plan Boom in 2026",
+    "excerpt": "As Dubai's real estate market continues its relentless climb, 2026 solidifies its position as a global magnet for luxury and off-plan investments, driven by an influx of UHNWIs and strategic developer launches—a landscape demanding precision from every agency looking to capitalize on unprecedented...",
+    "category": "dubai-luxury-real-estate",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-29",
+    "updatedAt": "2026-07-29",
+    "readMinutes": 7,
+    "heroImage": "https://images.pexels.com/photos/27206533/pexels-photo-27206533.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai business district high-rise towers and financial centre",
+    "keyStat": {
+      "value": "18%",
+      "label": "Year-on-year increase in luxury property transactions (AED 10M+) in Q2 2026"
+    },
+    "metaTitle": "Dubai Luxury Real Estate 2026 — Off-Plan Boom & UHNWI Influx | AURO Insights",
+    "metaDescription": "Explore the 2026 Dubai luxury and off-plan real estate market trends. Understand the drivers behind record growth, UHNWI migration, and how agencies can leverage precision strategies to capture this unprecedented demand. Data-driven insights from a senior Dubai real estate analyst."
+  },
+  {
+    "slug": "dubais-enduring-momentum-decoding-the-luxury-off-plan-market-dynamics-in-mid-202",
+    "title": "Dubai's Enduring Momentum: Decoding the Luxury & Off-Plan Market Dynamics in Mid-2026",
+    "excerpt": "Dubai's real estate market continues its unprecedented trajectory into mid-2026, driven by robust demand in the luxury and off-plan segments. This analysis cuts through the noise, providing a data-driven perspective on transaction volumes, price appreciation, and the strategic imperatives for...",
+    "category": "dubai-luxury-real-estate",
+    "author": "Phillip Walsh",
+    "authorRole": "Founder",
+    "authorImage": "https://auroapp.com/phillip-profile.jpg",
+    "authorLink": "https://www.linkedin.com/in/phillipdwalsh",
+    "publishedAt": "2026-07-28",
+    "updatedAt": "2026-07-28",
+    "readMinutes": 6,
+    "heroImage": "https://images.pexels.com/photos/692102/pexels-photo-692102.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
+    "heroAlt": "Dubai modern architecture skyline at sunset with cityscape",
+    "keyStat": {
+      "value": "AED 78 Billion",
+      "label": "Off-Plan Transaction Value, Q2 2026, representing 62% of total market value"
+    },
+    "metaTitle": "Dubai Real Estate Market Analysis 2026 – Luxury & Off-Plan Trends | AURO Insights",
+    "metaDescription": "Get a senior analyst's deep dive into Dubai's real estate market in mid-2026. Explore luxury segment growth, off-plan dominance, key transaction data, and strategic insights for agencies leveraging data-driven approaches in Dubai."
+  },
+  {
     "slug": "dubais-unrelenting-ascent-mastering-luxury-off-plan-and-ai-driven-nurturing-in-2",
     "title": "Dubai's Unrelenting Ascent: Mastering Luxury Off-Plan and AI-Driven Nurturing in 2026",
     "excerpt": "As Dubai's prime real estate market surges into mid-2026 with unprecedented demand and record-breaking off-plan sales, agencies face immense pressure to refine their lead nurturing strategies. Leveraging cutting-edge AI platforms is no longer optional—it's the critical differentiator for converting...",

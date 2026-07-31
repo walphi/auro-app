@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite --port=1981 --host=0.0.0.0",
     "validate": "tsx src/scripts/validate-insights.ts",
-    "build": "npm run validate && npm run insights:meta && vite build && npm run sitemap && npm run rss",
+    "build": "npm run validate && npm run insights:meta && npm run used-images && vite build && npm run sitemap && npm run rss",
     "preview": "vite preview",
     "insights:meta": "tsx src/scripts/generate-insights-meta.ts",
+    "used-images": "tsx src/scripts/generate-used-images.ts",
     "sitemap": "tsx src/scripts/generate-sitemap.ts",
     "rss": "tsx src/scripts/generate-rss.ts",
     "clean": "rm -rf dist server.js",
