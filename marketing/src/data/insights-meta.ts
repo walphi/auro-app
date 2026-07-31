@@ -1643,27 +1643,27 @@ export const insightsMeta: InsightMeta[] = [
   {
     "slug": "winning-the-agentic-age-nicola-mendelsohn-meta",
     "title": "Winning the Agentic Age: Nicola Mendelsohn on AI Agents, Customer Relationships, and the Five Keys to Business Success",
-    "excerpt": "Meta's Head of Global Business Group lays out the company's vision for the agentic economy: a world where intelligent agents know your customers, serve them completely, and earn trust with every conversation — and the five things that must work together to get there.",
+    "excerpt": "In \"Winning the Agentic Age,\" Meta's Nicola Mendelsohn lays out her vision for agents that know customers, serve them completely, and earn trust with every conversation — and the five things that must work together to get there. We break down her talk in her own words, the data behind it, and what agentic WhatsApp funnels mean for Dubai real estate.",
     "category": "ai-news",
     "author": "Nicola Mendelsohn",
     "authorRole": "Head of Global Business Group, Meta",
     "authorLink": "https://www.linkedin.com/in/nicolamendelsohn1",
     "publishedAt": "2026-07-31",
     "updatedAt": "2026-07-31",
-    "readMinutes": 8,
+    "readMinutes": 11,
     "heroImage": "https://auroapp.com/images/winning-agentic-age.jpg",
     "heroAlt": "Winning the Agentic Age — Nicola Mendelsohn keynote video",
     "heroVideo": "https://whatsappbusiness.com/wp-content/uploads/2026/06/winning-agentic-age.mp4",
     "keyStat": {
-      "value": "5",
-      "label": "key things that must work together for business success in the agentic age, per Meta's Nicola Mendelsohn"
+      "value": "1B+",
+      "label": "active business–consumer threads every day across WhatsApp, Messenger, and Instagram — the scale the agentic economy runs on (Mendelsohn, Conversations 2026)"
     },
     "keyFindings": [
-      "Key metric: 5 — the five things Meta says must work together for business success in the agentic age: identity, relationships, messaging, commerce, and leading models and protocols",
-      "Meta's framing: AI isn't replacing the customer relationship — it's restoring it, through agents that know customers, serve them completely, and earn trust with every conversation",
-      "The agentic shift points businesses toward always-on, context-aware agents on the messaging channels customers already use — the same AI-first lead nurturing motion AURO is built around"
+      "Key metric: 1B+ — active business–consumer threads every single day across WhatsApp, Messenger, and Instagram, the messaging scale Mendelsohn says the agentic economy runs on",
+      "Meta's framing, in her words: agents that don't just answer, they act — knowing the customer from the entire relationship, the way her grandfather knew his market customers, \"only now, for every customer, all at once\"",
+      "For real estate, her five keys map directly onto agentic WhatsApp funnels: identity becomes the qualified lead profile, relationships become persistent nurturing, messaging becomes the WhatsApp thread, commerce becomes the booked viewing — the exact motion AURO is built around"
     ],
-    "metaTitle": "Winning the Agentic Age: Nicola Mendelsohn on AI Agents and Customer Relationships | AURO",
-    "metaDescription": "Meta's Nicola Mendelsohn on the agentic economy and the five keys to business success: identity, relationships, messaging, commerce, and leading models and protocols. Watch the full keynote."
+    "metaTitle": "Winning the Agentic Age: Meta's Nicola Mendelsohn on AI Agents, WhatsApp, and Real Estate | AURO",
+    "metaDescription": "Meta's Nicola Mendelsohn on the agentic economy and the five keys to business success — identity, relationships, messaging, commerce, leading models and protocols — with the data behind her vision and what agentic WhatsApp funnels mean for Dubai real estate. Watch the full keynote."
   }
 ];
