@@ -10,16 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
     "lucide-react": "^0.562.0",
+    "posthog-js": "^1.435.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0",
-    "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.2.4",
     "typescript": "~5.9.3",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3"
+    "vite": "^7.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
